@@ -2,6 +2,7 @@ import { App as AntdApp, ConfigProvider } from "antd";
 import { useTranslation } from "react-i18next";
 
 import LeftPanel from "./components/LeftPanel";
+import MobilePanel from "./components/MobilePanel";
 import RightPanel from "./components/RightPanel";
 import Screen from "./components/Screen";
 import TopPopover from "./components/TopPopover";
@@ -33,6 +34,9 @@ const App = () => {
 				{!inShareMode && <RightPanel />}
 			</div>
 			<Tour />
+			<AntdApp>
+				<MobilePanel />
+			</AntdApp>
 		</ConfigProvider>
 	);
 };

@@ -15,7 +15,8 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import { myProfileAtom } from "@/stateV2/profile";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import List from "@/wechatComponents/List";
-import { useAtomValue } from "jotai";
+import { mobilePanelAtom } from "@/components/MobilePanel/atom";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import CircularNotchSVG from "./assets/circular-notch.svg?react";
 
@@ -23,6 +24,7 @@ const My = () => {
 	const { avatarInfo, wechat, nickname } = useAtomValue(myProfileAtom)!;
 	const navigate = useModeNavigate();
 	const { t } = useTranslation();
+	const setMobilePanel = useSetAtom(mobilePanelAtom);
 	useToggleNavbarActivated(EBottomNavBars.MY);
 
 	return (
@@ -86,7 +88,11 @@ const My = () => {
 					</List.Item>
 				</List>
 				<List className="mt-1.5">
-					<List.Item withJump icon={<Setting_Outlined_SVG fill="#2A7FCB" />}>
+					<List.Item
+						withJump
+						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
+						onClick={() => setMobilePanel("tools")}
+					>
 						{t("wechatPage.my.settings")}
 					</List.Item>
 				</List>
