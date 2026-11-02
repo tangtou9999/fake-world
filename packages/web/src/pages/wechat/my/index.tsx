@@ -78,6 +78,12 @@ const My = () => {
 					<List.Item withJump icon={<ALBUM_OUTLINED_SVG fill="#2A7FCB" />}>
 						{t("wechatPage.my.moments")}
 					</List.Item>
+					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#1595ef" strokeWidth="1.8"><rect x="3" y="5" width="22" height="18" rx="2"/><path d="M7 18l5-5 4 4 3-3 3 4"/></svg>}>
+						作品
+					</List.Item>
+					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#ff665d" strokeWidth="1.8"><path d="M4 10 7 4h14l3 6v13H4z"/><path d="M4 10h20M10 10v4h8v-4"/></svg>}>
+						<div className="flex items-center justify-between gap-2"><span>小店与卡包</span><span className="text-right text-xs leading-5 text-black/55">官方补贴700.1元<br/>小天鹅轻享洗衣机</span></div>
+					</List.Item>
 					<List.Item withJump icon={<CARDS_SVG />}>
 						{t("wechatPage.my.cards")}
 					</List.Item>
