@@ -1,7 +1,6 @@
 import ADD_OUTLINED_SVG from "@/assets/add-outlined.svg?react";
 import ALBUM_OUTLINED_SVG from "@/assets/album-outlined.svg?react";
 import ARROW_OUTLINED_SVG from "@/assets/arrow-outlined.svg?react";
-import CARDS_SVG from "@/assets/cards.svg?react";
 import FAVORITES_SVG from "@/assets/favorites.svg?react";
 import PAYLOGO_OUTLINED_SVG from "@/assets/paylogo-outlined.svg?react";
 import QRCODE_OUTLINED_SVG from "@/assets/qrcode-outlined.svg?react";
@@ -59,6 +58,7 @@ const My = () => {
 					<div className="flex h-5 w-5 items-center justify-center rounded-full border border-black/10">
 						<CircularNotchSVG className="h-3 w-3" fill="#707070" />
 					</div>
+					<div className="mt-2 ml-20 flex items-center gap-1 text-xs text-black/55"><span className="flex -space-x-1"><span className="h-5 w-5 rounded-full border-2 border-white bg-[#d7dce3]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#b9c5d0]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#e6c9c4]"/></span><span>等 12 个朋友</span></div>
 				</div>
 			</canBeDetected.div>
 			<div className="flex-1 bg-[rgba(237,237,237,1)]">
@@ -83,9 +83,6 @@ const My = () => {
 					</List.Item>
 					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#ff665d" strokeWidth="1.8"><path d="M4 10 7 4h14l3 6v13H4z"/><path d="M4 10h20M10 10v4h8v-4"/></svg>}>
 						<div className="flex items-center justify-between gap-2"><span>小店与卡包</span><span className="text-right text-xs leading-5 text-black/55">官方补贴700.1元<br/>小天鹅轻享洗衣机</span></div>
-					</List.Item>
-					<List.Item withJump icon={<CARDS_SVG />}>
-						{t("wechatPage.my.cards")}
 					</List.Item>
 					<List.Item withJump icon={<StickerOutlinedSVG fill="#F3C429" />}>
 						{t("wechatPage.my.stickers")}
