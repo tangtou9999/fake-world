@@ -30,7 +30,7 @@ const My = () => {
 	return (
 		<>
 			<canBeDetected.div
-				className="flex cursor-pointer flex-col pt-12 pr-3 pb-6 pl-9"
+				className="flex min-h-[144px] cursor-pointer flex-col justify-center py-7 pr-4 pl-7"
 				onClick={() => {
 					navigate("/wechat/my/profile-edit");
 				}}
@@ -66,6 +66,7 @@ const My = () => {
 			<div className="flex-1 bg-[rgba(237,237,237,1)]">
 				<List className="mt-1.5">
 					<List.Item
+					className="min-h-[60px] text-[18px]"
 						withJump
 						icon={<PAYLOGO_OUTLINED_SVG fill="#39CD80" />}
 						onClick={() => navigate("/wechat/service")}
@@ -89,6 +90,7 @@ const My = () => {
 				</List>
 				<List className="mt-1.5">
 					<List.Item
+					className="min-h-[60px] text-[18px]"
 						withJump
 						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
 						onClick={() => setMobilePanel("tools")}

@@ -20,54 +20,54 @@ const Discover = () => {
 
 	return (
 		<>
-			<div className="flex justify-center bg-[rgba(237,237,237,1)] py-2 font-medium">
+			<div className="flex h-11 shrink-0 items-center justify-center bg-[rgba(237,237,237,1)] font-medium text-[17px]">
 				{t("wechatPage.discover.title")}
 			</div>
 			<div className="flex flex-1 flex-col bg-[rgba(237,237,237,1)]">
 				<List>
-					<List.Item withJump icon={<MomentSVG />} onClick={() => navigate("/wechat/moments")}>
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<MomentSVG />} onClick={() => navigate("/wechat/moments")}>
 						{t("wechatPage.discover.moments")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<SphSVG fill="#F79D3D" className="origin-center scale-80" />}>
+				<List className="mt-2">
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<SphSVG fill="#F79D3D" className="origin-center scale-80" />}>
 						{t("wechatPage.discover.channels")}
 					</List.Item>
-					<List.Item withJump icon={<FloatWindowOnOutlinedSVG fill="#D56F68" />}>
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<FloatWindowOnOutlinedSVG fill="#D56F68" />}>
 						{t("wechatPage.discover.live")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
+				<List className="mt-2">
 					<List.Item
-						withJump
+						className="min-h-[58px] text-[18px]" withJump
 						icon={<ScanOutlinedSVG fill="#2A7FCB" className="origin-center scale-90" />}
 					>
 						{t("wechatPage.discover.scan")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<NewsOutlinedSVG fill="#FAB93F" />}>
+				<List className="mt-2">
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<NewsOutlinedSVG fill="#FAB93F" />}>
 						{t("wechatPage.discover.topStories")}
 					</List.Item>
 					<List.Item
-						withJump
+						className="min-h-[58px] text-[18px]" withJump
 						icon={<SearchLogoOutlinedSVG fill="#F35967" className="origin-center scale-95" />}
 					>
 						{t("wechatPage.discover.search")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<FjSVG fill="#4383D3" className="ml-[2px] h-6 w-5" />}>
+				<List className="mt-2">
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<FjSVG fill="#4383D3" className="ml-[2px] h-6 w-5" />}>
 						{t("wechatPage.discover.nearby")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<GamesSVG />}>
+				<List className="mt-2">
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<GamesSVG />}>
 						{t("wechatPage.discover.games")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<MiniProgramOutlinedSVG fill="#6B66C3" />}>
+				<List className="mt-2">
+					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<MiniProgramOutlinedSVG fill="#6B66C3" />}>
 						{t("wechatPage.discover.mp")}
 					</List.Item>
 				</List>

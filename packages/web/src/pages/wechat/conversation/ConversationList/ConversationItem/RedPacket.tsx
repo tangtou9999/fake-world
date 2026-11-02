@@ -33,9 +33,9 @@ const RedPacket = ({ role, upperText, senderId, redPacketStatus, note, originalS
 		<CommonBlock
 			upperText={upperText}
 			senderId={senderId}
-			blockClassName="w-4/5"
+			blockClassName="w-[276px] max-w-[82vw]"
 			innerBlockClassName={twJoin(
-				"w-full pb-1",
+				"w-full rounded-[5px] px-2 pt-2 pb-1",
 				redPacketStatus === "awaiting" && "bg-wechatOrange-3 before:bg-wechatOrange-3",
 				(redPacketStatus === "accepted" || redPacketStatus === "expired") &&
 					"bg-wechatOrange-5 before:bg-wechatOrange-5",
@@ -43,8 +43,8 @@ const RedPacket = ({ role, upperText, senderId, redPacketStatus, note, originalS
 		>
 			<div className="flex flex-col pl-1 text-white">
 				<div className="flex flex-1 items-center border-white/10 border-b pb-1">
-					<img src={IMAGE_MAP[redPacketStatus]} className="w-8" />
-					<div className="ml-2 flex h-10 flex-col justify-center overflow-hidden">
+					<img src={IMAGE_MAP[redPacketStatus]} className="h-9 w-9 shrink-0 object-contain" />
+					<div className="ml-2 flex min-h-10 flex-1 flex-col justify-center overflow-hidden">
 						<div className="line-clamp-1 font-medium">
 							{isEmpty(note) ? "恭喜发财，大吉大利" : note}
 						</div>
