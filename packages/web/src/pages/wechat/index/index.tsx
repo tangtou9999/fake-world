@@ -12,6 +12,7 @@ import MultipleDeviceLogin from "./MultipleDeviceLogin";
 
 const WechatIndex = () => {
 	const { count } = useAtomValue(unreadCountAtom);
+	const { count } = useAtomValue(unreadCountAtom);
 	const { t } = useTranslation();
 	useToggleNavbarActivated(EBottomNavBars.WECHAT);
 	useAtom(unreadCountEffect);
@@ -21,7 +22,7 @@ const WechatIndex = () => {
 			<div className="grid grid-cols-3 bg-[rgba(237,237,237,1)] px-4 py-2">
 				<div className="flex items-center space-x-1 font-bold text-xs" />
 				<canBeDetected.span
-					className="flex items-center justify-center font-medium"
+					className="flex items-center justify-center font-medium text-base"
 					metaData={{
 						type: EMetaDataType.UnreadCount,
 						treeItemDisplayName: (d) => `顶栏 ${d.count} 个未读消息`,
