@@ -17,7 +17,8 @@ initDayjs();
 initDBImagesCacheStore();
 backendHealthCheck();
 
-const router = createBrowserRouter(routes);
+// GitHub Pages serves this repository under /fake-world/, not the domain root.
+const router = createBrowserRouter(routes, { basename: "/fake-world" });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
