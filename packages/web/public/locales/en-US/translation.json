@@ -140,6 +140,9 @@
 			"favorites": "Favorites",
 			"moments": "Moments",
 			"cards": "Cards & Offers",
+			"works": "Works",
+			"shopCards": "Shop & Cards",
+			"friendsStatus": "{{num}} friends",
 			"stickers": "Sticker Gallery",
 			"settings": "Settings",
 			"profile": {

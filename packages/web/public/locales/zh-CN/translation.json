@@ -140,6 +140,9 @@
 			"favorites": "收藏",
 			"moments": "朋友圈",
 			"cards": "卡包",
+			"works": "作品",
+			"shopCards": "小店与卡包",
+			"friendsStatus": "等{{num}}个朋友",
 			"stickers": "表情",
 			"settings": "设置",
 			"profile": {

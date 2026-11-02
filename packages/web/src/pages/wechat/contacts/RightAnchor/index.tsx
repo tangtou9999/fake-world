@@ -22,8 +22,8 @@ const RightAnchor = ({ data, stuckInfo, handleQuickJump }: Props) => {
 							<SearchOutlinedSVG width={14} fill="black" />
 						</AnchorItem>
 					);
-				if (v.length === 0) return null;
 				if (k === starS) {
+					if (v.length === 0) return null;
 					return (
 						<AnchorItem
 							key="star"

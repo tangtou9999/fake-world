@@ -81,7 +81,7 @@ const BottomNavbar = () => {
 					</Badge>
 					<span
 						className={twJoin(
-							"mt-px text-[10px] text-black/90 leading-3",
+							"mt-px font-medium text-[10px] text-black/90 leading-3",
 							WECHAT.activated && "text-[#07C160]",
 						)}
 					>
@@ -114,7 +114,7 @@ const BottomNavbar = () => {
 					</Badge>
 					<span
 						className={twJoin(
-							"mt-px text-[10px] text-black/90 leading-3",
+							"mt-px font-medium text-[10px] text-black/90 leading-3",
 							ADDRESS_BOOK.activated && "text-[#07C160]",
 						)}
 					>
@@ -147,7 +147,7 @@ const BottomNavbar = () => {
 					</Badge>
 					<span
 						className={twJoin(
-							"mt-px text-[10px] text-black/90 leading-3",
+							"mt-px font-medium text-[10px] text-black/90 leading-3",
 							DISCOVER.activated && "text-[#07C160]",
 						)}
 					>
@@ -180,7 +180,7 @@ const BottomNavbar = () => {
 					</Badge>
 					<span
 						className={twJoin(
-							"mt-px text-[10px] text-black/90 leading-3",
+							"mt-px font-medium text-[10px] text-black/90 leading-3",
 							MY.activated && "text-[#07C160]",
 						)}
 					>
