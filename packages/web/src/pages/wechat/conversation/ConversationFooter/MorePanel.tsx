@@ -1,9 +1,3 @@
-import AlbumOutlinedSVG from "@/assets/album-outlined.svg?react";
-import CameraOutlinedSVG from "@/assets/camera-outlined.svg?react";
-import FavoritesSVG from "@/assets/favorites.svg?react";
-import Transfer2OutlinedSVG from "@/assets/transfer2-outlined.svg?react";
-import VideoCallOutlinedSVG from "@/assets/video-call-outlined.svg?react";
-import VoiceOutlinedSVG from "@/assets/voice-outlined.svg?react";
 import {
 	EConversationType,
 	fromLastGenerateUpperText,
@@ -22,16 +16,85 @@ type ActionProps = {
 	onClick: () => void;
 };
 
+// iOS 微信 8.0.x 的「+」面板：62pt 白色圆角方块，下方 12pt 灰色文字
 const Action = ({ label, icon, onClick }: ActionProps) => (
-	<button type="button" className="flex flex-col items-center gap-1.5" onClick={onClick}>
-		<span className="flex h-[60px] w-[60px] items-center justify-center rounded-[14px] bg-white text-black">
+	<button type="button" className="flex w-[62px] flex-col items-center" onClick={onClick}>
+		<span className="flex h-[62px] w-[62px] items-center justify-center rounded-[15px] bg-white text-[#4C4C4C]">
 			{icon}
 		</span>
-		<span className="text-[11px] text-black/50 leading-none">{label}</span>
+		<span className="mt-[9px] whitespace-nowrap text-[12px] text-black/50 leading-[14px]">
+			{label}
+		</span>
 	</button>
 );
 
-const iconClass = "h-7 w-7";
+const Icon = ({ children }: { children: ReactNode }) => (
+	<svg viewBox="0 0 24 24" className="h-[30px] w-[30px]" fill="currentColor" aria-hidden="true">
+		{children}
+	</svg>
+);
+
+const PhotoIcon = () => (
+	<Icon>
+		<path
+			fillRule="evenodd"
+			d="M4 3.8h16a1.7 1.7 0 0 1 1.7 1.7v13A1.7 1.7 0 0 1 20 20.2H4a1.7 1.7 0 0 1-1.7-1.7v-13A1.7 1.7 0 0 1 4 3.8Zm4.3 3.3a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8ZM4.2 17.8h15.6v-1.4l-4.5-5-3.6 3.8-2.4-2.2-5.1 4.4Z"
+		/>
+	</Icon>
+);
+
+const CameraIcon = () => (
+	<Icon>
+		<path
+			fillRule="evenodd"
+			d="M8.6 4h6.8l1.4 2.1H20A1.7 1.7 0 0 1 21.7 7.8v10.5A1.7 1.7 0 0 1 20 20H4a1.7 1.7 0 0 1-1.7-1.7V7.8A1.7 1.7 0 0 1 4 6.1h3.2L8.6 4ZM12 8.6a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4Zm0 2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4Z"
+		/>
+	</Icon>
+);
+
+const LocationIcon = () => (
+	<Icon>
+		<path
+			fillRule="evenodd"
+			d="M12 2.3a6.7 6.7 0 0 0-6.7 6.7c0 4.8 6.7 12.7 6.7 12.7s6.7-7.9 6.7-12.7A6.7 6.7 0 0 0 12 2.3Zm0 9.1a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8Z"
+		/>
+	</Icon>
+);
+
+const XiaoweiIcon = () => (
+	<Icon>
+		<ellipse cx="8" cy="11" rx="2.5" ry="3.2" />
+		<ellipse cx="16" cy="11" rx="2.5" ry="3.2" />
+	</Icon>
+);
+
+const FavoritesIcon = () => (
+	<Icon>
+		<path d="M12 2.8 19.7 7.2 12 11.6 4.3 7.2Z" />
+		<path d="M3.8 8.7 11.3 13v8L3.8 16.7Z" />
+		<path d="M20.2 8.7v8L12.7 21v-8Z" />
+	</Icon>
+);
+
+const CardIcon = () => (
+	<Icon>
+		<circle cx="12" cy="7.8" r="4.4" />
+		<path d="M3.6 20.6c0-4.4 3.7-7 8.4-7s8.4 2.6 8.4 7v.1H3.6Z" />
+	</Icon>
+);
+
+const FileIcon = () => (
+	<Icon>
+		<path d="M2.6 6.3A1.8 1.8 0 0 1 4.4 4.5h5l1.8 2.1h8.4a1.8 1.8 0 0 1 1.8 1.8v1H2.6Z" />
+		<path d="M2.6 10.9h18.8v7.3a1.8 1.8 0 0 1-1.8 1.8H4.4a1.8 1.8 0 0 1-1.8-1.8Z" />
+	</Icon>
+);
+
+const MusicIcon = () => (
+	<Icon>
+		<path d="M9.2 4.2 19.4 2.6v12.7a3.5 3.5 0 1 1-2-3.2V7l-6.2 1v9.4a3.5 3.5 0 1 1-2-3.2Z" />
+	</Icon>
+);
 
 const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 	const { t } = useTranslation();
@@ -91,7 +154,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 	};
 
 	return (
-		<div className="h-[350px] overflow-y-auto bg-[#F6F6F6] px-6 pt-6">
+		<div className="h-[350px] overflow-y-auto bg-[#F6F6F6] px-[23px] pt-4">
 			<input
 				ref={albumRef}
 				type="file"
@@ -107,68 +170,45 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 				className="hidden"
 				onChange={onPick}
 			/>
-			<div className="grid grid-cols-4 gap-x-3 gap-y-5">
+			<div className="grid grid-cols-[repeat(4,62px)] justify-between gap-y-2">
 				<Action
-					label={t("wechatPage.chatPlus.album")}
-					icon={<AlbumOutlinedSVG className={iconClass} fill="black" />}
+					label={t("wechatPage.chatPlus.photos")}
+					icon={<PhotoIcon />}
 					onClick={() => albumRef.current?.click()}
 				/>
 				<Action
 					label={t("wechatPage.chatPlus.camera")}
-					icon={<CameraOutlinedSVG className={iconClass} fill="black" />}
+					icon={<CameraIcon />}
 					onClick={() => cameraRef.current?.click()}
 				/>
 				<Action
-					label={t("wechatPage.chatPlus.videoCall")}
-					icon={<VideoCallOutlinedSVG className={iconClass} fill="black" />}
-					onClick={() => undefined}
-				/>
-				<Action
 					label={t("wechatPage.chatPlus.location")}
-					icon={
-						<svg
-							viewBox="0 0 24 24"
-							className={iconClass}
-							fill="black"
-							role="img"
-							aria-label={t("wechatPage.chatPlus.location")}
-						>
-							<title>{t("wechatPage.chatPlus.location")}</title>
-							<path d="M12 2.5a6.5 6.5 0 0 0-6.5 6.5c0 4.7 6.5 12.5 6.5 12.5s6.5-7.8 6.5-12.5A6.5 6.5 0 0 0 12 2.5Zm0 8.8a2.3 2.3 0 1 1 0-4.6 2.3 2.3 0 0 1 0 4.6Z" />
-						</svg>
-					}
+					icon={<LocationIcon />}
 					onClick={() => undefined}
 				/>
 				<Action
-					label={t("wechatPage.chatPlus.redPacket")}
-					icon={
-						<svg
-							viewBox="0 0 24 24"
-							className={iconClass}
-							role="img"
-							aria-label={t("wechatPage.chatPlus.redPacket")}
-						>
-							<title>{t("wechatPage.chatPlus.redPacket")}</title>
-							<path fill="#FA5151" d="M5 4.5h14v15H5z" />
-							<path fill="#FA9D3B" d="M5 4.5h14v3.2H5z" />
-							<circle cx="12" cy="12.2" r="2.1" fill="#FA9D3B" />
-						</svg>
-					}
-					onClick={() => undefined}
-				/>
-				<Action
-					label={t("wechatPage.chatPlus.transfer")}
-					icon={<Transfer2OutlinedSVG className={iconClass} fill="black" />}
-					onClick={() => undefined}
-				/>
-				<Action
-					label={t("wechatPage.chatPlus.voiceInput")}
-					icon={<VoiceOutlinedSVG className={iconClass} fill="black" />}
+					label={t("wechatPage.chatPlus.askXiaowei")}
+					icon={<XiaoweiIcon />}
 					onClick={() => undefined}
 				/>
 				<Action
 					label={t("wechatPage.chatPlus.favorites")}
-					icon={<FavoritesSVG className={iconClass} />}
+					icon={<FavoritesIcon />}
+					onClick={() => undefined}
+				/>
+				<Action
+					label={t("wechatPage.chatPlus.contactCard")}
+					icon={<CardIcon />}
+					onClick={() => undefined}
+				/>
+				<Action
+					label={t("wechatPage.chatPlus.file")}
+					icon={<FileIcon />}
+					onClick={() => undefined}
+				/>
+				<Action
+					label={t("wechatPage.chatPlus.music")}
+					icon={<MusicIcon />}
 					onClick={() => undefined}
 				/>
 			</div>

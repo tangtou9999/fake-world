@@ -126,7 +126,12 @@
 			"redPacket": "红包",
 			"transfer": "转账",
 			"voiceInput": "语音输入",
-			"favorites": "收藏"
+			"favorites": "收藏",
+			"photos": "照片",
+			"askXiaowei": "问小微",
+			"contactCard": "个人名片",
+			"file": "文件",
+			"music": "音乐"
 		},
 		"my": {
 			"wid": "微信号",

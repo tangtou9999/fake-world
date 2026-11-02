@@ -126,7 +126,12 @@
 			"redPacket": "Red Packet",
 			"transfer": "Transfer",
 			"voiceInput": "Voice Input",
-			"favorites": "Favorites"
+			"favorites": "Favorites",
+			"photos": "Photos",
+			"askXiaowei": "Ask Xiaowei",
+			"contactCard": "Contact Card",
+			"file": "File",
+			"music": "Music"
 		},
 		"my": {
 			"wid": "Weixin ID",
