@@ -88,13 +88,13 @@ const DialogueItem = ({ itemId, className }: Props) => {
 			</Badge>
 			<div className="ml-3 flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
 				<div className="flex items-center justify-between gap-2">
-					<span className="truncate font-normal text-[17px] text-black/90 leading-[22px]">
+					<span className="truncate font-normal text-[16px] text-black/90 leading-[22px]">
 						{remark ?? nickname}
 					</span>
 					<span className="shrink-0 text-[12px] text-black/30 leading-4">{lastMessageTime}</span>
 				</div>
 				<div className="flex items-center">
-					<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-black/45 leading-5">
+					<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] text-black/45 leading-5">
 						{lastMessage}
 					</span>
 					{isMuted && <img className="ml-2 w-4 shrink-0" src={MUTED_SVG} alt="" />}

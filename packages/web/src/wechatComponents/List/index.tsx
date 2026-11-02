@@ -25,7 +25,7 @@ export const Chevron = ({ className }: { className?: string }) => (
 	>
 		<path
 			d="M1 1l6 6-6 6"
-			stroke="rgba(60,60,67,0.3)"
+			stroke="rgba(60,60,67,0.42)"
 			strokeWidth="2"
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -78,7 +78,7 @@ export const ListItem = ({
 			{renderTextPrevNode()}
 			<div
 				className={twMerge(
-					"relative flex min-h-[54px] flex-1 items-center py-4 pr-4 text-[16px] text-black/90 leading-[22px] after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:origin-bottom after:scale-y-50 after:bg-black/10 group-last/item:after:hidden",
+					"relative flex min-h-[54px] flex-1 items-center py-[11px] pr-4 text-[16px] text-black/90 leading-[22px] after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:origin-bottom after:scale-y-50 after:bg-black/10 group-last/item:after:hidden",
 					rightClassName,
 				)}
 			>

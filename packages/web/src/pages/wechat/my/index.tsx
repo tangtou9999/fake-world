@@ -123,7 +123,7 @@ const My = () => {
 						icon={<ShopIcon />}
 						extra={
 							<>
-								<span className="ml-3 text-right text-[12px] text-black/40 leading-[16px]">
+								<span className="ml-3 text-right text-[12px] text-black/50 leading-[16px]">
 									[官方补贴 700.1元]
 									<br />
 									小天鹅轻享洗衣机

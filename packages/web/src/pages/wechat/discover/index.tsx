@@ -66,8 +66,10 @@ const Discover = () => {
 						icon={<NewsOutlinedSVG fill="#FAB93F" />}
 						extra={
 							<>
-								<span className="ml-3 line-clamp-2 max-w-[190px] text-right text-[12px] text-black/40 leading-[16px]">
-									[12分钟]10.23突发劲爆！东大：等同宣战？近十万大军对垒…
+								<span className="ml-3 text-right text-[12px] text-black/50 leading-[16px]">
+									[12分钟]10.23突发劲爆！东大：
+									<br />
+									等同宣战？近十万大军对垒…
 								</span>
 								<i className="ml-1.5 h-2 w-2 shrink-0 rounded-full bg-[#FA5151]" />
 							</>
