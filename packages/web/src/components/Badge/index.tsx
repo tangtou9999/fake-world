@@ -28,7 +28,7 @@ const Badge = ({
 			{type === "dot" && (
 				<div
 					className={twMerge(
-						"-right-1 -top-1 absolute h-[10px] w-[10px] rounded-full bg-red-500",
+						"-right-1 -top-1 absolute h-[10px] w-[10px] rounded-full bg-[#FA5151]",
 						className,
 					)}
 					style={style}
@@ -37,7 +37,7 @@ const Badge = ({
 			{type === "number" && (
 				<div
 					className={twMerge(
-						"-right-2 -top-2 absolute flex items-center justify-center rounded-full bg-red-500 font-bold text-white text-xs",
+						"-right-2 -top-2 absolute flex items-center justify-center rounded-full bg-[#FA5151] font-bold text-white text-xs",
 						isOneText ? "h-[18px] w-[18px] leading-[18px]" : "px-1",
 						className,
 					)}

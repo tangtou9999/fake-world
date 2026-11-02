@@ -11,6 +11,8 @@ type Props = {
 	onChange?: (v: string | string[]) => void;
 	value?: string | string[];
 	maxImagesCount?: number;
+	/** When set, files larger than this are rejected before IndexedDB write. */
+	maxBytes?: number;
 };
 
 const saveFileToDB = async (file: File) => {
@@ -25,7 +27,13 @@ const saveFileToDB = async (file: File) => {
 
 const isMultipleFiles = (value: string | string[] | undefined): value is string[] => isArray(value);
 
-const LocalImageUploadWithPreview = ({ value, onChange, maxImagesCount, ...rest }: Props) => {
+const LocalImageUploadWithPreview = ({
+	value,
+	onChange,
+	maxImagesCount,
+	maxBytes,
+	...rest
+}: Props) => {
 	const [messageApi, contextHolder] = message.useMessage();
 	const [previewFileSrc, setPreviewFileSrc] = useState<string | string[] | undefined>(value);
 
@@ -33,9 +41,15 @@ const LocalImageUploadWithPreview = ({ value, onChange, maxImagesCount, ...rest 
 	const inputDisabled = isMultiple ? value?.length === maxImagesCount : false;
 
 	const handleInputChange = async (ev: ChangeEvent<HTMLInputElement>) => {
+		const tooLarge = (file: File) => maxBytes !== undefined && file.size > maxBytes;
+		const sizeLabel = maxBytes ? `${Math.round(maxBytes / 1024 / 1024)}MB` : "";
 		if (isMultiple) {
 			const hashList: string[] = [];
 			const files = Array.from(ev.target.files || []);
+			if (files.some(tooLarge)) {
+				messageApi.error(`图片不能超过 ${sizeLabel}`);
+				return;
+			}
 			if (files.length + (value as string[]).length > maxImagesCount!) {
 				messageApi.error(`最多上传${maxImagesCount}张图片`);
 				return;
@@ -52,6 +66,10 @@ const LocalImageUploadWithPreview = ({ value, onChange, maxImagesCount, ...rest 
 		} else {
 			const file = ev.target.files?.item(0);
 			if (file) {
+				if (tooLarge(file)) {
+					messageApi.error(`图片不能超过 ${sizeLabel}`);
+					return;
+				}
 				setPreviewFileSrc(URL.createObjectURL(file));
 				const hash = await saveFileToDB(file);
 				onChange?.(hash);

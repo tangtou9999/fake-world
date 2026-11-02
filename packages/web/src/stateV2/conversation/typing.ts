@@ -61,7 +61,12 @@ export interface IConversationTypeImage extends IConversationItemBase {
 
 export interface ICoversationTypeVideo extends IConversationItemBase {
 	type: EConversationType.video;
+	/** Poster / first-frame image hash. Legacy messages may only have this. */
 	videoInfo: string;
+	/** MD5 of the video file stored in IndexedDB. Absent on older poster-only messages. */
+	videoFile?: string;
+	/** Duration in seconds, when the file exposes it. */
+	duration?: number;
 }
 
 export interface IConversationTypeVoice extends IConversationItemBase {

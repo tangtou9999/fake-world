@@ -41,7 +41,10 @@ const UserItem = ({
 	return (
 		<List.CanBeDetectedItem
 			textPrev={
-				<h.img src={avatarInfo} className="mr-3 h-9 w-9 rounded object-cover object-center" />
+				<h.img
+					src={avatarInfo}
+					className="mr-3 h-10 w-10 shrink-0 rounded object-cover object-center"
+				/>
 			}
 			metaData={
 				id === MYSELF_ID
@@ -65,12 +68,15 @@ const UserItem = ({
 			textPrevClassName="ml-0"
 			key={_key}
 			onClick={() => navigate(`/wechat/friend/${id}`)}
-			className={twJoin("ml-4", _isLastInAnchorGroup && "border-black/5 border-b")}
-			rightClassName={twJoin(withDescription && "py-0 pb-1", _isLastInAnchorGroup && "border-none")}
+			className="ml-4"
+			rightClassName={twJoin(
+				withDescription && "py-2",
+				_isLastInAnchorGroup && "after:hidden",
+			)}
 		>
 			<div className="flex flex-col">
-				<span>{name}</span>
-				<span className="text-black/60 text-sm">{description}</span>
+				<span className="truncate">{name}</span>
+				{withDescription && <span className="truncate text-[14px] text-black/55">{description}</span>}
 			</div>
 		</List.CanBeDetectedItem>
 	);

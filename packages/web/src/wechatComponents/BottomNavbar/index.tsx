@@ -8,11 +8,14 @@ import WechatSVG from "@/assets/wechat.svg?react";
 import Badge from "@/components/Badge";
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
+import useDeviceConfig from "@/components/useDeviceConfig";
 import { EBottomNavBars, bottomNavbarsAtom } from "@/stateV2/bottomNavbars";
 import { EMetaDataType } from "@/stateV2/detectedNode";
+import { simulatedChrome } from "@/stateV2/device";
 import { useAtomValue, useSetAtom } from "jotai";
 import { mapValues } from "lodash-es";
 import { useEffect } from "react";
+import { isMobileOnly } from "react-device-detect";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { twJoin } from "tailwind-merge";
@@ -32,129 +35,159 @@ export const useToggleNavbarActivated = (index: EBottomNavBars) => {
 	}, [index]);
 };
 
+const TAB_GREEN = "#07C160";
+
 const BottomNavbar = () => {
 	const bottomNavbars = useAtomValue(bottomNavbarsAtom);
 	const { WECHAT, ADDRESS_BOOK, DISCOVER, MY } = bottomNavbars;
 	const navigate = useNavigate();
 	const { t } = useTranslation();
+	const { screenSize } = useDeviceConfig();
+	const homeIndicator = isMobileOnly ? 0 : simulatedChrome(screenSize.height).homeIndicator;
 
 	return (
 		<canBeDetected.div
-			className="grid grid-cols-4 bg-[#f8f8f8]"
+			className={twJoin(
+				"relative shrink-0 bg-[#F7F7F7] before:absolute before:top-0 before:right-0 before:left-0 before:h-px before:origin-top before:scale-y-50 before:bg-black/10",
+				isMobileOnly && "pb-[env(safe-area-inset-bottom)]",
+			)}
+			style={{ paddingBottom: homeIndicator || undefined }}
 			metaData={{ treeItemDisplayName: "底部导航栏" }}
 		>
-			<canBeDetected.div
-				className="flex cursor-pointer flex-col items-center justify-center space-y-1 py-2"
-				metaData={{
-					type: EMetaDataType.NavigationBar,
-					index: EBottomNavBars.WECHAT,
-					treeItemDisplayName: "微信",
-					operations: commonOperations,
-				}}
-				onClick={() => {
-					navigate("/wechat");
-				}}
-			>
-				<Badge
-					text={WECHAT.badgeNumber}
-					type={WECHAT.badgeType}
-					className={WECHAT.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
-					hidden={WECHAT.badgeHide}
+			<div className="grid h-[49px] grid-cols-4">
+				<canBeDetected.div
+					className="flex cursor-pointer flex-col items-center justify-center"
+					metaData={{
+						type: EMetaDataType.NavigationBar,
+						index: EBottomNavBars.WECHAT,
+						treeItemDisplayName: "微信",
+						operations: commonOperations,
+					}}
+					onClick={() => {
+						navigate("/wechat");
+					}}
 				>
-					<WechatSVG
-						className="h-7 w-7"
-						fill={WECHAT.activated ? "#39CD80" : "white"}
-						stroke={WECHAT.activated ? "unset" : "black"}
-					/>
-				</Badge>
-				<span className={twJoin("text-xs", WECHAT.activated && "text-[#07C160]")}>
-					{t("wechatPage.bottomNavbar.wechat")}
-				</span>
-			</canBeDetected.div>
-			<canBeDetected.div
-				className="flex cursor-pointer flex-col items-center justify-center space-y-1 py-2"
-				metaData={{
-					type: EMetaDataType.NavigationBar,
-					index: EBottomNavBars.ADDRESS_BOOK,
-					treeItemDisplayName: "通讯录",
-					operations: commonOperations,
-				}}
-				onClick={() => {
-					navigate("/wechat/contacts");
-				}}
-			>
-				<Badge
-					text={ADDRESS_BOOK.badgeNumber}
-					type={ADDRESS_BOOK.badgeType}
-					className={ADDRESS_BOOK.badgeType === "dot" ? "-right-1 top-0" : "-right-3"}
-					hidden={ADDRESS_BOOK.badgeHide}
+					<Badge
+						text={WECHAT.badgeNumber}
+						type={WECHAT.badgeType}
+						className={WECHAT.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
+						hidden={WECHAT.badgeHide}
+					>
+						<WechatSVG
+							className="h-7 w-7"
+							fill={WECHAT.activated ? TAB_GREEN : "white"}
+							stroke={WECHAT.activated ? "unset" : "black"}
+						/>
+					</Badge>
+					<span
+						className={twJoin(
+							"mt-px text-[10px] text-black/90 leading-3",
+							WECHAT.activated && "text-[#07C160]",
+						)}
+					>
+						{t("wechatPage.bottomNavbar.wechat")}
+					</span>
+				</canBeDetected.div>
+				<canBeDetected.div
+					className="flex cursor-pointer flex-col items-center justify-center"
+					metaData={{
+						type: EMetaDataType.NavigationBar,
+						index: EBottomNavBars.ADDRESS_BOOK,
+						treeItemDisplayName: "通讯录",
+						operations: commonOperations,
+					}}
+					onClick={() => {
+						navigate("/wechat/contacts");
+					}}
 				>
-					{ADDRESS_BOOK.activated ? (
-						<AddressBookFilledSVG fill="#39CD80" className="h-7 w-7" />
-					) : (
-						<AddressBookOutlinedSVG className="h-7 w-7" fill="black" />
-					)}
-				</Badge>
-				<span className={twJoin("text-xs", ADDRESS_BOOK.activated && "text-[#07C160]")}>
-					{t("wechatPage.bottomNavbar.contacts")}
-				</span>
-			</canBeDetected.div>
-			<canBeDetected.div
-				className="flex cursor-pointer flex-col items-center justify-center space-y-1 py-2"
-				metaData={{
-					type: EMetaDataType.NavigationBar,
-					index: EBottomNavBars.DISCOVER,
-					treeItemDisplayName: "发现",
-					operations: commonOperations,
-				}}
-				onClick={() => {
-					navigate("/wechat/discover");
-				}}
-			>
-				<Badge
-					text={DISCOVER.badgeNumber}
-					type={DISCOVER.badgeType}
-					className={DISCOVER.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
-					hidden={DISCOVER.badgeHide}
+					<Badge
+						text={ADDRESS_BOOK.badgeNumber}
+						type={ADDRESS_BOOK.badgeType}
+						className={ADDRESS_BOOK.badgeType === "dot" ? "-right-1 top-0" : "-right-3"}
+						hidden={ADDRESS_BOOK.badgeHide}
+					>
+						{ADDRESS_BOOK.activated ? (
+							<AddressBookFilledSVG fill={TAB_GREEN} className="h-7 w-7" />
+						) : (
+							<AddressBookOutlinedSVG className="h-7 w-7" fill="black" />
+						)}
+					</Badge>
+					<span
+						className={twJoin(
+							"mt-px text-[10px] text-black/90 leading-3",
+							ADDRESS_BOOK.activated && "text-[#07C160]",
+						)}
+					>
+						{t("wechatPage.bottomNavbar.contacts")}
+					</span>
+				</canBeDetected.div>
+				<canBeDetected.div
+					className="flex cursor-pointer flex-col items-center justify-center"
+					metaData={{
+						type: EMetaDataType.NavigationBar,
+						index: EBottomNavBars.DISCOVER,
+						treeItemDisplayName: "发现",
+						operations: commonOperations,
+					}}
+					onClick={() => {
+						navigate("/wechat/discover");
+					}}
 				>
-					{DISCOVER.activated ? (
-						<DiscoverFilledSVG fill="#39CD80" className="h-7 w-7" />
-					) : (
-						<DiscoverOutlinedSVG className="h-7 w-7" fill="black" />
-					)}
-				</Badge>
-				<span className={twJoin("text-xs", DISCOVER.activated && "text-[#07C160]")}>
-					{t("wechatPage.bottomNavbar.discover")}
-				</span>
-			</canBeDetected.div>
-			<canBeDetected.div
-				className="flex cursor-pointer flex-col items-center justify-center space-y-1 py-2"
-				metaData={{
-					type: EMetaDataType.NavigationBar,
-					index: EBottomNavBars.MY,
-					treeItemDisplayName: "我",
-					operations: commonOperations,
-				}}
-				onClick={() => {
-					navigate("/wechat/my");
-				}}
-			>
-				<Badge
-					text={MY.badgeNumber}
-					type={MY.badgeType}
-					className={MY.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
-					hidden={MY.badgeHide}
+					<Badge
+						text={DISCOVER.badgeNumber}
+						type={DISCOVER.badgeType}
+						className={DISCOVER.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
+						hidden={DISCOVER.badgeHide}
+					>
+						{DISCOVER.activated ? (
+							<DiscoverFilledSVG fill={TAB_GREEN} className="h-7 w-7" />
+						) : (
+							<DiscoverOutlinedSVG className="h-7 w-7" fill="black" />
+						)}
+					</Badge>
+					<span
+						className={twJoin(
+							"mt-px text-[10px] text-black/90 leading-3",
+							DISCOVER.activated && "text-[#07C160]",
+						)}
+					>
+						{t("wechatPage.bottomNavbar.discover")}
+					</span>
+				</canBeDetected.div>
+				<canBeDetected.div
+					className="flex cursor-pointer flex-col items-center justify-center"
+					metaData={{
+						type: EMetaDataType.NavigationBar,
+						index: EBottomNavBars.MY,
+						treeItemDisplayName: "我",
+						operations: commonOperations,
+					}}
+					onClick={() => {
+						navigate("/wechat/my");
+					}}
 				>
-					{MY.activated ? (
-						<PeopleFilledSVG fill="#39CD80" className="h-7 w-7" />
-					) : (
-						<PeopleOutlinedSVG className="h-7 w-7" fill="black" />
-					)}
-				</Badge>
-				<span className={twJoin("text-xs", MY.activated && "text-[#07C160]")}>
-					{t("wechatPage.bottomNavbar.me")}
-				</span>
-			</canBeDetected.div>
+					<Badge
+						text={MY.badgeNumber}
+						type={MY.badgeType}
+						className={MY.badgeType === "dot" ? "top-0 right-0" : "-right-3"}
+						hidden={MY.badgeHide}
+					>
+						{MY.activated ? (
+							<PeopleFilledSVG fill={TAB_GREEN} className="h-7 w-7" />
+						) : (
+							<PeopleOutlinedSVG className="h-7 w-7" fill="black" />
+						)}
+					</Badge>
+					<span
+						className={twJoin(
+							"mt-px text-[10px] text-black/90 leading-3",
+							MY.activated && "text-[#07C160]",
+						)}
+					>
+						{t("wechatPage.bottomNavbar.me")}
+					</span>
+				</canBeDetected.div>
+			</div>
 		</canBeDetected.div>
 	);
 };

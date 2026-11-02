@@ -53,9 +53,9 @@ const DialogueItem = ({ itemId, className }: Props) => {
 	return (
 		<canBeDetected.div
 			className={twMerge(
-				"relative flex min-h-[84px] cursor-pointer items-center px-4 py-3 after:absolute after:bottom-0 after:w-full after:border-gray-200 after:border-b",
+				"relative flex min-h-[72px] cursor-pointer items-center px-4 py-3 after:pointer-events-none after:absolute after:bottom-0 after:w-full",
 				styles["chat-item"],
-				isPinned && "bg-[rgba(237,237,237,1)]",
+				isPinned && "bg-[#EDEDED]",
 				className,
 			)}
 			metaData={[
@@ -84,18 +84,20 @@ const DialogueItem = ({ itemId, className }: Props) => {
 			nodeTreeSort
 		>
 			<Badge type={unreadDisplayType} text={unreadMarkNumber} hidden={badgeHide}>
-				<h.img className="h-12 w-12 rounded-[4px] object-cover object-center" src={avatarInfo} />
+				<h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />
 			</Badge>
-			<div className="ml-3 flex flex-1 flex-col space-y-1.5 overflow-hidden">
-				<div className="flex items-center justify-between">
-					<span className="font-normal text-[17px]">{remark ?? nickname}</span>
-					<span className="text-gray-400 text-xs">{lastMessageTime}</span>
+			<div className="ml-3 flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
+				<div className="flex items-center justify-between gap-2">
+					<span className="truncate font-normal text-[17px] text-black/90 leading-[22px]">
+						{remark ?? nickname}
+					</span>
+					<span className="shrink-0 text-[12px] text-black/30 leading-4">{lastMessageTime}</span>
 				</div>
 				<div className="flex items-center">
-					<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-gray-400 text-sm">
+					<span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px] text-black/45 leading-5">
 						{lastMessage}
 					</span>
-					{isMuted && <img className="w-4" src={MUTED_SVG} />}
+					{isMuted && <img className="ml-2 w-4 shrink-0" src={MUTED_SVG} alt="" />}
 				</div>
 			</div>
 		</canBeDetected.div>

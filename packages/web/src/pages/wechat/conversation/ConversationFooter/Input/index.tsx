@@ -4,18 +4,17 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import Element from "@/wechatComponents/SlateText/Element";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import { useSetAtom } from "jotai";
-import { type Dispatch, type SetStateAction, memo, useEffect } from "react";
+import { memo, useEffect } from "react";
 import { isMobileOnly } from "react-device-detect";
 import { Editable, ReactEditor, Slate } from "slate-react";
 import { useConversationAPI } from "../../context";
 import { focusFix } from "./utils";
 
 type Props = {
-	showEmojiPanel?: boolean;
-	setShowEmojiPanel?: Dispatch<SetStateAction<boolean>>;
+	dismissPanel?: () => void;
 };
 
-const Input = ({ showEmojiPanel, setShowEmojiPanel }: Props) => {
+const Input = ({ dismissPanel }: Props) => {
 	const {
 		inputEditor: editor,
 		sendTextMessage,
@@ -50,11 +49,9 @@ const Input = ({ showEmojiPanel, setShowEmojiPanel }: Props) => {
 				<Editable
 					id="conversation-input"
 					onFocus={() => {
+						dismissPanel?.();
 						if (isMobileOnly) {
 							scrollConversationListToBtm();
-							if (showEmojiPanel) {
-								setShowEmojiPanel?.(false);
-							}
 						}
 					}}
 					className="rounded bg-white px-2 py-1 caret-wechatBrand-3 focus:outline-none"

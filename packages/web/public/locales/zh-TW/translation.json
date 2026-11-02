@@ -111,11 +111,22 @@
 			"channels": "影音號",
 			"live": "直播",
 			"scan": "掃描",
+			"listen": "聽一聽",
 			"topStories": "看一看",
 			"search": "搜一搜",
-			"nearby": "附近",
+			"nearby": "附近的人",
 			"games": "遊戲",
 			"mp": "小程式"
+		},
+		"chatPlus": {
+			"album": "相簿",
+			"camera": "拍攝",
+			"videoCall": "視訊通話",
+			"location": "位置",
+			"redPacket": "紅包",
+			"transfer": "轉帳",
+			"voiceInput": "語音輸入",
+			"favorites": "收藏"
 		},
 		"my": {
 			"wid": "微信 ID",
@@ -223,6 +234,8 @@
 			"group": "群組",
 			"tags": "標籤",
 			"official": "官方賬號",
+			"serviceAccount": "服務號",
+			"wecom": "企業微信聯絡人",
 			"starred": "超級好友",
 			"total": "{{num}} 個聯絡人"
 		},

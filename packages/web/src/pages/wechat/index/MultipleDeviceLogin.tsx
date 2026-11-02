@@ -60,7 +60,7 @@ const MultipleDeviceLogin = () => {
 	return (
 		<canBeDetected.div
 			className={twJoin(
-				"flex items-center border-black/5 border-b bg-[rgba(237,237,237,1)] px-7 pt-3 pb-2 text-sm",
+				"flex h-11 items-center border-black/10 border-b bg-[#EDEDED] px-4 text-[14px]",
 				show ? "visible" : "hidden",
 			)}
 			metaData={{
