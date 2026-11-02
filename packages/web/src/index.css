@@ -6,12 +6,3 @@ img {
   @apply select-none;
   -webkit-user-drag: none;
 }
-
-
-/* Mobile editor drawer: respect iOS safe areas and allow independent scrolling. */
-.mobile-editor-drawer .ant-drawer-content-wrapper { max-height: calc(100dvh - env(safe-area-inset-top)); }
-.mobile-editor-drawer .ant-drawer-content { border-radius: 18px 18px 0 0; overflow: hidden; }
-.mobile-editor-drawer .ant-drawer-header { padding-top: max(14px, env(safe-area-inset-top)); }
-.mobile-editor-drawer .ant-drawer-body { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-.mobile-editor-content { padding-bottom: max(16px, env(safe-area-inset-bottom)); overflow-wrap: anywhere; }
-@media (max-width: 1023px) { #center { min-height: 100dvh; padding: 12px 8px calc(24px + env(safe-area-inset-bottom)); overflow: auto; } #center > div { max-width: 100%; } .ant-float-btn { bottom: calc(20px + env(safe-area-inset-bottom)) !important; right: 14px !important; } }

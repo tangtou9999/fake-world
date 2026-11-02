@@ -6,7 +6,7 @@ import "./i18n";
 import { Provider } from "jotai";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { RouterProvider, createHashRouter } from "react-router-dom";
 import { initDBImagesCacheStore } from "./db";
 import { routes } from "./router/index.tsx";
 import { mainStore } from "./stateV2/store.ts";
@@ -17,8 +17,7 @@ initDayjs();
 initDBImagesCacheStore();
 backendHealthCheck();
 
-// GitHub Pages serves this repository under /fake-world/, not the domain root.
-const router = createBrowserRouter(routes, { basename: "/fake-world" });
+const router = createHashRouter(routes);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>

@@ -20,15 +20,8 @@ export default function useDeviceConfig() {
 		screenSize = SCREEN_SIZE[device];
 	}
 
-	// Preserve the selected phone's CSS-pixel viewport. Scale only the desktop
-	// preview wrapper so newer and older devices fit the available center panel.
-	const previewScale = size
-		? Math.min(1, Math.max(0, size.width - 32) / screenSize.width, Math.max(0, size.height - 32) / screenSize.height)
-		: 1;
-
 	return {
 		screenSize,
 		device,
-		previewScale: Number.isFinite(previewScale) ? Math.max(0.1, previewScale) : 1,
 	};
 }

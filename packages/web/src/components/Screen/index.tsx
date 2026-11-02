@@ -10,7 +10,7 @@ import StatusBar from "../StatusBar";
 import useDeviceConfig from "../useDeviceConfig";
 
 const Screen = () => {
-	const { screenSize, previewScale } = useDeviceConfig();
+	const { screenSize } = useDeviceConfig();
 
 	const style: CSSProperties = isMobileOnly
 		? { width: "100vw", height: "calc(100vh - 1px)" }
@@ -19,21 +19,8 @@ const Screen = () => {
 				height: screenSize.height,
 			};
 
-	if (isMobileOnly) {
-		return (
-			<div style={style} className="relative flex flex-col overflow-hidden" id="screen">
-				<Global styles={css`&::-webkit-scrollbar { display: none; }`} />
-				<DetectedOverall />
-				<ErrorBoundary FallbackComponent={Fallback}>
-					<Outlet />
-				</ErrorBoundary>
-			</div>
-		);
-	}
-
 	return (
-		<div style={{ width: screenSize.width * previewScale, height: screenSize.height * previewScale, flex: "0 0 auto" }}>
-		<div style={{ ...style, transform: `scale(${previewScale})`, transformOrigin: "top left" }} className="relative flex flex-col overflow-hidden" id="screen">
+		<div style={style} className="relative flex flex-col overflow-hidden" id="screen">
 			<Global
 				styles={css`
           &::-webkit-scrollbar {
@@ -46,7 +33,6 @@ const Screen = () => {
 			<ErrorBoundary FallbackComponent={Fallback}>
 				<Outlet />
 			</ErrorBoundary>
-		</div>
 		</div>
 	);
 };

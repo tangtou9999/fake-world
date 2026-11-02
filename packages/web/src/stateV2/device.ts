@@ -4,11 +4,6 @@ import { mainStore } from "./store";
 export enum MOBILE_LIST {
 	AUTO = "auto",
 	IPHONE_12_PRO = "iPhone 12 Pro",
-	IPHONE_18_PRO_MAX = "iPhone 18 Pro Max",
-	IPHONE_18_PRO = "iPhone 18 Pro",
-	IPHONE_17_PRO_MAX = "iPhone 17 Pro Max",
-	IPHONE_17_PRO = "iPhone 17 Pro",
-	IPHONE_17 = "iPhone 17",
 	IPHONE_14_PRO_MAX = "iPhone 14 Pro Max",
 	IPHONE_XR = "iPhone XR",
 	IPHONE_SE = "iPhone SE",
@@ -17,11 +12,6 @@ export enum MOBILE_LIST {
 
 export const MOBILE_LIST_LABEL = {
 	[MOBILE_LIST.AUTO]: "menu.mainBlock.device.auto",
-	[MOBILE_LIST.IPHONE_18_PRO_MAX]: "iPhone 18 Pro Max",
-	[MOBILE_LIST.IPHONE_18_PRO]: "iPhone 18 Pro",
-	[MOBILE_LIST.IPHONE_17_PRO_MAX]: "iPhone 17 Pro Max",
-	[MOBILE_LIST.IPHONE_17_PRO]: "iPhone 17 Pro",
-	[MOBILE_LIST.IPHONE_17]: "iPhone 17",
 	[MOBILE_LIST.IPHONE_14_PRO_MAX]: "iPhone 14 Pro Max",
 	[MOBILE_LIST.IPHONE_12_PRO]: "iPhone 12 Pro",
 	[MOBILE_LIST.IPHONE_XR]: "iPhone XR",
@@ -30,11 +20,6 @@ export const MOBILE_LIST_LABEL = {
 };
 
 export const SCREEN_SIZE = {
-	[MOBILE_LIST.IPHONE_18_PRO_MAX]: { width: 440, height: 956 },
-	[MOBILE_LIST.IPHONE_18_PRO]: { width: 402, height: 874 },
-	[MOBILE_LIST.IPHONE_17_PRO_MAX]: { width: 440, height: 956 },
-	[MOBILE_LIST.IPHONE_17_PRO]: { width: 402, height: 874 },
-	[MOBILE_LIST.IPHONE_17]: { width: 402, height: 874 },
 	[MOBILE_LIST.IPHONE_14_PRO_MAX]: {
 		width: 430,
 		height: 932,

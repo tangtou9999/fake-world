@@ -1,6 +1,7 @@
 import ADD_OUTLINED_SVG from "@/assets/add-outlined.svg?react";
 import ALBUM_OUTLINED_SVG from "@/assets/album-outlined.svg?react";
 import ARROW_OUTLINED_SVG from "@/assets/arrow-outlined.svg?react";
+import CARDS_SVG from "@/assets/cards.svg?react";
 import FAVORITES_SVG from "@/assets/favorites.svg?react";
 import PAYLOGO_OUTLINED_SVG from "@/assets/paylogo-outlined.svg?react";
 import QRCODE_OUTLINED_SVG from "@/assets/qrcode-outlined.svg?react";
@@ -14,7 +15,8 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import { myProfileAtom } from "@/stateV2/profile";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import List from "@/wechatComponents/List";
-import { useAtomValue } from "jotai";
+import { mobilePanelAtom } from "@/components/MobilePanel/atom";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 import CircularNotchSVG from "./assets/circular-notch.svg?react";
 
@@ -22,12 +24,13 @@ const My = () => {
 	const { avatarInfo, wechat, nickname } = useAtomValue(myProfileAtom)!;
 	const navigate = useModeNavigate();
 	const { t } = useTranslation();
+	const setMobilePanel = useSetAtom(mobilePanelAtom);
 	useToggleNavbarActivated(EBottomNavBars.MY);
 
 	return (
 		<>
 			<canBeDetected.div
-				className="flex cursor-pointer flex-col pt-12 pr-3 pb-6 pl-7"
+				className="flex cursor-pointer flex-col pt-12 pr-3 pb-6 pl-9"
 				onClick={() => {
 					navigate("/wechat/my/profile-edit");
 				}}
@@ -58,7 +61,6 @@ const My = () => {
 					<div className="flex h-5 w-5 items-center justify-center rounded-full border border-black/10">
 						<CircularNotchSVG className="h-3 w-3" fill="#707070" />
 					</div>
-					<div className="ml-2 flex items-center gap-1 text-xs text-black/55"><span className="flex -space-x-1"><span className="h-3 w-3 rounded-full border border-white bg-[#d7dce3]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#b9c5d0]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#e6c9c4]"/></span><span>等 12 个朋友</span></div>
 				</div>
 			</canBeDetected.div>
 			<div className="flex-1 bg-[rgba(237,237,237,1)]">
@@ -78,18 +80,19 @@ const My = () => {
 					<List.Item withJump icon={<ALBUM_OUTLINED_SVG fill="#2A7FCB" />}>
 						{t("wechatPage.my.moments")}
 					</List.Item>
-					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#1595ef" strokeWidth="1.8"><rect x="3" y="5" width="22" height="18" rx="2"/><path d="M7 18l5-5 4 4 3-3 3 4"/></svg>}>
-						作品
-					</List.Item>
-					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#ff665d" strokeWidth="1.8"><path d="M4 10 7 4h14l3 6v13H4z"/><path d="M4 10h20M10 10v4h8v-4"/></svg>}>
-						<div className="flex items-center justify-between gap-2"><span>小店与卡包</span><span className="text-right text-xs leading-5 text-black/55">[官方补贴700.1元]<br/>小天鹅轻享洗衣机</span></div>
+					<List.Item withJump icon={<CARDS_SVG />}>
+						{t("wechatPage.my.cards")}
 					</List.Item>
 					<List.Item withJump icon={<StickerOutlinedSVG fill="#F3C429" />}>
 						{t("wechatPage.my.stickers")}
 					</List.Item>
 				</List>
 				<List className="mt-1.5">
-					<List.Item withJump icon={<Setting_Outlined_SVG fill="#2A7FCB" />}>
+					<List.Item
+						withJump
+						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
+						onClick={() => setMobilePanel("tools")}
+					>
 						{t("wechatPage.my.settings")}
 					</List.Item>
 				</List>

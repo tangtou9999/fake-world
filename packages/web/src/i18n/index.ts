@@ -25,6 +25,9 @@ i18n
 	.init({
 		supportedLngs: ["zh-CN", "zh-TW", "en-US"],
 		fallbackLng: "zh-CN",
+		backend: {
+			loadPath: `${import.meta.env.BASE_URL}locales/{{lng}}/{{ns}}.json`,
+		},
 	});
 
 export function getCurrentLanguage() {

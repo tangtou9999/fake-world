@@ -64,6 +64,7 @@ export const preloadImages = (urls: string[]) => {
 };
 
 export async function backendHealthCheck() {
+	if (import.meta.env.PROD) return;
 	try {
 		await ping();
 	} catch (e) {

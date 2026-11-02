@@ -4,14 +4,24 @@ import { CodeInspectorPlugin } from "code-inspector-plugin";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 
+// https://vitejs.dev/config/
 export default defineConfig({
 	base: "./",
 	plugins: [
-		react({ jsxImportSource: "@emotion/react", plugins: [["@swc/plugin-emotion", {}]] }),
+		react({
+			jsxImportSource: "@emotion/react",
+			plugins: [["@swc/plugin-emotion", {}]],
+		}),
 		svgr(),
-		CodeInspectorPlugin({ bundler: "vite" }),
+		CodeInspectorPlugin({
+			bundler: "vite",
+		}),
 	],
-	resolve: { alias: { "@": path.resolve(__dirname, "./src") } },
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+		},
+	},
 	build: {
 		chunkSizeWarningLimit: 1024,
 		rollupOptions: {
@@ -22,7 +32,12 @@ export default defineConfig({
 					dexie: ["dexie"],
 					slate: ["slate", "slate-history", "slate-react"],
 					faker: ["@faker-js/faker"],
-					i18n: ["i18next", "i18next-browser-languagedetector", "i18next-http-backend", "react-i18next"],
+					i18n: [
+						"i18next",
+						"i18next-browser-languagedetector",
+						"i18next-http-backend",
+						"react-i18next",
+					],
 					"pinyin-pro": ["pinyin-pro"],
 				},
 			},
