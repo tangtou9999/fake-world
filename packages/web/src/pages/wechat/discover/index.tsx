@@ -46,6 +46,7 @@ const Discover = () => {
 					</List.Item>
 				</List>
 				<List className="mt-1.5">
+					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#20b77a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 18V10a9 9 0 0 1 18 0v8"/><path d="M5 15H3v5h5v-5H5Zm18 0h2v5h-5v-5h3ZM8 23h8"/></svg>}>听一听</List.Item>
 					<List.Item withJump icon={<NewsOutlinedSVG fill="#FAB93F" />}>
 						{t("wechatPage.discover.topStories")}
 					</List.Item>
