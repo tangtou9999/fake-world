@@ -72,6 +72,8 @@ const ConversationItem = ({ data }: Props) => {
 				<Image
 					role={role}
 					imageInfo={data.videoInfo}
+					videoFile={data.videoFile}
+					duration={data.duration}
 					upperText={upperText}
 					senderId={senderId}
 					isVideo

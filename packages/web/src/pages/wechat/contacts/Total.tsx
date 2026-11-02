@@ -15,7 +15,7 @@ const Total = () => {
 				treeItemDisplayName: (data) =>
 					`好友总数 ${data.calcuateType === "auto" ? count : data.count} 人`,
 			}}
-			className="flex items-center justify-center py-3 text-black/60"
+			className="flex items-center justify-center py-6 text-[14px] text-black/45"
 		>
 			{t("wechatPage.contacts.total", {
 				num: count,

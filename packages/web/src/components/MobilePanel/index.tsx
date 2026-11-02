@@ -5,6 +5,7 @@ import CommonBlock from "../LeftPanel/CommonBlock";
 import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
 import useMode from "../useMode";
+import ChatRecordsEditor from "./ChatRecordsEditor";
 import { mobilePanelAtom } from "./atom";
 
 export const APP_VERSION = "v1.0";
@@ -48,6 +49,7 @@ const MobilePanel = () => {
 								label: "工具",
 								children: (
 									<>
+										<ChatRecordsEditor />
 										<CommonBlock />
 										<MainMenu />
 									</>
@@ -59,7 +61,9 @@ const MobilePanel = () => {
 								children: (
 									<>
 										<div className="mb-3 text-gray-500 text-xs">
-											先在「工具」里打开编辑模式，关闭面板后在页面上点选要修改的内容，再点右下角「⚙ 面板」回到这里。
+											先在「工具」里打开编辑模式，关闭面板后在页面上点选要修改的内容，再点右下角「⚙
+											面板」回到这里。某一条对话的消息在「工具 →
+											聊天记录」里编辑，包括图片、视频以及由谁发送。对话窗口的「+」不再打开编辑器。
 										</div>
 										<MetaDataEditor />
 									</>

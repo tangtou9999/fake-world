@@ -1,4 +1,5 @@
 import { EMetaDataType } from "@/stateV2/detectedNode";
+import { simulatedChrome } from "@/stateV2/device";
 import { statusBarAtom, statusBarConfigAtom, statusBarMountNodeAtom } from "@/stateV2/statusBar";
 import { ClockCircleOutlined } from "@ant-design/icons";
 import { useInterval, useUpdate } from "ahooks";
@@ -9,6 +10,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { twJoin } from "tailwind-merge";
 import { canBeDetected } from "../NodeDetected";
+import useDeviceConfig from "../useDeviceConfig";
 import _5GSVG from "./assets/5G.svg?react";
 import BatterySVG from "./assets/battery.svg?react";
 import ChargingSVG from "./assets/charging.svg?react";
@@ -29,6 +31,8 @@ const StatusBar = () => {
 		useAtomValue(statusBarConfigAtom);
 	const update = useUpdate();
 	const divRef = useRef<HTMLDivElement>(null);
+	const { screenSize } = useDeviceConfig();
+	const barHeight = simulatedChrome(screenSize.height).statusBar;
 
 	const darkTheme = theme === "dark";
 
@@ -148,7 +152,7 @@ const StatusBar = () => {
 			<canBeDetected.div
 				innerRef={divRef}
 				className={twJoin(
-					"flex items-center justify-between py-2 pr-6 pl-10",
+					"flex items-center justify-between pr-7 pl-8",
 					hide && "hidden",
 					isMount && "pointer-events-auto z-10",
 				)}
@@ -159,9 +163,12 @@ const StatusBar = () => {
 				}}
 				style={{
 					backgroundColor,
+					height: barHeight,
 				}}
 			>
-				<div className={twJoin("font-semibold", darkTheme && "text-white")}>
+				<div
+					className={twJoin("font-semibold text-[16px] leading-none", darkTheme && "text-white")}
+				>
 					{dayjs().format("HH:mm")}
 				</div>
 				<div className="flex items-center space-x-2">

@@ -1,9 +1,8 @@
-import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
 import { canBeDetected } from "@/components/NodeDetected";
 import { useMemoScrollPos } from "@/components/useMemoScrollPos";
 import { EMetaDataType } from "@/stateV2/detectedNode";
 import { allProfilesAnchorDataAtom } from "@/stateV2/profile";
-import { t } from "i18next";
+import SearchBar from "@/wechatComponents/SearchBar";
 import { useAtomValue } from "jotai";
 import { memo, useState } from "react";
 import ContactsList from "./ContactsList";
@@ -31,12 +30,7 @@ const MainSection = () => {
 					treeItemDisplayName: (data) => `通讯录（${data.length - 1}位好友）`,
 				}}
 			>
-				<div className="flex bg-[rgba(237,237,237,1)] px-2 pb-3">
-					<div className="flex flex-1 items-center justify-center rounded-[4px] bg-white p-2 text-xs">
-						<SearchOutlinedSVG fill="rgba(0, 0, 0, 0.5)" width={17} height={16} />
-						<span className="ml-2 opacity-50">{t("wechatPage.main.search")}</span>
-					</div>
-				</div>
+				<SearchBar className="pb-2.5" />
 				<TopMenus />
 				<ContactsList anchorData={anchorData} stuckInfo={stuckInfo} setStuckInfo={setStuckInfo} />
 				<Total />

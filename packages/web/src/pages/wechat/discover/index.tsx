@@ -11,6 +11,7 @@ import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/Botto
 import List from "@/wechatComponents/List";
 import { useTranslation } from "react-i18next";
 import FjSVG from "./assets/fj.svg?react";
+import ListenSVG from "./assets/listen.svg?react";
 import SphSVG from "./assets/sph.svg?react";
 
 const Discover = () => {
@@ -20,54 +21,49 @@ const Discover = () => {
 
 	return (
 		<>
-			<div className="flex h-11 shrink-0 items-center justify-center bg-[rgba(237,237,237,1)] font-medium text-[17px]">
+			<div className="flex h-11 shrink-0 items-center justify-center bg-[#EDEDED] font-medium text-[17px] text-black/90">
 				{t("wechatPage.discover.title")}
 			</div>
-			<div className="flex flex-1 flex-col bg-[rgba(237,237,237,1)]">
+			<div className="flex flex-1 flex-col overflow-y-auto bg-[#EDEDED]">
 				<List>
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<MomentSVG />} onClick={() => navigate("/wechat/moments")}>
+					<List.Item withJump icon={<MomentSVG />} onClick={() => navigate("/wechat/moments")}>
 						{t("wechatPage.discover.moments")}
 					</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<SphSVG fill="#F79D3D" className="origin-center scale-80" />}>
+					<List.Item withJump icon={<SphSVG fill="#F79D3D" />}>
 						{t("wechatPage.discover.channels")}
 					</List.Item>
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<FloatWindowOnOutlinedSVG fill="#D56F68" />}>
+					<List.Item withJump icon={<FloatWindowOnOutlinedSVG fill="#D56F68" />}>
 						{t("wechatPage.discover.live")}
 					</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item
-						className="min-h-[58px] text-[18px]" withJump
-						icon={<ScanOutlinedSVG fill="#2A7FCB" className="origin-center scale-90" />}
-					>
+					<List.Item withJump icon={<ScanOutlinedSVG fill="#2A7FCB" />}>
 						{t("wechatPage.discover.scan")}
+					</List.Item>
+					<List.Item withJump icon={<ListenSVG />}>
+						{t("wechatPage.discover.listen")}
 					</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<NewsOutlinedSVG fill="#FAB93F" />}>
+					<List.Item withJump icon={<NewsOutlinedSVG fill="#FAB93F" />}>
 						{t("wechatPage.discover.topStories")}
 					</List.Item>
-					<List.Item
-						className="min-h-[58px] text-[18px]" withJump
-						icon={<SearchLogoOutlinedSVG fill="#F35967" className="origin-center scale-95" />}
-					>
+					<List.Item withJump icon={<SearchLogoOutlinedSVG fill="#F35967" />}>
 						{t("wechatPage.discover.search")}
 					</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<FjSVG fill="#4383D3" className="ml-[2px] h-6 w-5" />}>
+					<List.Item withJump icon={<FjSVG fill="#4383D3" />}>
 						{t("wechatPage.discover.nearby")}
 					</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<GamesSVG />}>
-						{t("wechatPage.discover.games")}
-					</List.Item>
+					<List.Item withJump icon={<GamesSVG />}>{t("wechatPage.discover.games")}</List.Item>
 				</List>
 				<List className="mt-2">
-					<List.Item className="min-h-[58px] text-[18px]" withJump icon={<MiniProgramOutlinedSVG fill="#6B66C3" />}>
+					<List.Item withJump icon={<MiniProgramOutlinedSVG fill="#6B66C3" />}>
 						{t("wechatPage.discover.mp")}
 					</List.Item>
 				</List>

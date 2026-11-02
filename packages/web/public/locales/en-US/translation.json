@@ -111,11 +111,22 @@
 			"channels": "Channels",
 			"live": "Live Stream",
 			"scan": "Scan",
+			"listen": "Listen",
 			"topStories": "Top Stories",
 			"search": "Search",
-			"nearby": "Nearby",
+			"nearby": "People Nearby",
 			"games": "Games",
 			"mp": "Mini Programs"
+		},
+		"chatPlus": {
+			"album": "Album",
+			"camera": "Camera",
+			"videoCall": "Video Call",
+			"location": "Location",
+			"redPacket": "Red Packet",
+			"transfer": "Transfer",
+			"voiceInput": "Voice Input",
+			"favorites": "Favorites"
 		},
 		"my": {
 			"wid": "Weixin ID",
@@ -223,6 +234,8 @@
 			"group": "Group Chats",
 			"tags": "Tags",
 			"official": "Official Accounts",
+			"serviceAccount": "Service Accounts",
+			"wecom": "WeCom Contacts",
 			"starred": "Starred",
 			"total": "{{num}} friends"
 		},

@@ -6,3 +6,11 @@ img {
   @apply select-none;
   -webkit-user-drag: none;
 }
+
+/* WeChat iOS uses the system face (PingFang SC). Sizes follow the 17pt list text. */
+#screen {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Noto Sans SC",
+    "Noto Sans CJK SC", sans-serif;
+  color: rgba(0, 0, 0, 0.9);
+  -webkit-font-smoothing: antialiased;
+}

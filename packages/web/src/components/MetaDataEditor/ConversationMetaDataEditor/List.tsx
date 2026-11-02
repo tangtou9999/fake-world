@@ -5,6 +5,7 @@ import {
 	conversationListAtom,
 } from "@/stateV2/conversation";
 import type { IStateProfile } from "@/stateV2/profile";
+import { IMAGE_MAX_BYTES } from "@/utils/media";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import { App, Button, Form, Input, InputNumber, Radio, Select, Switch } from "antd";
 import dayjs from "dayjs";
@@ -13,6 +14,7 @@ import { RESET } from "jotai/utils";
 import { nanoid } from "nanoid";
 import { useCallback } from "react";
 import LocalImageUploadWithPreview from "../LocalImageUpload";
+import LocalVideoUpload from "../LocalVideoUpload";
 import WrapSlateInput from "../SlateInput";
 import GenerateConversation from "./GenerateConversation";
 import { CONVERSATION_TYPE_OPTIONS } from "./consts";
@@ -118,20 +120,42 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 						}
 						if (type === EConversationType.image) {
 							return (
-								<Form.Item<TConversationItem> name="imageInfo" label="图片">
-									<LocalImageUploadWithPreview />
+								<Form.Item<TConversationItem>
+									name="imageInfo"
+									label="图片"
+									tooltip="保存在浏览器 IndexedDB，单张不超过 20MB"
+								>
+									<LocalImageUploadWithPreview maxBytes={IMAGE_MAX_BYTES} />
 								</Form.Item>
 							);
 						}
 						if (type === EConversationType.video) {
 							return (
-								<Form.Item<TConversationItem>
-									name="videoInfo"
-									label="视频"
-									tooltip="视频和图片一样，仅仅只是展示的时候加一个播放图标"
-								>
-									<LocalImageUploadWithPreview />
-								</Form.Item>
+								<>
+									<Form.Item name="videoFile" hidden>
+										<Input />
+									</Form.Item>
+									<Form.Item name="videoInfo" hidden>
+										<Input />
+									</Form.Item>
+									<Form.Item name="duration" hidden>
+										<InputNumber />
+									</Form.Item>
+									<Form.Item label="视频">
+										<LocalVideoUpload
+											value={{
+												videoFile: getFieldValue("videoFile"),
+												videoInfo: getFieldValue("videoInfo"),
+												duration: getFieldValue("duration"),
+											}}
+											onChange={(next) => {
+												setFieldValue("videoFile", next.videoFile);
+												setFieldValue("videoInfo", next.videoInfo);
+												setFieldValue("duration", next.duration);
+											}}
+										/>
+									</Form.Item>
+								</>
 							);
 						}
 						if (type === EConversationType.voice) {

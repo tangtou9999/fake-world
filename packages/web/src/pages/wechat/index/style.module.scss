@@ -1,6 +1,12 @@
 .chat-item {
   &::after {
-    left: calc(theme('width.10') + theme('margin.3') + theme('padding.4'));
-    width: calc(100% - theme('width.10') - theme('margin.3') - theme('padding.4'));
+    /* 16px row padding + 48px avatar + 12px gap. Hairline starts at the title. */
+    left: calc(16px + 48px + 12px);
+    width: calc(100% - 16px - 48px - 12px);
+    border: none;
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+    transform: scaleY(0.5);
+    transform-origin: bottom;
   }
 }

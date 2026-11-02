@@ -11,8 +11,8 @@ const AnchorItem = ({ active, children, className, ...rest }: ComponentProps<"di
 		<div className="cursor-pointer pr-2 pl-3" {...omit(rest, "key")}>
 			<div
 				className={twJoin(
-					"flex h-4 w-4 items-center justify-center rounded-full",
-					active && "bg-wechatBrand-1 text-white",
+					"flex h-[13px] w-[13px] items-center justify-center rounded-full text-[10px] leading-none",
+					active && "bg-[#07C160] text-white",
 					className,
 				)}
 			>

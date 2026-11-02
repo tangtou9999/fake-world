@@ -17,9 +17,9 @@ const Contacts = () => {
 
 	return (
 		<>
-			<div className="grid h-11 shrink-0 grid-cols-3 items-center justify-center bg-[rgba(237,237,237,1)] px-4">
+			<div className="grid h-11 shrink-0 grid-cols-3 items-center justify-center bg-[#EDEDED] px-4">
 				<div />
-				<div className="flex items-center justify-center font-medium">
+				<div className="flex items-center justify-center font-medium text-[17px] text-black/90">
 					{t("wechatPage.contacts.title")}
 				</div>
 				<div
@@ -29,10 +29,10 @@ const Contacts = () => {
 						setActivatedNode("contacts-container");
 					}}
 				>
-					<AddFriendSVG height={20} width={20} fill="black" className="cursor-pointer" />
+					<AddFriendSVG height={24} width={24} fill="black" className="cursor-pointer" />
 				</div>
 			</div>
-			<  Suspense
+			<Suspense
 				fallback={
 					<div className="flex flex-1 items-center justify-center">
 						<Loading className="h-8 w-8 text-wechatBrand-2" />

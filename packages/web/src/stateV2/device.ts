@@ -42,6 +42,18 @@ export const SCREEN_SIZE = {
 	},
 };
 
+/**
+ * Chrome for the simulated iPhone frame.
+ * Face ID phones: 47pt status bar (54pt with Dynamic Island) and a 34pt home indicator.
+ * Home-button phones: 20pt status bar and no home indicator.
+ * Apple HIG: https://developer.apple.com/design/human-interface-guidelines/layout
+ */
+export function simulatedChrome(height: number) {
+	if (!height || height >= 900) return { statusBar: 54, homeIndicator: 34 };
+	if (height >= 800) return { statusBar: 47, homeIndicator: 34 };
+	return { statusBar: 20, homeIndicator: 0 };
+}
+
 export const deviceAtom = atomWithStorage<MOBILE_LIST>("device", MOBILE_LIST.AUTO);
 
 window.setDevice = (v) => {

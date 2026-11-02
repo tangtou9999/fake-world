@@ -2,71 +2,50 @@ import Add2OutlinedSVG from "@/assets/add2-outlined.svg?react";
 import KeyboardOutlinedSVG from "@/assets/keyboard-outlined.svg?react";
 import StickerOutlinedSVG from "@/assets/sticker-outlined.svg?react";
 import VoiceSVG from "@/assets/voice-outlined.svg?react";
-import {
-	EMetaDataType,
-	activatedNodeAtom,
-	getNodeInjectMetaDataValueSnapshot,
-} from "@/stateV2/detectedNode";
-import { getNodesAtomsValueSnapshot } from "@/stateV2/detectedNode/nodeAtom";
-import { modeAtom } from "@/stateV2/mode";
-import { useSetAtom } from "jotai";
-import { isArray, keys } from "lodash-es";
-import { useState } from "react";
-import { isMobileOnly } from "react-device-detect";
+import { useEffect, useState } from "react";
 import BottomPopup from "./BottomPopup";
 import EmojiPanel from "./EmojiPanel";
 import Input from "./Input";
+import MorePanel from "./MorePanel";
+
+type Panel = "emoji" | "more" | null;
 
 const ConversationFooter = () => {
-	const [showEmojiPanel, setShowEmojiPanel] = useState(false);
-	const setMode = useSetAtom(modeAtom);
-	const setActivatedNode = useSetAtom(activatedNodeAtom);
+	const [panel, setPanel] = useState<Panel>(null);
+	const [rendered, setRendered] = useState<Exclude<Panel, null>>("emoji");
 
-	const inputComponentProps = isMobileOnly
-		? {
-				showEmojiPanel,
-				setShowEmojiPanel,
-			}
-		: {};
+	useEffect(() => {
+		if (panel) setRendered(panel);
+	}, [panel]);
 
 	return (
 		<div className="flex flex-col">
 			<div className="flex flex-col border-t bg-[#F6F6F6] p-2">
 				<div className="flex w-full items-end space-x-2">
 					<VoiceSVG fill="#000" className="h-8 w-8" />
-					<Input {...inputComponentProps} />
-					{showEmojiPanel ? (
+					<Input dismissPanel={() => setPanel(null)} />
+					{panel === "emoji" ? (
 						<KeyboardOutlinedSVG
 							fill="#000"
 							className="h-8 w-8 cursor-pointer"
-							onClick={() => setShowEmojiPanel((v) => !v)}
+							onClick={() => setPanel(null)}
 						/>
 					) : (
 						<StickerOutlinedSVG
 							fill="#000"
 							className="h-8 w-8 cursor-pointer"
-							onClick={() => setShowEmojiPanel((v) => !v)}
+							onClick={() => setPanel((current) => (current === "emoji" ? null : "emoji"))}
 						/>
 					)}
 					<Add2OutlinedSVG
 						fill="#000"
 						className="h-8 w-8 cursor-pointer"
-						onClick={() => {
-							setMode("edit");
-							const nodesAtoms = getNodesAtomsValueSnapshot();
-							for (const key of keys(nodesAtoms)) {
-								const metaData = getNodeInjectMetaDataValueSnapshot(key);
-								if (!isArray(metaData) && metaData?.type === EMetaDataType.ConversationList) {
-									setActivatedNode(key);
-									break;
-								}
-							}
-						}}
+						onClick={() => setPanel((current) => (current === "more" ? null : "more"))}
 					/>
 				</div>
 			</div>
-			<BottomPopup show={showEmojiPanel}>
-				<EmojiPanel />
+			<BottomPopup show={panel !== null}>
+				{rendered === "more" ? <MorePanel onSent={() => setPanel(null)} /> : <EmojiPanel />}
 			</BottomPopup>
 		</div>
 	);

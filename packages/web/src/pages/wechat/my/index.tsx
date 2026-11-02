@@ -30,7 +30,7 @@ const My = () => {
 	return (
 		<>
 			<canBeDetected.div
-				className="flex min-h-[144px] cursor-pointer flex-col justify-center py-7 pr-4 pl-7"
+				className="flex cursor-pointer items-start bg-white px-5 pt-4 pb-5"
 				onClick={() => {
 					navigate("/wechat/my/profile-edit");
 				}}
@@ -39,42 +39,39 @@ const My = () => {
 					treeItemDisplayName: (data) => `个人信息编辑（${data.nickname}）`,
 				}}
 			>
-				<div className="flex">
-					<h.img src={avatarInfo} className="h-16 w-16 rounded-md" />
-					<div className="ml-4 flex flex-col justify-between py-1">
-						<div className="font-medium text-lg">{nickname}</div>
-						<div className="space-x-3 text-black/60 text-sm">
-							<span>{t("wechatPage.my.wid")}:</span>
-							<span>{wechat}</span>
+				<h.img src={avatarInfo} className="h-16 w-16 shrink-0 rounded-[6px] object-cover" />
+				<div className="ml-4 min-w-0 flex-1">
+					<div className="truncate font-medium text-[22px] text-black/90 leading-7">{nickname}</div>
+					<div className="mt-1 text-[14px] text-black/55 leading-5">
+						<span>{t("wechatPage.my.wid")}: </span>
+						<span>{wechat}</span>
+					</div>
+					<div className="mt-2 flex items-center">
+						<div className="flex h-6 items-center gap-0.5 rounded-full border border-black/10 px-2 text-[13px] text-black/60">
+							<ADD_OUTLINED_SVG fill="rgba(0,0,0,0.55)" className="h-3 w-3" />
+							<span>{t("wechatPage.my.status")}</span>
+						</div>
+						<div className="ml-2 flex h-6 w-6 items-center justify-center rounded-full border border-black/10">
+							<CircularNotchSVG className="h-3.5 w-3.5" fill="#707070" />
 						</div>
 					</div>
-					<div className="ml-auto flex items-end space-x-3 py-1">
-						<QRCODE_OUTLINED_SVG fill="rgba(0,0,0,0.6)" className="w-[18px]" />
-						<ARROW_OUTLINED_SVG fill="rgba(0,0,0,0.3)" className="w-[18px]" />
-					</div>
 				</div>
-				<div className="mt-[2px] ml-20 flex items-center">
-					<div className="flex origin-left scale-[0.85] items-center space-x-[2px] rounded-2xl border border-black/10 px-3">
-						<ADD_OUTLINED_SVG fill="rgba(0,0,0,0.6)" className="w-3" />
-						<span className="text-black/60 text-sm">{t("wechatPage.my.status")}</span>
-					</div>
-					<div className="flex h-5 w-5 items-center justify-center rounded-full border border-black/10">
-						<CircularNotchSVG className="h-3 w-3" fill="#707070" />
-					</div>
+				<div className="mt-5 ml-2 flex shrink-0 items-center gap-2">
+					<QRCODE_OUTLINED_SVG fill="rgba(0,0,0,0.55)" className="h-5 w-5" />
+					<ARROW_OUTLINED_SVG fill="rgba(0,0,0,0.3)" className="h-3 w-3" />
 				</div>
 			</canBeDetected.div>
-			<div className="flex-1 bg-[rgba(237,237,237,1)]">
-				<List className="mt-1.5">
+			<div className="flex-1 overflow-y-auto bg-[#EDEDED]">
+				<List className="mt-2">
 					<List.Item
-					className="min-h-[60px] text-[18px]"
 						withJump
-						icon={<PAYLOGO_OUTLINED_SVG fill="#39CD80" />}
+						icon={<PAYLOGO_OUTLINED_SVG fill="#07C160" />}
 						onClick={() => navigate("/wechat/service")}
 					>
 						{t("wechatPage.my.services")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
+				<List className="mt-2">
 					<List.Item withJump icon={<FAVORITES_SVG />}>
 						{t("wechatPage.my.favorites")}
 					</List.Item>
@@ -88,9 +85,8 @@ const My = () => {
 						{t("wechatPage.my.stickers")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
+				<List className="mt-2">
 					<List.Item
-					className="min-h-[60px] text-[18px]"
 						withJump
 						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
 						onClick={() => setMobilePanel("tools")}
