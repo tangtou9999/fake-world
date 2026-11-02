@@ -18,7 +18,11 @@ type ActionProps = {
 
 // iOS 微信 8.0.x 的「+」面板：62pt 白色圆角方块，下方 12pt 灰色文字
 const Action = ({ label, icon, onClick }: ActionProps) => (
-	<button type="button" className="flex w-[62px] flex-col items-center" onClick={onClick}>
+	<button
+		type="button"
+		className="flex w-[62px] flex-col items-center border-0 bg-transparent p-0"
+		onClick={onClick}
+	>
 		<span className="flex h-[62px] w-[62px] items-center justify-center rounded-[15px] bg-white text-[#4C4C4C]">
 			{icon}
 		</span>
