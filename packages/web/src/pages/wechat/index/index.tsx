@@ -12,7 +12,6 @@ import MultipleDeviceLogin from "./MultipleDeviceLogin";
 
 const WechatIndex = () => {
 	const { count } = useAtomValue(unreadCountAtom);
-	const { count } = useAtomValue(unreadCountAtom);
 	const { t } = useTranslation();
 	useToggleNavbarActivated(EBottomNavBars.WECHAT);
 	useAtom(unreadCountEffect);
