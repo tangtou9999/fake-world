@@ -38,8 +38,8 @@ const WechatIndex = () => {
 				</div>
 			</div>
 			<div className="flex flex-1 flex-col overflow-y-auto bg-white">
-				<div className="flex bg-[rgba(237,237,237,1)] px-2 pb-2">
-					<div className="flex flex-1 items-center justify-center rounded-[4px] bg-white p-2 text-xs">
+				<div className="flex bg-[rgba(237,237,237,1)] px-4 pb-2">
+					<div className="flex flex-1 items-center justify-center rounded-lg bg-white p-3 text-sm">
 						<SearchOutlinedSVG fill="rgba(0, 0, 0, 0.5)" width={17} height={16} />
 						<span className="ml-2 opacity-50">{t("wechatPage.main.search")}</span>
 					</div>
