@@ -17,7 +17,7 @@ const Contacts = () => {
 
 	return (
 		<>
-			<div className="grid grid-cols-3 justify-center bg-[rgba(237,237,237,1)] px-4 py-2">
+			<div className="grid h-11 shrink-0 grid-cols-3 items-center justify-center bg-[rgba(237,237,237,1)] px-4">
 				<div />
 				<div className="flex items-center justify-center font-medium">
 					{t("wechatPage.contacts.title")}

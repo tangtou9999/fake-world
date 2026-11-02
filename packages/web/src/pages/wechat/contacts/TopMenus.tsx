@@ -16,10 +16,11 @@ const TopMenus = () => {
 	return (
 		<List className="relative after:absolute after:right-0 after:bottom-0 after:left-0 after:h-[1px] after:origin-top-left after:scale-y-50 after:border-black/10 after:border-t">
 			<List.Item
+				className="min-h-[62px] text-[18px]"
 				textPrevClassName="ml-4"
 				textPrev={
 					<div
-						className="mr-3 h-9 w-9 rounded bg-cover bg-repeat-round"
+						className="mr-3 h-10 w-10 rounded bg-cover bg-repeat-round"
 						css={css`
               background-image: url(${NewIMG});
             `}
@@ -29,10 +30,11 @@ const TopMenus = () => {
 				{t("wechatPage.contacts.new")}
 			</List.Item>
 			<List.Item
+				className="min-h-[62px] text-[18px]"
 				textPrevClassName="ml-4"
 				textPrev={
 					<div
-						className="mr-3 h-9 w-9 rounded bg-cover bg-repeat-round"
+						className="mr-3 h-10 w-10 rounded bg-cover bg-repeat-round"
 						css={css`
               background-image: url(${OnlyChatIMG});
             `}
@@ -42,10 +44,11 @@ const TopMenus = () => {
 				{t("wechatPage.contacts.chatsOnly")}
 			</List.Item>
 			<List.Item
+				className="min-h-[62px] text-[18px]"
 				textPrevClassName="ml-4"
 				textPrev={
 					<div
-						className="mr-3 h-9 w-9 rounded bg-cover bg-repeat-round"
+						className="mr-3 h-10 w-10 rounded bg-cover bg-repeat-round"
 						css={css`
               background-image: url(${GroupChatIMG});
             `}
@@ -55,10 +58,11 @@ const TopMenus = () => {
 				{t("wechatPage.contacts.group")}
 			</List.Item>
 			<List.Item
+				className="min-h-[62px] text-[18px]"
 				textPrevClassName="ml-4"
 				textPrev={
 					<div
-						className="mr-3 h-9 w-9 rounded bg-cover bg-repeat-round"
+						className="mr-3 h-10 w-10 rounded bg-cover bg-repeat-round"
 						css={css`
               background-image: url(${TagIMG});
             `}
@@ -68,10 +72,11 @@ const TopMenus = () => {
 				{t("wechatPage.contacts.tags")}
 			</List.Item>
 			<List.Item
+				className="min-h-[62px] text-[18px]"
 				textPrevClassName="ml-4"
 				textPrev={
 					<div
-						className="mr-3 h-9 w-9 rounded bg-cover bg-repeat-round"
+						className="mr-3 h-10 w-10 rounded bg-cover bg-repeat-round"
 						css={css`
               background-image: url(${OfficialIMG});
             `}
