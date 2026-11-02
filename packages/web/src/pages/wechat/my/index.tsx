@@ -82,7 +82,7 @@ const My = () => {
 						作品
 					</List.Item>
 					<List.Item withJump icon={<svg viewBox="0 0 28 28" className="h-6 w-6" fill="none" stroke="#ff665d" strokeWidth="1.8"><path d="M4 10 7 4h14l3 6v13H4z"/><path d="M4 10h20M10 10v4h8v-4"/></svg>}>
-						<div className="flex items-center justify-between gap-2"><span>小店与卡包</span><span className="text-right text-xs leading-5 text-black/55">官方补贴700.1元<br/>小天鹅轻享洗衣机</span></div>
+						<div className="flex items-center justify-between gap-2"><span>小店与卡包</span><span className="text-right text-xs leading-5 text-black/55">[官方补贴700.1元]<br/>小天鹅轻享洗衣机</span></div>
 					</List.Item>
 					<List.Item withJump icon={<StickerOutlinedSVG fill="#F3C429" />}>
 						{t("wechatPage.my.stickers")}
