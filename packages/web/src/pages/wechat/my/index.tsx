@@ -27,7 +27,7 @@ const My = () => {
 	return (
 		<>
 			<canBeDetected.div
-				className="flex cursor-pointer flex-col pt-12 pr-3 pb-6 pl-9"
+				className="flex cursor-pointer flex-col pt-12 pr-3 pb-6 pl-7"
 				onClick={() => {
 					navigate("/wechat/my/profile-edit");
 				}}
@@ -58,7 +58,7 @@ const My = () => {
 					<div className="flex h-5 w-5 items-center justify-center rounded-full border border-black/10">
 						<CircularNotchSVG className="h-3 w-3" fill="#707070" />
 					</div>
-					<div className="ml-2 flex items-center gap-1 text-xs text-black/55"><span className="flex -space-x-1"><span className="h-5 w-5 rounded-full border-2 border-white bg-[#d7dce3]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#b9c5d0]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#e6c9c4]"/></span><span>等 12 个朋友</span></div>
+					<div className="ml-2 flex items-center gap-1 text-xs text-black/55"><span className="flex -space-x-1"><span className="h-3 w-3 rounded-full border border-white bg-[#d7dce3]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#b9c5d0]"/><span className="h-5 w-5 rounded-full border-2 border-white bg-[#e6c9c4]"/></span><span>等 12 个朋友</span></div>
 				</div>
 			</canBeDetected.div>
 			<div className="flex-1 bg-[rgba(237,237,237,1)]">
