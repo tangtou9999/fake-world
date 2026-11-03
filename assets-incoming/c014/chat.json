@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "有需要搭把手就敲门，我周末基本在家。",
+    "time": "昨天 22:35",
+    "pinned": false,
+    "muted": false,
+    "unread": 1
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 22:07",
+      "type": "text",
+      "text": "楼下快递柜是不是又满了？我刚收到取件提醒。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 22:10",
+      "type": "text",
+      "text": "我刚下去看了一眼，你那个放在右边第二排。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 22:14",
+      "type": "text",
+      "text": "谢谢！顺便问下物业今天有人来修门禁吗？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 22:17",
+      "type": "text",
+      "text": "下午来过了，现在刷卡和密码都能用了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 22:18",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 22:21",
+      "type": "text",
+      "text": "太好了，昨天晚上回来按半天没反应。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 22:24",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 22:28",
+      "type": "text",
+      "text": "我也遇到过，估计是系统重启了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 22:31",
+      "type": "text",
+      "text": "周末楼道要清洗，门口鞋架记得往里收一下。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 22:33",
+      "type": "text",
+      "text": "好，我晚上回来就收，免得挡着师傅。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 22:35",
+      "type": "text",
+      "text": "有需要搭把手就敲门，我周末基本在家。",
+      "from": "other"
+    }
+  ]
+}

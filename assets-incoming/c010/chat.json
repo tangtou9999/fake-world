@@ -1,0 +1,86 @@
+{
+  "conversation": {
+    "lastMessage": "行，周六见，输了请喝水啊哈哈。",
+    "time": "昨天 18:33",
+    "pinned": false,
+    "muted": true,
+    "unread": 0
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 18:08",
+      "type": "text",
+      "text": "周六球场我订到十点那一片了，你来不来？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 18:10",
+      "type": "text",
+      "text": "来啊，最近脚感一般，正好活动活动。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:12",
+      "type": "text",
+      "text": "这次别又迟到，大家上回等了你二十分钟。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 18:16",
+      "type": "text",
+      "text": "那天路上堵车，这次我提前出门。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 18:23",
+      "type": "text",
+      "text": "踢完去吃牛肉粉？新开那家听说分量挺足。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:26",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 18:27",
+      "type": "text",
+      "text": "可以，运动完我能吃两大碗。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:28",
+      "type": "text",
+      "text": "我把场地二维码发群里了，记得带浅色球衣。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 18:31",
+      "type": "transfer",
+      "amount": "200.00",
+      "note": "这次材料费我先付了",
+      "status": "已收款",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:32",
+      "type": "text",
+      "text": "看到了，鞋钉我也检查一下，别到场才发现坏了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 18:33",
+      "type": "text",
+      "text": "行，周六见，输了请喝水啊哈哈。",
+      "from": "other"
+    }
+  ]
+}

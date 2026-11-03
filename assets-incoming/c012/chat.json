@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "已经建好版本文件夹了，改动记录也写进去了。",
+    "time": "昨天 20:33",
+    "pinned": false,
+    "muted": false,
+    "unread": 0
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 20:06",
+      "type": "text",
+      "text": "可欣，主视觉那版我看了，标题层级现在清楚多了。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 20:07",
+      "type": "text",
+      "text": "我把字重降了一档，留白也重新拉开了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 20:10",
+      "type": "text",
+      "text": "挺好，右下角的按钮再往上挪一点，手机端会更舒服。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 20:13",
+      "type": "text",
+      "text": "收到，我顺便检查一下小屏幕适配。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 20:17",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 20:20",
+      "type": "text",
+      "text": "客户刚说品牌色不能偏蓝，还是按标准色值来。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 20:24",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 20:26",
+      "type": "text",
+      "text": "明白，我把色值锁定，后面不再凭感觉调。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 20:29",
+      "type": "text",
+      "text": "导出前我会把字体转曲，避免对方电脑缺字。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 20:32",
+      "type": "text",
+      "text": "细心！源文件和预览图都留一份。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 20:33",
+      "type": "text",
+      "text": "已经建好版本文件夹了，改动记录也写进去了。",
+      "from": "other"
+    }
+  ]
+}

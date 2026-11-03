@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "收到，我贴好部门标签，避免拿混。",
+    "time": "昨天 23:34",
+    "pinned": false,
+    "muted": false,
+    "unread": 1
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 23:06",
+      "type": "text",
+      "text": "一然，会议室明天下午两点有人预订吗？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 23:09",
+      "type": "text",
+      "text": "我查了日历，二号会议室空着，三号要培训。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 23:12",
+      "type": "text",
+      "text": "那帮我留二号，预计六个人，投屏要用。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 23:16",
+      "type": "text",
+      "text": "已经备注好了，茶水我也会提前准备。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 23:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 23:21",
+      "type": "text",
+      "text": "访客名单我晚点发你，麻烦帮忙登记一下。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 23:24",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 23:26",
+      "type": "text",
+      "text": "没问题，车牌如果有也一起发，进门会快一点。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 23:29",
+      "type": "text",
+      "text": "另外快递到了两箱物料，放前台还是仓库？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 23:33",
+      "type": "text",
+      "text": "先放仓库门口，我下午过去清点。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 23:34",
+      "type": "text",
+      "text": "收到，我贴好部门标签，避免拿混。",
+      "from": "other"
+    }
+  ]
+}

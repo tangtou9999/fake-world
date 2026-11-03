@@ -1,0 +1,84 @@
+{
+  "conversation": {
+    "lastMessage": "欢迎来，练完我们再去喝杯咖啡。",
+    "time": "昨天 14:36",
+    "pinned": false,
+    "muted": false,
+    "unread": 3
+  },
+  "messages": [
+    {
+      "time": "2026-10-20 10:00",
+      "type": "system",
+      "text": "以上是打招呼内容",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:09",
+      "type": "text",
+      "text": "今天有个学员第一次把肩颈放松下来，挺有成就感的。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:13",
+      "type": "text",
+      "text": "太好了，她之前是不是总说肩膀紧？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 14:15",
+      "type": "text",
+      "text": "对，平时坐办公室太久了，动作也不敢做到位。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:16",
+      "type": "text",
+      "text": "那你下次可以提醒她先做呼吸，不用急着追求幅度。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 14:20",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:24",
+      "type": "text",
+      "text": "我也是这么安排的，今天结束她说整个人轻松不少。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 14:25",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:29",
+      "type": "text",
+      "text": "你周末还开晨课吗？我想去补一下上次的课。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 14:30",
+      "type": "text",
+      "text": "周六九点有一节，记得提前十分钟到。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 14:33",
+      "type": "text",
+      "text": "好，我把瑜伽垫带上。最近腰背确实需要活动活动。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 14:36",
+      "type": "text",
+      "text": "欢迎来，练完我们再去喝杯咖啡。",
+      "from": "other"
+    }
+  ]
+}

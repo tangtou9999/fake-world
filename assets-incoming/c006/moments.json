@@ -1,0 +1,212 @@
+[
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m08",
+    "time": "2026-11-02 15:37",
+    "type": "text",
+    "text": "今天的课重点放在呼吸和肩颈放松，大家都很认真。",
+    "images": [],
+    "likes": [
+      "许诺",
+      "周佳怡",
+      "程笑笑",
+      "苏晴"
+    ],
+    "comments": [
+      {
+        "text": "这个动作做完肩膀真的轻松。",
+        "replyTo": null,
+        "time": "2026-11-02 16:24",
+        "from": "王思琪"
+      },
+      {
+        "text": "下节课我再带大家练一遍。",
+        "replyTo": "王思琪",
+        "time": "2026-11-02 16:24",
+        "from": "Coco"
+      }
+    ],
+    "location": null
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m07",
+    "time": "2026-11-01 17:40",
+    "type": "images",
+    "text": "练习不一定要做到多难，舒服地完成就很好。",
+    "images": [
+      "moments/m07_1.jpg",
+      "moments/m07_2.jpg",
+      "moments/m07_3.jpg",
+      "moments/m07_4.jpg",
+      "moments/m07_5.jpg",
+      "moments/m07_6.jpg",
+      "moments/m07_7.jpg",
+      "moments/m07_8.jpg",
+      "moments/m07_9.jpg"
+    ],
+    "likes": [
+      "李俊杰",
+      "孟婷",
+      "周佳怡",
+      "小鹿"
+    ],
+    "comments": [],
+    "location": "常州·万达广场"
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m05",
+    "time": "2026-11-01 12:55",
+    "type": "images",
+    "text": "下课后阳光正好，坐在门口发了会儿呆。",
+    "images": [
+      "moments/m05_1.jpg"
+    ],
+    "likes": [
+      "程笑笑",
+      "林小满",
+      "王思琪"
+    ],
+    "comments": [],
+    "location": "常州·红梅公园"
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m03",
+    "time": "2026-11-01 09:44",
+    "type": "images",
+    "text": "新到的瑜伽砖和弹力带已经整理好了。",
+    "images": [
+      "moments/m03_1.jpg",
+      "moments/m03_2.jpg",
+      "moments/m03_3.jpg",
+      "moments/m03_4.jpg",
+      "moments/m03_5.jpg",
+      "moments/m03_6.jpg"
+    ],
+    "likes": [
+      "苏晴",
+      "程笑笑",
+      "何梦瑶",
+      "小鹿",
+      "王思琪"
+    ],
+    "comments": [
+      {
+        "text": "这个动作做完肩膀真的轻松。",
+        "replyTo": null,
+        "time": "2026-11-01 10:36",
+        "from": "苏雪"
+      },
+      {
+        "text": "下节课我再带大家练一遍。",
+        "replyTo": null,
+        "time": "2026-11-01 10:18",
+        "from": "陈雨桐"
+      }
+    ],
+    "location": "杭州·西湖"
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m02",
+    "time": "2026-10-27 09:56",
+    "type": "images",
+    "text": "周末晨课还有两个位置，想来的提前告诉我。",
+    "images": [
+      "moments/m02_1.jpg",
+      "moments/m02_2.jpg",
+      "moments/m02_3.jpg",
+      "moments/m02_4.jpg",
+      "moments/m02_5.jpg",
+      "moments/m02_6.jpg",
+      "moments/m02_7.jpg",
+      "moments/m02_8.jpg",
+      "moments/m02_9.jpg"
+    ],
+    "likes": [
+      "小鹿",
+      "张浩"
+    ],
+    "comments": [],
+    "location": "杭州·西湖"
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m06",
+    "time": "2026-10-20 10:10",
+    "type": "images",
+    "text": "今天学员说睡眠变好了，比动作标准更让我开心。",
+    "images": [
+      "moments/m06_1.jpg"
+    ],
+    "likes": [
+      "叶子",
+      "林小满"
+    ],
+    "comments": [],
+    "location": "杭州·西湖"
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m04",
+    "time": "2026-10-19 13:02",
+    "type": "text",
+    "text": "给自己留十分钟拉伸，身体会记得你的照顾。",
+    "images": [],
+    "likes": [
+      "何梦瑶"
+    ],
+    "comments": [
+      {
+        "text": "这个动作做完肩膀真的轻松。",
+        "replyTo": null,
+        "time": "2026-10-19 14:43",
+        "from": "林小满"
+      },
+      {
+        "text": "下节课我再带大家练一遍。",
+        "replyTo": "林小满",
+        "time": "2026-10-19 14:43",
+        "from": "Coco"
+      },
+      {
+        "text": "老师讲得很细，跟着做不费劲。",
+        "replyTo": null,
+        "time": "2026-10-19 14:55",
+        "from": "何梦瑶"
+      },
+      {
+        "text": "这个动作做完肩膀真的轻松。",
+        "replyTo": "何梦瑶",
+        "time": "2026-10-19 14:55",
+        "from": "Coco"
+      }
+    ],
+    "location": null
+  },
+  {
+    "publisher": "c006",
+    "publisherName": "Coco",
+    "id": "m01",
+    "time": "2026-10-14 11:17",
+    "type": "images",
+    "text": "练完去喝了杯冰美式，今天收工。",
+    "images": [
+      "moments/m01_1.jpg"
+    ],
+    "likes": [
+      "程笑笑"
+    ],
+    "comments": [],
+    "location": "杭州·西湖"
+  }
+]

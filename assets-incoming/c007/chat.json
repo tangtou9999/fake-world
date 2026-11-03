@@ -1,0 +1,86 @@
+{
+  "conversation": {
+    "lastMessage": "哈哈，保证不给你添麻烦。",
+    "time": "昨天 15:36",
+    "pinned": false,
+    "muted": false,
+    "unread": 3
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 15:06",
+      "type": "text",
+      "text": "思琪，三张差旅报销单我补齐了，发你邮箱了。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 15:10",
+      "type": "text",
+      "text": "看到了，有一张车票截图有点糊，能重新拍一下吗？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:13",
+      "type": "text",
+      "text": "可以，我现在翻订单记录，补一张清楚的。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 15:15",
+      "type": "text",
+      "text": "辛苦啦，另外餐费那张记得备注客户名称。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 15:20",
+      "type": "text",
+      "text": "备注好了。这个月的报销截止日还是周五吗？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:21",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 15:25",
+      "type": "text",
+      "text": "对，周五下午五点前，晚了就要顺延到下个月。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:26",
+      "type": "text",
+      "text": "那我今天把剩下两张也一起交，免得月底扎堆。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 15:30",
+      "type": "transfer",
+      "amount": "200.00",
+      "note": "咖啡钱别忘了收",
+      "status": "已收款",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:34",
+      "type": "text",
+      "text": "聪明，月底我真的不想再追着大家要票了[捂脸]",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 15:36",
+      "type": "text",
+      "text": "哈哈，保证不给你添麻烦。",
+      "from": "other"
+    }
+  ]
+}

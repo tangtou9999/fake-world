@@ -1,0 +1,86 @@
+{
+  "conversation": {
+    "lastMessage": "好，路上慢点，到了给我说一声。",
+    "time": "13:35",
+    "pinned": true,
+    "muted": false,
+    "unread": 3
+  },
+  "messages": [
+    {
+      "time": "2026-11-03 13:06",
+      "type": "text",
+      "text": "今天降温了，出门记得把外套穿上，别嫌麻烦。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:10",
+      "type": "text",
+      "text": "知道啦妈，早上已经穿了。你那边也冷不冷？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 13:13",
+      "type": "text",
+      "text": "我不冷，刚买完菜回来。晚上想给你炖点汤。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:17",
+      "type": "text",
+      "text": "不用特意忙活，简单吃点就行，你别站厨房太久。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 13:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:20",
+      "type": "text",
+      "text": "冰箱里还有你爱吃的排骨，我放了点玉米。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 13:23",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:25",
+      "type": "text",
+      "text": "听着就香。你把火开小一点，别忘了定时。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 13:26",
+      "type": "text",
+      "text": "刚才给你发的那张照片看见没？阳台的花开了。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:30",
+      "type": "redpacket",
+      "amount": "66.00",
+      "greeting": "周末见面的小红包",
+      "status": "已领取",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 13:33",
+      "type": "text",
+      "text": "看见了，开得真好。等我回去给你换个大花盆。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 13:35",
+      "type": "text",
+      "text": "好，路上慢点，到了给我说一声。",
+      "from": "other"
+    }
+  ]
+}

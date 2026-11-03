@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "好呀，旅途中认识的朋友就是要常联系。",
+    "time": "昨天 24:35",
+    "pinned": false,
+    "muted": false,
+    "unread": "dot"
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 24:08",
+      "type": "text",
+      "text": "刚整理照片才发现，上次在海边拍的日落还没发你。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 24:09",
+      "type": "text",
+      "text": "快发我！那天云层看起来特别漂亮。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 24:11",
+      "type": "text",
+      "text": "我挑了几张，手机直出就很好看，没怎么修。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 24:15",
+      "type": "text",
+      "text": "这种天气真的看运气，晚十分钟颜色就不一样了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 24:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 24:20",
+      "type": "text",
+      "text": "你下次旅行准备去哪？我最近在看福建沿海路线。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 24:24",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 24:27",
+      "type": "text",
+      "text": "想去泉州和东山岛，慢慢走，不赶景点。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 24:31",
+      "type": "text",
+      "text": "我也喜欢这种节奏，留点时间在街上闲逛。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 24:34",
+      "type": "text",
+      "text": "等你定好日期告诉我，说不定能拼一段行程。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 24:35",
+      "type": "text",
+      "text": "好呀，旅途中认识的朋友就是要常联系。",
+      "from": "other"
+    }
+  ]
+}

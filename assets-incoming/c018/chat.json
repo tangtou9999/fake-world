@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "那我买点水果，你别再带一堆东西了。",
+    "time": "昨天 26:37",
+    "pinned": false,
+    "muted": false,
+    "unread": 3
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 26:06",
+      "type": "text",
+      "text": "表姐，你上次寄来的茶我收到了，香味挺好的。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 26:07",
+      "type": "text",
+      "text": "喜欢就好，是朋友从山里带回来的，不是什么贵东西。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 26:11",
+      "type": "text",
+      "text": "我妈也说好喝，问我还有没有多的。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 26:15",
+      "type": "text",
+      "text": "我那儿还剩一点，下次回去给阿姨带过去。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 26:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 26:23",
+      "type": "text",
+      "text": "最近你腰还酸不酸？别总坐着织东西。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 26:27",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 26:28",
+      "type": "text",
+      "text": "好多了，天气好我就去公园走一圈。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 26:29",
+      "type": "text",
+      "text": "周末要不要一起回家看看舅舅？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 26:33",
+      "type": "text",
+      "text": "可以，我周六上午有空，咱们一起坐车。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 26:37",
+      "type": "text",
+      "text": "那我买点水果，你别再带一堆东西了。",
+      "from": "other"
+    }
+  ]
+}

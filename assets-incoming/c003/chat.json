@@ -1,0 +1,84 @@
+{
+  "conversation": {
+    "lastMessage": "放心，这次我提前把时间空出来了。",
+    "time": "11:36",
+    "pinned": false,
+    "muted": false,
+    "unread": "dot"
+  },
+  "messages": [
+    {
+      "time": "2026-11-03 11:08",
+      "type": "text",
+      "text": "我翻到咱们毕业那年拍的照片了，笑死我了。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:12",
+      "type": "text",
+      "text": "哪张哪张？是不是宿舍楼下那张糊的？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 11:14",
+      "type": "text",
+      "text": "对！你当时还拿着半个西瓜，头发乱得不行。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:16",
+      "type": "text",
+      "text": "别说了，那天熬夜赶论文，能拍成这样已经不错了。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 11:18",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:20",
+      "type": "text",
+      "text": "好久没见了，周末出来吃顿饭吧，我想听你讲近况。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 11:21",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:23",
+      "type": "text",
+      "text": "可以啊，还是老地方？那家老板居然还记得咱俩。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 11:26",
+      "type": "text",
+      "text": "哈哈哈他记得的是咱们每次都点一样的菜。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:29",
+      "type": "card",
+      "contactId": "c008",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 11:32",
+      "type": "text",
+      "text": "我先订位，周六七点，你别又临时加班。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 11:36",
+      "type": "text",
+      "text": "放心，这次我提前把时间空出来了。",
+      "from": "other"
+    }
+  ]
+}

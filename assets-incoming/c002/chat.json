@@ -1,0 +1,86 @@
+{
+  "conversation": {
+    "lastMessage": "那说好了！这次我带材料过去。",
+    "time": "10:37",
+    "pinned": true,
+    "muted": false,
+    "unread": 0
+  },
+  "messages": [
+    {
+      "time": "2026-11-03 10:08",
+      "type": "text",
+      "text": "姐，你上次说的那家店到底在哪条街呀？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:10",
+      "type": "text",
+      "text": "就在地铁站出来右转那边，我把定位发你。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 10:14",
+      "type": "text",
+      "text": "收到！我周五晚上到，能不能来车站接我一下[捂脸]",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:16",
+      "type": "text",
+      "text": "可以啊，你把车次发我，别一个人拖着箱子乱跑。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 10:17",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:20",
+      "type": "text",
+      "text": "我还想去买那个很火的面包，听说要排队。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 10:22",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:23",
+      "type": "text",
+      "text": "你先别把行程排太满，到了咱们慢慢逛。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 10:26",
+      "type": "text",
+      "text": "对了，我最近学会做提拉米苏了，照片给你看。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:30",
+      "type": "redpacket",
+      "amount": "66.00",
+      "greeting": "恭喜你呀，收个小心意",
+      "status": "已领取",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 10:34",
+      "type": "text",
+      "text": "看着不错诶，回来做给我尝尝，别光发照片哈哈。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 10:37",
+      "type": "text",
+      "text": "那说好了！这次我带材料过去。",
+      "from": "other"
+    }
+  ]
+}

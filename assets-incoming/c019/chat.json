@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "我把链接发你，先看看还有没有双人场。",
+    "time": "昨天 27:31",
+    "pinned": false,
+    "muted": false,
+    "unread": 3
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 27:06",
+      "type": "text",
+      "text": "你朋友圈那张照片是在哪拍的？角度也太搞笑了。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 27:10",
+      "type": "text",
+      "text": "哈哈哈朋友抓拍的，我当时差点把奶茶喷出来。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 27:12",
+      "type": "text",
+      "text": "你还是老样子，一出门就能整出点花活。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 27:15",
+      "type": "text",
+      "text": "生活已经够累了，不自己找点乐子怎么行。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 27:19",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 27:23",
+      "type": "text",
+      "text": "周末去不去密室？新开的主题听说挺吓人。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 27:25",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 27:26",
+      "type": "text",
+      "text": "去啊，但你负责走前面，我胆子小。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 27:28",
+      "type": "text",
+      "text": "上次是谁一路喊着要第一个进去的？",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 27:29",
+      "type": "text",
+      "text": "那是我还没看到里面的NPC！不许翻旧账。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 27:31",
+      "type": "text",
+      "text": "我把链接发你，先看看还有没有双人场。",
+      "from": "other"
+    }
+  ]
+}

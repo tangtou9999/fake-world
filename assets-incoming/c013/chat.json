@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "放心，我只负责吃，照片交给你。",
+    "time": "昨天 21:29",
+    "pinned": false,
+    "muted": false,
+    "unread": "dot"
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 21:06",
+      "type": "text",
+      "text": "我找到一家新开的面馆，红烧牛肉面真的可以。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 21:07",
+      "type": "text",
+      "text": "你先别夸，汤底浓不浓？我最怕只有咸味。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 21:11",
+      "type": "text",
+      "text": "有香味的那种，牛肉也不是薄薄几片。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 21:12",
+      "type": "text",
+      "text": "地址发我，我周末去试试，最好还能加面。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 21:13",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 21:16",
+      "type": "text",
+      "text": "可以加，老板还送了一小碟酸萝卜。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 21:18",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 21:20",
+      "type": "text",
+      "text": "这下稳了，我已经开始馋了哈哈。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 21:23",
+      "type": "text",
+      "text": "下次咱俩一起去，我负责点菜你负责拍照。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 21:27",
+      "type": "text",
+      "text": "没问题，拍得不好不许嫌弃我。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 21:29",
+      "type": "text",
+      "text": "放心，我只负责吃，照片交给你。",
+      "from": "other"
+    }
+  ]
+}

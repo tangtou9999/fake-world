@@ -1,0 +1,125 @@
+[
+  {
+    "publisher": "c004",
+    "publisherName": "周佳怡",
+    "id": "m03",
+    "time": "2026-11-03 15:31",
+    "type": "images",
+    "text": "现场复尺结束，空间尺度比图纸更直观。",
+    "images": [
+      "moments/m03_1.jpg"
+    ],
+    "likes": [],
+    "comments": [
+      {
+        "text": "这个动线看着舒服多了。",
+        "replyTo": null,
+        "time": "2026-11-03 15:46",
+        "from": "陈雨桐"
+      },
+      {
+        "text": "谢谢，我也觉得这一版更顺。",
+        "replyTo": "陈雨桐",
+        "time": "2026-11-03 15:46",
+        "from": "周佳怡"
+      },
+      {
+        "text": "细节处理得很到位。",
+        "replyTo": null,
+        "time": "2026-11-03 15:52",
+        "from": "许诺"
+      }
+    ],
+    "location": null
+  },
+  {
+    "publisher": "c004",
+    "publisherName": "周佳怡",
+    "id": "m02",
+    "time": "2026-11-02 20:37",
+    "type": "images",
+    "text": "方案细节又调整了一轮，动线顺了很多。",
+    "images": [
+      "moments/m02_1.jpg"
+    ],
+    "likes": [],
+    "comments": [
+      {
+        "text": "谢谢，我也觉得这一版更顺。",
+        "replyTo": null,
+        "time": "2026-11-02 21:34",
+        "from": "张浩"
+      },
+      {
+        "text": "细节处理得很到位。",
+        "replyTo": "张浩",
+        "time": "2026-11-02 21:34",
+        "from": "周佳怡"
+      }
+    ],
+    "location": "常州·万达广场"
+  },
+  {
+    "publisher": "c004",
+    "publisherName": "周佳怡",
+    "id": "m01",
+    "time": "2026-11-02 20:05",
+    "type": "images",
+    "text": "出差路上看到一处很舒服的建筑立面。",
+    "images": [
+      "moments/m01_1.jpg"
+    ],
+    "likes": [
+      "林小满",
+      "何梦瑶",
+      "许诺",
+      "苏雪"
+    ],
+    "comments": [
+      {
+        "text": "细节处理得很到位。",
+        "replyTo": null,
+        "time": "2026-11-02 21:23",
+        "from": "林小满"
+      },
+      {
+        "text": "这个动线看着舒服多了。",
+        "replyTo": null,
+        "time": "2026-11-02 21:47",
+        "from": "Coco"
+      }
+    ],
+    "location": "上海·武康路"
+  },
+  {
+    "publisher": "c004",
+    "publisherName": "周佳怡",
+    "id": "m05",
+    "time": "2026-11-02 16:57",
+    "type": "images",
+    "text": "材料样板到齐了，下午和团队逐项确认。",
+    "images": [
+      "moments/m05_1.jpg"
+    ],
+    "likes": [
+      "程笑笑",
+      "苏雪"
+    ],
+    "comments": [],
+    "location": "南京·玄武湖"
+  },
+  {
+    "publisher": "c004",
+    "publisherName": "周佳怡",
+    "id": "m04",
+    "time": "2026-10-12 11:46",
+    "type": "text",
+    "text": "工作之外也要留点时间看看城市。",
+    "images": [],
+    "likes": [
+      "小鹿"
+    ],
+    "comments": [],
+    "location": null
+  }
+]

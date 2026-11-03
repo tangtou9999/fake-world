@@ -1,0 +1,92 @@
+{
+  "conversation": {
+    "lastMessage": "明白，整理好后我统一发您，您有空再看就行。",
+    "time": "12:37",
+    "pinned": false,
+    "muted": false,
+    "unread": 1
+  },
+  "messages": [
+    {
+      "time": "2026-10-20 10:00",
+      "type": "system",
+      "text": "以上是打招呼内容",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:08",
+      "type": "text",
+      "text": "周女士，您上次提到的平面方案我已根据意见调整。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:09",
+      "type": "text",
+      "text": "收到，我刚看了新版，动线比之前顺很多。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:11",
+      "type": "text",
+      "text": "入口的展示区我保留了两种做法，您可以对比一下。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:14",
+      "type": "text",
+      "text": "第二种更合适，视觉上不会挡住收银台。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:18",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:19",
+      "type": "text",
+      "text": "好的，我把尺寸和材质清单一起更新，下午发您确认。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:23",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:26",
+      "type": "text",
+      "text": "麻烦了。灯光色温能否再给一个偏暖的选项？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:29",
+      "type": "text",
+      "text": "可以，我会在效果图里补一版暖光对比。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-03 12:32",
+      "type": "transfer",
+      "amount": "200.00",
+      "note": "上次聚餐我先垫的，你收一下",
+      "status": "已收款",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:36",
+      "type": "text",
+      "text": "另外预算表请把软装和施工分开列，方便内部审批。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-03 12:37",
+      "type": "text",
+      "text": "明白，整理好后我统一发您，您有空再看就行。",
+      "from": "other"
+    }
+  ]
+}

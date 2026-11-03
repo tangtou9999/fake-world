@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "行，别临时通知，提前两天说我好安排。",
+    "time": "昨天 16:28",
+    "pinned": false,
+    "muted": false,
+    "unread": 0
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 16:06",
+      "type": "text",
+      "text": "我回常州啦，发现老街那家奶茶店居然还在。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 16:07",
+      "type": "text",
+      "text": "真的假的？我们高中放学老去的那家？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 16:08",
+      "type": "text",
+      "text": "对，老板都没换，菜单倒是多了好多新品。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 16:09",
+      "type": "text",
+      "text": "突然想起以前晚自习前抢最后一班公交的日子。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 16:11",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 16:15",
+      "type": "text",
+      "text": "哈哈哈你每次都说五分钟，结果永远踩点。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 16:19",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 16:23",
+      "type": "text",
+      "text": "这周找一天见面吧，我把以前的相册也带上。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 16:24",
+      "type": "text",
+      "text": "好啊，顺便去学校门口转一圈，看看变化大不大。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 16:25",
+      "type": "text",
+      "text": "我先问问另外几个同学有没有空。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 16:28",
+      "type": "text",
+      "text": "行，别临时通知，提前两天说我好安排。",
+      "from": "other"
+    }
+  ]
+}

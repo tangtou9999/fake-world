@@ -1,0 +1,78 @@
+{
+  "conversation": {
+    "lastMessage": "收到，辛苦了，有调整我在文档里批注。",
+    "time": "昨天 25:37",
+    "pinned": false,
+    "muted": false,
+    "unread": "dot"
+  },
+  "messages": [
+    {
+      "time": "2026-11-02 25:06",
+      "type": "text",
+      "text": "孟经理，关于下周的交付清单，我这边有两项想再确认。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 25:07",
+      "type": "text",
+      "text": "你发我具体条目，我下午和项目组核一下。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 25:11",
+      "type": "text",
+      "text": "主要是验收材料格式，以及现场培训是否计入本次范围。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 25:14",
+      "type": "text",
+      "text": "验收材料按合同附件模板，培训单独列服务记录。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 25:18",
+      "type": "voice",
+      "seconds": 7,
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 25:21",
+      "type": "text",
+      "text": "了解，我会据此更新排期和人员安排。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 25:25",
+      "type": "image",
+      "file": "chat/img1.jpg",
+      "ratio": "3:4",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 25:26",
+      "type": "text",
+      "text": "另外现场联系人是否还是上次的刘工？",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 25:30",
+      "type": "text",
+      "text": "是的，电话没变。进场前一天再和他确认时间。",
+      "from": "other"
+    },
+    {
+      "time": "2026-11-02 25:34",
+      "type": "text",
+      "text": "好的，更新版我今天下班前发您审阅。",
+      "from": "me"
+    },
+    {
+      "time": "2026-11-02 25:37",
+      "type": "text",
+      "text": "收到，辛苦了，有调整我在文档里批注。",
+      "from": "other"
+    }
+  ]
+}
