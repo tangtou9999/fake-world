@@ -64,7 +64,9 @@ const Transfer = ({
 		>
 			<div className="relative h-full text-white">
 				<div className="flex items-start px-[10px] pt-[10px]">
-					<SVGComp fill="white" width={42} height={42} className="shrink-0" />
+					<span className="flex h-[42px] w-[42px] shrink-0 items-center justify-center">
+						<SVGComp fill="white" width={50} height={50} className="max-w-none shrink-0" />
+					</span>
 					<div className="ml-[9px] flex min-w-0 flex-1 flex-col overflow-hidden">
 						<div className="font-medium text-[17px] leading-[22px]">
 							¥<span className="ml-[1px]">{amount}</span>

@@ -11,6 +11,7 @@ import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { EBottomNavBars } from "@/stateV2/bottomNavbars";
 import { EMetaDataType } from "@/stateV2/detectedNode";
+import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { dialogueListAtom } from "@/stateV2/dialogueList";
 import { myProfileAtom, profileAtom } from "@/stateV2/profile";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
@@ -59,8 +60,9 @@ const My = () => {
 	const setMobilePanel = useSetAtom(mobilePanelAtom);
 	const { setMode } = useMode();
 	const friendIds = useAtomValue(dialogueListAtom)
-		.slice(0, 3)
-		.map((v) => v.friendId);
+		.map((v) => v.friendId)
+		.filter((id) => id !== FILE_HELPER_ID)
+		.slice(0, 3);
 	useToggleNavbarActivated(EBottomNavBars.MY);
 	useScreenTopBg("#fff");
 
