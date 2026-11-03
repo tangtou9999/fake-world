@@ -4,7 +4,6 @@ import LikeOutlinedSVG from "@/assets/like-outlined.svg?react";
 import More2OutlinedSVG from "@/assets/more-2-outlined.svg?react";
 import PlayFilledSVG from "@/assets/play-filled.svg?react";
 import { h } from "@/components/HashAssets";
-import { generateInitFeedComment } from "@/faker/wechat/moments";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { getModeValueSnapshot } from "@/stateV2/mode";
 import { type IStateFeed, feedAtom } from "@/stateV2/moments";
@@ -19,11 +18,12 @@ import {
 	useTransitionStyles,
 } from "@floating-ui/react";
 import dayjs from "dayjs";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { isEqual } from "lodash-es";
 import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { twJoin } from "tailwind-merge";
+import { commentTargetAtom } from "../CommentComposer";
 
 type Props = {
 	id: IStateFeed["id"];
@@ -32,6 +32,7 @@ type Props = {
 
 const FeedContent = ({ id, fromDetail }: Props) => {
 	const [feed, setFeed] = useAtom(feedAtom(id));
+	const setCommentTarget = useSetAtom(commentTargetAtom);
 	const [operationsVisible, setOperationsVisible] = useState(false);
 	const { refs, floatingStyles, context } = useFloating({
 		open: operationsVisible,
@@ -67,7 +68,13 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 				if (content.text && !isEqual(content.text, SLATE_EMPTY_VALUE)) {
 					return (
 						<div className="mt-1">
-							<SlateText content={content.text} />
+							<SlateText
+								content={content.text}
+								classNames={{
+									base: "text-[16px] text-black/90 leading-[22px]",
+									textClassName: "text-[16px] leading-[22px]",
+								}}
+							/>
 						</div>
 					);
 				}
@@ -135,10 +142,7 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 
 	const handleClickComment = () => {
 		setOperationsVisible(false);
-		setFeed((prev) => ({
-			...prev,
-			comments: [...(prev.comments ?? []), generateInitFeedComment()],
-		}));
+		setCommentTarget(id);
 	};
 
 	return (
@@ -146,9 +150,9 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 			{renderFeedPureText()}
 			{renderFeedImages()}
 			<div className="mt-2 flex items-center justify-between">
-				<span className="min-w-0 text-gray-400 text-sm">
+				<span className="min-w-0 text-[12px] text-black/30 leading-4">
 					{dayjs(sendTimestamp).fromNow()}
-					{location ? <span className="ml-2 text-wechatLink-1">{location}</span> : null}
+					{location ? <span className="ml-2 text-[12px] text-wechatLink-3">{location}</span> : null}
 				</span>
 				<div
 					ref={refs.setReference}

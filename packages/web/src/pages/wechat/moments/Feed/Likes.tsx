@@ -57,7 +57,7 @@ const LikeItem = ({ userId, displayType }: LikeItemProps) => {
 			className={twJoin(
 				"cursor-pointer",
 				showName &&
-					`text-sm text-wechatLink-1 after:mr-2 after:ml-[2px] after:text-black after:content-[','] last:after:hidden`,
+					`text-[14px] text-wechatLink-3 leading-[20px] after:mr-2 after:ml-[2px] after:text-black after:content-[','] last:after:hidden`,
 			)}
 			onClick={() => navigate(`/wechat/friend/${userId}`)}
 		>
