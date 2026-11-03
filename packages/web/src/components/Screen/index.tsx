@@ -16,7 +16,7 @@ const Screen = () => {
 		? {
 				width: "100vw",
 				height: "calc(100vh - 1px)",
-				paddingTop: "env(safe-area-inset-top)",
+				paddingTop: "max(0px, calc(env(safe-area-inset-top) - 5px))",
 				backgroundColor: "var(--screen-top-bg, #EDEDED)",
 			}
 		: {

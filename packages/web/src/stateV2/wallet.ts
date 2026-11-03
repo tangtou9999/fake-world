@@ -8,12 +8,15 @@ export type TStateWallet = {
 	miniFund: string;
 	/** 零钱通收益率，单位 % */
 	miniFundYield: string;
+	/** 经营账户余额 */
+	business?: string;
 };
 
 export const walletAtom = atomWithStorage<TStateWallet>("wallet", {
 	balance: "520.00",
 	miniFund: "1314.00",
 	miniFundYield: "2.75",
+	business: "0.38",
 });
 
 export const getWalletVauleSnapshot = () => mainStore.get(walletAtom);

@@ -9,91 +9,111 @@ import { walletAtom } from "@/stateV2/wallet";
 import List from "@/wechatComponents/List";
 import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
-import SZRMB_SVG from "./assets/szrmb.svg?react";
-import XFZBH_SVG from "./assets/xfzbh.svg?react";
+import { BusinessIcon, FenfuIcon, GearIcon, IdCardIcon, ServiceCenterIcon } from "./WalletIcons";
 import ZFF_SVG from "./assets/zff.svg?react";
+
+const ROW = "min-h-[57px] text-[17px]";
+const VALUE = "text-[16px] text-black/90";
+const TAG = "ml-2 text-[13px] text-[#FA9D3B]";
 
 const Wallet = () => {
 	const navigate = useModeNavigate();
-	const { balance, miniFund, miniFundYield } = useAtomValue(walletAtom);
+	const { balance, miniFund, miniFundYield, business } = useAtomValue(walletAtom);
 	const { t } = useTranslation();
 
 	return (
 		<>
-			<div className="grid grid-cols-3 bg-[rgba(237,237,237,1)] px-4 py-2">
+			<div className="grid h-11 shrink-0 grid-cols-3 items-center bg-[#EDEDED] px-4">
 				<BackFilledSVG
 					fill="black"
-					className="h-5 w-5 cursor-pointer"
+					className="-ml-0.5 h-6 w-6 cursor-pointer"
 					onClick={() => navigate("/wechat/service")}
 				/>
-				<div className="flex items-center justify-center font-medium">
+				<div className="flex items-center justify-center font-medium text-[17.5px]">
 					{t("wechatPage.wallet.title")}
 				</div>
-				<div className="flex items-center justify-end">{t("wechatPage.wallet.transactions")}</div>
+				<div className="flex items-center justify-end text-[17px]">
+					{t("wechatPage.wallet.transactions")}
+				</div>
 			</div>
-			<div className="flex flex-1 flex-col overflow-auto bg-[rgba(237,237,237,1)]">
-				<List>
+			<div className="flex flex-1 flex-col overflow-auto bg-[#EDEDED]">
+				<List className="border-black/10 border-t">
 					<List.CanBeDetectedItem
 						withJump
+						rightClassName={ROW}
 						icon={<CoinOutlinedSVG fill="#FFC300" />}
 						onClick={() => navigate("/wechat/wallet/balance")}
+						extra={<span className={VALUE}>¥{balance}</span>}
 						metaData={{
 							type: EMetaDataType.Wallet,
 							treeItemDisplayName: (data) => `零钱余额：¥${data.balance}`,
 						}}
 					>
-						<div className="flex items-center justify-between">
-							<div>{t("wechatPage.wallet.balance")}</div>
-							<div className="text-sm">¥{balance}</div>
-						</div>
+						{t("wechatPage.wallet.balance")}
 					</List.CanBeDetectedItem>
 					<List.CanBeDetectedItem
 						withJump
+						rightClassName={ROW}
+						icon={<BusinessIcon />}
+						extra={<span className={VALUE}>¥{business ?? "0.38"}</span>}
+						metaData={{
+							type: EMetaDataType.Wallet,
+							treeItemDisplayName: (data) => `经营账户：¥${data.business ?? "0.38"}`,
+						}}
+					>
+						经营账户
+					</List.CanBeDetectedItem>
+					<List.CanBeDetectedItem
+						withJump
+						rightClassName={ROW}
 						icon={<PayMiniFundOutlinedSVG fill="#FFC300" />}
+						extra={<span className={VALUE}>¥{miniFund}</span>}
 						metaData={{
 							type: EMetaDataType.Wallet,
 							treeItemDisplayName: (data) => `零钱通余额：¥${data.miniFund}`,
 						}}
 					>
-						<div className="flex items-center justify-between">
-							<div className="flex items-center">
-								<div>{t("wechatPage.wallet.mf")}</div>
-								<div className="ml-2 rounded-sm bg-wechatOrange-5 px-1 text-wechatOrange-3 text-xs">
-									{t("wechatPage.wallet.yield")}
-									{miniFundYield}%
-								</div>
-							</div>
-							<div className="text-sm">¥{miniFund}</div>
-						</div>
+						<span className="flex items-center">
+							{t("wechatPage.wallet.mf")}
+							<span className={TAG}>
+								{t("wechatPage.wallet.yield")}
+								{miniFundYield}%
+							</span>
+						</span>
 					</List.CanBeDetectedItem>
-					<List.Item withJump icon={<PayCardsOutlinedSVG fill="#2A7FCB" />}>
+					<List.Item withJump rightClassName={ROW} icon={<PayCardsOutlinedSVG fill="#2A7FCB" />}>
 						{t("wechatPage.wallet.cards")}
 					</List.Item>
-					<List.Item withJump icon={<PayRelativeCardsSVG className="h-6 w-6" fill="#FA9D3B" />}>
+					<List.Item
+						withJump
+						rightClassName={ROW}
+						icon={<PayRelativeCardsSVG className="h-6 w-6" fill="#FA9D3B" />}
+					>
 						{t("wechatPage.wallet.relativeCard")}
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<SZRMB_SVG fill="#BB2938" className="h-5 w-5" />}>
-						{t("wechatPage.wallet.eCNY")}
+				<List className="mt-[11px] border-black/10 border-y">
+					<List.Item withJump rightClassName={ROW} icon={<FenfuIcon />}>
+						<span className="flex items-center">
+							分付
+							<span className="ml-2 text-[14px] text-[#FA9D3B]">查看可用额度</span>
+						</span>
 					</List.Item>
 				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<ZFF_SVG fill="#58C17E" className="h-5 w-5" />}>
+				<List className="mt-[11px] border-black/10 border-y">
+					<List.Item withJump rightClassName={ROW} icon={<ZFF_SVG fill="#07C160" />}>
 						{t("wechatPage.wallet.payScore")}
 					</List.Item>
-				</List>
-				<List className="mt-1.5">
-					<List.Item withJump icon={<XFZBH_SVG fill="#58C17E" className="h-5 w-5" />}>
-						{t("wechatPage.wallet.protection")}
+					<List.Item withJump rightClassName={ROW} icon={<GearIcon />}>
+						支付设置
+					</List.Item>
+					<List.Item withJump rightClassName={ROW} icon={<IdCardIcon />}>
+						{t("wechatPage.wallet.idInfo")}
+					</List.Item>
+					<List.Item withJump rightClassName={ROW} icon={<ServiceCenterIcon />}>
+						客服中心
 					</List.Item>
 				</List>
-
-				<div className="absolute bottom-12 flex w-full items-center justify-center space-x-2 text-center text-sm text-wechatLink-2">
-					<div>{t("wechatPage.wallet.idInfo")}</div>
-					<div className="h-5 w-[1px] bg-slate-300" />
-					<div>{t("wechatPage.wallet.settings")}</div>
-				</div>
 			</div>
 		</>
 	);

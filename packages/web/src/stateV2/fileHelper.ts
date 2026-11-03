@@ -2,7 +2,9 @@ import { FILE_HELPER_ID, FILE_HELPER_PROFILE } from "@/faker/wechat/user/fileHel
 import dayjs from "dayjs";
 import { setConversationListValue } from "./conversation";
 import { setDialogueListValue } from "./dialogueList";
+import { multipleDeviceLoginAtom } from "./multipleDeviceLogin";
 import { setAllProfilesValue } from "./profile";
+import { mainStore } from "./store";
 
 const SEEDED_KEY = "fileHelperSeeded";
 
@@ -12,6 +14,7 @@ const SEEDED_KEY = "fileHelperSeeded";
  */
 export function ensureFileHelper() {
 	try {
+		upgradeV2();
 		if (localStorage.getItem(SEEDED_KEY)) return;
 		setAllProfilesValue((prev) =>
 			prev.some((v) => v.id === FILE_HELPER_ID) ? prev : [...prev, FILE_HELPER_PROFILE],
@@ -25,6 +28,7 @@ export function ensureFileHelper() {
 							friendId: FILE_HELPER_ID,
 							lastMessage: "",
 							lastMessageTime: "",
+							isPinned: true,
 						},
 						...prev,
 					],
@@ -47,4 +51,19 @@ export function touchFileHelperDialogue(preview: string) {
 				: v,
 		),
 	);
+}
+
+/** v2：换成真实图标、置顶，并默认隐藏「iPad 微信已登录」条（只执行一次） */
+function upgradeV2() {
+	if (localStorage.getItem("fileHelperV2")) return;
+	localStorage.setItem("fileHelperV2", "1");
+	setAllProfilesValue((prev) =>
+		prev.map((v) =>
+			v.id === FILE_HELPER_ID ? { ...v, avatarInfo: FILE_HELPER_PROFILE.avatarInfo } : v,
+		),
+	);
+	setDialogueListValue((prev) =>
+		prev.map((v) => (v.friendId === FILE_HELPER_ID ? { ...v, isPinned: true } : v)),
+	);
+	mainStore.set(multipleDeviceLoginAtom, (prev) => ({ ...prev, visible: false }));
 }

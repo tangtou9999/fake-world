@@ -19,9 +19,9 @@ const WechatIndex = () => {
 	return (
 		<>
 			<div className="grid h-11 shrink-0 grid-cols-3 items-center bg-[#EDEDED] px-4">
-				<div className="flex items-center gap-1">
-					<i className="h-2 w-2 rounded-full bg-black/85" />
-					<i className="h-2 w-2 rounded-full bg-black/85" />
+				<div className="flex items-center gap-[3px] pl-[6px]">
+					<i className="h-[7.5px] w-[6px] rounded-full bg-[#474E63]" />
+					<i className="h-[7.5px] w-[6px] rounded-full bg-[#474E63]" />
 				</div>
 				<canBeDetected.span
 					className="flex items-center justify-center font-medium text-[17px] text-black/90"
@@ -37,7 +37,7 @@ const WechatIndex = () => {
 						: t("wechatPage.main.title2")}
 				</canBeDetected.span>
 				<div className="flex items-center justify-end">
-					<PlusCircleSVG width={24} height={24} fill="black" className="cursor-pointer" />
+					<PlusCircleSVG width={20} height={20} fill="black" className="mr-[2px] cursor-pointer" />
 				</div>
 			</div>
 			<div className="flex flex-1 flex-col overflow-y-auto bg-white">

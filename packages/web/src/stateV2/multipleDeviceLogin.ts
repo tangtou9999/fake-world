@@ -12,7 +12,7 @@ export const multipleDeviceLoginAtom = atomWithStorage<TStateMultipleDeviceLogin
 	"multipleDeviceLogin",
 	{
 		devices: ["iPad"],
-		visible: true,
+		visible: false,
 	},
 );
 
