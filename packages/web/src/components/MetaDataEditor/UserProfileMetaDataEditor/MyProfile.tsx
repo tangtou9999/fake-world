@@ -49,8 +49,14 @@ const MyProfileMetaDataEditor = ({ data }: EditorProps<IStateProfile>) => {
 					}))}
 				/>
 			</Form.Item>
-			<Form.Item<IStateProfile> name="signature" label="个性签名">
+			<Form.Item<IStateProfile> name="signature" label="签名">
 				<Input />
+			</Form.Item>
+			<Form.Item<IStateProfile> name="ringtone" label="来电铃声">
+				<Input />
+			</Form.Item>
+			<Form.Item<IStateProfile> name="qrCodeImage" label="我的二维码图片">
+				<LocalImageUploadWithPreview />
 			</Form.Item>
 			<Form.Item<IStateProfile> name="gender" label="性别">
 				<Radio.Group>

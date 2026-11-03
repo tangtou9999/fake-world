@@ -10,8 +10,10 @@ import MomentsLayout from "@/pages/wechat/moments/Layout";
 import PersonalMoments from "@/pages/wechat/moments/Personal";
 import My from "@/pages/wechat/my";
 import ProfileEdit from "@/pages/wechat/my/profile-edit";
+import MyQrCode from "@/pages/wechat/my/profile-edit/QrCode";
 import Settings from "@/pages/wechat/my/settings";
 import BankCardForm from "@/pages/wechat/my/settings/BankCardForm";
+import ProfileField from "@/pages/wechat/my/settings/ProfileField";
 import Service from "@/pages/wechat/service";
 import DetailAdapter from "@/pages/wechat/transaction";
 import Wallet from "@/pages/wechat/wallet";
@@ -74,6 +76,13 @@ export const routes: RouteObject[] = [
 								},
 							},
 							{
+								path: "qrcode",
+								element: <MyQrCode />,
+								handle: {
+									label: "routerLabel.wechat.myQr",
+								},
+							},
+							{
 								path: "settings",
 								element: <Settings />,
 								handle: {
@@ -85,6 +94,13 @@ export const routes: RouteObject[] = [
 								element: <BankCardForm />,
 								handle: {
 									label: "routerLabel.wechat.bankCard",
+								},
+							},
+							{
+								path: "settings/profile/:field",
+								element: <ProfileField />,
+								handle: {
+									label: "routerLabel.wechat.profileEdit",
 								},
 							},
 						],

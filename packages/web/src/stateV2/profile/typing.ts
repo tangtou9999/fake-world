@@ -13,6 +13,10 @@ export interface IStateProfile {
 	momentsPrivacy: "all" | "lastSixMonths" | "lastOneMonth" | "lastThreeDays";
 	/** 拍一拍文案 */
 	tickleText?: string;
+	/** 来电铃声 */
+	ringtone?: string;
+	/** 我的二维码图片，本地上传后的文件摘要或地址 */
+	qrCodeImage?: string;
 	/** 微信号 */
 	wechat: string;
 	/** 微信豆个数 */
