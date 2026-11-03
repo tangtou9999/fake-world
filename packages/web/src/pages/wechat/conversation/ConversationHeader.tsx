@@ -15,7 +15,7 @@ const ConversationHeader = () => {
 	const navigate = useModeNavigate();
 
 	return (
-		<div className="grid grid-cols-3 border-black/5 border-b bg-[#F5F5F5] px-4 py-2">
+		<div className="grid h-11 shrink-0 grid-cols-3 items-center border-black/10 border-b bg-[#EDEDED] px-4">
 			<div className="flex items-center">
 				<BackFilledSVG
 					fill="black"
@@ -34,7 +34,7 @@ const ConversationHeader = () => {
 					{unreadCount.count}
 				</canBeDetected.div>
 			</div>
-			<div className="flex items-center justify-center">
+			<div className="flex items-center justify-center font-medium text-[17px] text-black/90">
 				{friendProfile.remark ?? friendProfile.nickname}
 			</div>
 			<div className="flex items-center justify-end">

@@ -8,7 +8,7 @@ const SearchBar = ({ className }: { className?: string }) => {
 	return (
 		<div className={twMerge("bg-[#EDEDED] px-[15px] pt-[7px] pb-2", className)}>
 			<div className="flex h-[35px] items-center justify-center rounded-md bg-white text-[16px] text-black/35">
-				<SearchOutlinedSVG width={20} height={20} fill="rgba(0,0,0,0.35)" />
+				<SearchOutlinedSVG width={26} height={26} fill="rgba(0,0,0,0.35)" />
 				<span className="ml-1">{t("wechatPage.main.search")}</span>
 			</div>
 		</div>

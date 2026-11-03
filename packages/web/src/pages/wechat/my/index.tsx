@@ -8,6 +8,7 @@ import StickerOutlinedSVG from "@/assets/sticker-outlined.svg?react";
 import { h } from "@/components/HashAssets";
 import { canBeDetected } from "@/components/NodeDetected";
 import useModeNavigate from "@/components/useModeNavigate";
+import useScreenTopBg from "@/components/useScreenTopBg";
 import { EBottomNavBars } from "@/stateV2/bottomNavbars";
 import { EMetaDataType } from "@/stateV2/detectedNode";
 import { dialogueListAtom } from "@/stateV2/dialogueList";
@@ -15,13 +16,16 @@ import { myProfileAtom, profileAtom } from "@/stateV2/profile";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import List, { Chevron } from "@/wechatComponents/List";
 import { mobilePanelAtom } from "@/components/MobilePanel/atom";
+import useMode from "@/components/useMode";
+import { message } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { useTranslation } from "react-i18next";
 
 const WorksIcon = () => (
 	<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-		<rect x="3" y="7.5" width="12" height="13" rx="2.2" stroke="#4FA7F5" strokeWidth="1.6" />
-		<rect x="8.5" y="3.5" width="12.5" height="13" rx="2.2" fill="#CDE8FF" stroke="#4FA7F5" strokeWidth="1.6" />
+		<rect x="9.5" y="2.5" width="11.5" height="11.5" rx="2.3" fill="#FFD7A6" />
+		<rect x="7" y="5" width="11.5" height="11.5" rx="2.3" fill="#C6E6FF" />
+		<rect x="3.2" y="8.2" width="12" height="12" rx="2.3" fill="#fff" stroke="#36B0F4" strokeWidth="1.7" />
 	</svg>
 );
 
@@ -53,15 +57,17 @@ const My = () => {
 	const navigate = useModeNavigate();
 	const { t } = useTranslation();
 	const setMobilePanel = useSetAtom(mobilePanelAtom);
+	const { setMode } = useMode();
 	const friendIds = useAtomValue(dialogueListAtom)
 		.slice(0, 3)
 		.map((v) => v.friendId);
 	useToggleNavbarActivated(EBottomNavBars.MY);
+	useScreenTopBg("#fff");
 
 	return (
 		<>
 			<canBeDetected.div
-				className="flex cursor-pointer items-start bg-white pt-[66px] pr-4 pb-[18px] pl-[27px]"
+				className="flex cursor-pointer items-start bg-white pt-[66px] pr-4 pb-[32px] pl-[27px]"
 				onClick={() => {
 					navigate("/wechat/my/profile-edit");
 				}}
@@ -142,7 +148,11 @@ const My = () => {
 					<List.Item
 						withJump
 						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
-						onClick={() => setMobilePanel("tools")}
+						onClick={() => {
+							setMobilePanel(null);
+							setMode("edit");
+							message.info("已进入编辑模式：点页面上任意内容就能修改", 2.5);
+						}}
 					>
 						{t("wechatPage.my.settings")}
 					</List.Item>

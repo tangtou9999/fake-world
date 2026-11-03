@@ -54,7 +54,24 @@ const Input = ({ dismissPanel }: Props) => {
 							scrollConversationListToBtm();
 						}
 					}}
-					className="rounded bg-white px-2 py-1 caret-wechatBrand-3 focus:outline-none"
+					className="min-h-[38px] rounded-[6px] bg-white px-3 py-2 text-[17px] leading-[22px] caret-wechatBrand-3 focus:outline-none"
+					placeholder="可按住 转文字"
+					renderPlaceholder={({ attributes, children }) => (
+						<span
+							{...attributes}
+							style={{
+								...attributes.style,
+								top: 8,
+								left: 0,
+								width: "100%",
+								textAlign: "center",
+								color: "rgba(0,0,0,0.3)",
+								opacity: 1,
+							}}
+						>
+							{children}
+						</span>
+					)}
 					renderElement={(props) => <Element {...props} />}
 					onKeyDown={(ev) => {
 						if (ev.key === "Enter") {

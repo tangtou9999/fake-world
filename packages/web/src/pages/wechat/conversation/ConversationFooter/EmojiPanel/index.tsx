@@ -48,7 +48,7 @@ const EmojiPanel = () => {
 			previousTouch.current = touch;
 		}
 		const res = height - movementY!;
-		if (res <= 600 && res >= 350) {
+		if (res <= 600 && res >= 232) {
 			nodeRef.current!.style.height = `${res}px`;
 		}
 	}, []);

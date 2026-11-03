@@ -1,6 +1,7 @@
-import { App as AntdApp, Drawer, Tabs } from "antd";
+import { activatedNodeAtom } from "@/stateV2/detectedNode";
+import { App as AntdApp, Button, Drawer, Tabs } from "antd";
 import { useAtom } from "jotai";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import CommonBlock from "../LeftPanel/CommonBlock";
 import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
@@ -8,42 +9,94 @@ import useMode from "../useMode";
 import ChatRecordsEditor from "./ChatRecordsEditor";
 import { mobilePanelAtom } from "./atom";
 
-export const APP_VERSION = "v1.0";
+export const APP_VERSION = "v1.1";
+
+const floatingBtn =
+	"rounded-full px-4 py-2 text-sm shadow-lg lg:hidden pointer-events-auto active:opacity-80";
 
 /**
- * 手机端面板：把电脑端左侧（工具）和右侧（编辑器）搬进一个底部抽屉。
- * - 预览模式：在「我 → 设置」里打开，画面干净，方便截图。
- * - 编辑模式：右下角出现「⚙ 面板」按钮，点选内容后点它进入「编辑内容」。
+ * 手机端编辑模式：
+ * - 「我 → 设置」直接进入编辑模式。
+ * - 编辑模式下点页面上的任意内容，底部自动弹出对应的编辑表单（页面上半部分仍可继续点选）。
+ * - 右下角「⚙ 工具」打开截图、聊天记录等工具，「完成」退出编辑模式。
  */
 const MobilePanel = () => {
 	const [panel, setPanel] = useAtom(mobilePanelAtom);
-	const { isEdit } = useMode();
+	const [activatedNode, setActivatedNode] = useAtom(activatedNodeAtom);
+	const { isEdit, setMode } = useMode();
 	const open = panel !== null;
+
+	// 点选了内容就弹出编辑表单
+	useEffect(() => {
+		if (isEdit && activatedNode) setPanel("edit");
+	}, [isEdit, activatedNode]);
+
+	// 退出编辑模式时收起面板
+	useEffect(() => {
+		if (!isEdit && panel === "edit") setPanel(null);
+	}, [isEdit]);
+
+	const finish = () => {
+		setPanel(null);
+		setActivatedNode(null);
+		setMode("preview");
+	};
 
 	return (
 		<>
 			{isEdit && !open && (
-				<button
-					type="button"
-					onClick={() => setPanel("edit")}
-					className="fixed right-3 bottom-24 z-[900] rounded-full bg-[#07C160] px-4 py-2 text-sm text-white shadow-lg lg:hidden"
-				>
-					⚙ 面板
-				</button>
+				<div className="pointer-events-none fixed right-3 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[900] flex flex-col items-end gap-2">
+					<button
+						type="button"
+						onClick={() => setPanel("tools")}
+						className={`${floatingBtn} bg-[#07C160] text-white`}
+					>
+						⚙ 工具
+					</button>
+					<button
+						type="button"
+						onClick={finish}
+						className={`${floatingBtn} bg-white text-black/80`}
+					>
+						完成
+					</button>
+				</div>
 			)}
 			<Drawer
-				title={`手机面板 ${APP_VERSION}`}
+				title={`编辑模式 ${APP_VERSION}`}
 				placement="bottom"
-				height="75%"
+				height="52%"
+				mask={false}
 				open={open}
-				onClose={() => setPanel(null)}
+				onClose={() => {
+					setPanel(null);
+					setActivatedNode(null);
+				}}
+				extra={
+					<Button size="small" onClick={finish}>
+						完成
+					</Button>
+				}
 				destroyOnClose
 			>
 				<AntdApp>
 					<Tabs
-						activeKey={panel ?? "tools"}
+						activeKey={panel ?? "edit"}
 						onChange={(key) => setPanel(key as "tools" | "edit")}
 						items={[
+							{
+								key: "edit",
+								label: "编辑内容",
+								children: (
+									<>
+										<div className="mb-3 text-gray-500 text-xs">
+											点页面上的任意内容就能直接修改，这个面板不会挡住上半部分，可以接着点别的。某一条对话里的消息（文字、图片、视频、转账、红包）在「工具
+											→ 聊天记录」里编辑。改完点右上角「完成」。
+										</div>
+										<MetaDataEditor />
+									</>
+								),
+							},
 							{
 								key: "tools",
 								label: "工具",
@@ -52,20 +105,6 @@ const MobilePanel = () => {
 										<ChatRecordsEditor />
 										<CommonBlock />
 										<MainMenu />
-									</>
-								),
-							},
-							{
-								key: "edit",
-								label: "编辑内容",
-								children: (
-									<>
-										<div className="mb-3 text-gray-500 text-xs">
-											先在「工具」里打开编辑模式，关闭面板后在页面上点选要修改的内容，再点右下角「⚙
-											面板」回到这里。某一条对话的消息在「工具 →
-											聊天记录」里编辑，包括图片、视频以及由谁发送。对话窗口的「+」不再打开编辑器。
-										</div>
-										<MetaDataEditor />
 									</>
 								),
 							},

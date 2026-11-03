@@ -99,11 +99,11 @@ const BottomPopup = ({
               height: 0;
             }
             &-enter-active {
-              height: 350px;
+              height: calc(232px + env(safe-area-inset-bottom));
               transition: height linear 150ms;
             }
             &-enter-done {
-              height: 350px;
+              height: calc(232px + env(safe-area-inset-bottom));
             }
             &-exit {
               height: 0 !important;

@@ -53,26 +53,28 @@ const Transfer = ({
 		<CommonBlock
 			upperText={upperText}
 			senderId={senderId}
-			blockClassName="w-4/5"
+			blockClassName="w-auto max-w-none"
 			innerBlockClassName={twJoin(
-				"w-full pb-1",
+				"h-[83px] w-[243px] max-w-none rounded-[6px] p-0",
 				transferStatus === "awaiting" && "bg-wechatOrange-3 before:bg-wechatOrange-3",
 				(transferStatus === "accepted" || transferStatus === "rejected") &&
-					"bg-wechatOrange-5 before:bg-wechatOrange-5",
-				transferStatus === "expired" && "bg-wechatOrange-5 before:bg-wechatOrange-5 saturate-60",
+					"bg-[#FACE9C] before:bg-[#FACE9C]",
+				transferStatus === "expired" && "bg-[#FACE9C] before:bg-[#FACE9C] saturate-60",
 			)}
 		>
-			<div className="flex flex-col pl-1 text-white">
-				<div className="flex flex-1 items-center border-white/10 border-b pb-2">
-					<SVGComp fill="white" width={40} height={40} className="-ml-1 flex-shrink-0" />
-					<div className="ml-1 flex h-10 flex-col justify-between overflow-hidden">
-						<div className="font-medium">
+			<div className="relative h-full text-white">
+				<div className="flex items-start px-[10px] pt-[10px]">
+					<SVGComp fill="white" width={42} height={42} className="shrink-0" />
+					<div className="ml-[9px] flex min-w-0 flex-1 flex-col overflow-hidden">
+						<div className="font-medium text-[17px] leading-[22px]">
 							¥<span className="ml-[1px]">{amount}</span>
 						</div>
-						<span className="line-clamp-1 font-light text-xs">{getTransferNote()}</span>
+						<span className="line-clamp-1 text-[13px] leading-4">{getTransferNote()}</span>
 					</div>
 				</div>
-				<span className="pt-1 font-light text-xs">微信转账</span>
+				<span className="absolute bottom-[10px] left-[10px] text-[11px] text-white/80 leading-[14px]">
+					转账
+				</span>
 			</div>
 		</CommonBlock>
 	);

@@ -104,7 +104,8 @@ export const friendsTotalCountAtom = atom<number>((get) => {
 	if (calcuateType === "static") {
 		return count ?? 0;
 	}
-	return get(allProfilesTotalCountAtom) - 1;
+	const hasHelper = get(allProfilesDEqualCompareAtom).some((v) => v.id === "file-helper");
+	return get(allProfilesTotalCountAtom) - 1 - (hasHelper ? 1 : 0);
 });
 
 export const getFriendsTotalCountValueSnapshot = () => mainStore.get(friendsTotalCountAtom);

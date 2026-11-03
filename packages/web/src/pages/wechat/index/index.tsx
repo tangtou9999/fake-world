@@ -19,9 +19,9 @@ const WechatIndex = () => {
 	return (
 		<>
 			<div className="grid h-11 shrink-0 grid-cols-3 items-center bg-[#EDEDED] px-4">
-				<div className="flex items-center gap-[3px]">
-					<i className="h-[6px] w-[6px] rounded-full bg-black/80" />
-					<i className="h-[6px] w-[6px] rounded-full bg-black/80" />
+				<div className="flex items-center gap-1">
+					<i className="h-2 w-2 rounded-full bg-black/85" />
+					<i className="h-2 w-2 rounded-full bg-black/85" />
 				</div>
 				<canBeDetected.span
 					className="flex items-center justify-center font-medium text-[17px] text-black/90"

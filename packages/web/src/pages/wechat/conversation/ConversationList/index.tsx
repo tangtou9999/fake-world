@@ -76,7 +76,7 @@ const ConversationList = () => {
 
 	return (
 		<canBeDetected.div
-			className="flex flex-1 flex-col-reverse overflow-auto bg-[#F5F5F5] p-3"
+			className="flex flex-1 flex-col-reverse overflow-auto bg-[#EDEDED] p-3"
 			metaData={{
 				type: EMetaDataType.ConversationList,
 				index: conversationId,

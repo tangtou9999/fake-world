@@ -13,7 +13,12 @@ const Screen = () => {
 	const { screenSize } = useDeviceConfig();
 
 	const style: CSSProperties = isMobileOnly
-		? { width: "100vw", height: "calc(100vh - 1px)" }
+		? {
+				width: "100vw",
+				height: "calc(100vh - 1px)",
+				paddingTop: "env(safe-area-inset-top)",
+				backgroundColor: "var(--screen-top-bg, #EDEDED)",
+			}
 		: {
 				width: screenSize.width,
 				height: screenSize.height,

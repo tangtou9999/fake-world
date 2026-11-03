@@ -4,13 +4,11 @@ import { useTranslation } from "react-i18next";
 
 import List from "@/wechatComponents/List";
 
+import { OfficialIcon, ServiceIcon, WecomIcon } from "./ContactIcons";
 import GroupChatIMG from "./assets/group-chat.png";
 import NewIMG from "./assets/new.png";
-import OfficialIMG from "./assets/official.png";
 import OnlyChatIMG from "./assets/only-chat.png";
-import ServiceSVG from "./assets/service.svg?react";
 import TagIMG from "./assets/tag.png";
-import WecomSVG from "./assets/wecom.svg?react";
 
 const iconClass = "mr-3 h-10 w-10 shrink-0 rounded";
 
@@ -40,13 +38,13 @@ const TopMenus = () => {
 			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(TagIMG)}>
 				{t("wechatPage.contacts.tags")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(OfficialIMG)}>
+			<List.Item textPrevClassName="ml-4" textPrev={<OfficialIcon className={iconClass} />}>
 				{t("wechatPage.contacts.official")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={<ServiceSVG className={iconClass} />}>
+			<List.Item textPrevClassName="ml-4" textPrev={<ServiceIcon className={iconClass} />}>
 				{t("wechatPage.contacts.serviceAccount")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={<WecomSVG className={iconClass} />}>
+			<List.Item textPrevClassName="ml-4" textPrev={<WecomIcon className={iconClass} />}>
 				{t("wechatPage.contacts.wecom")}
 			</List.Item>
 		</List>

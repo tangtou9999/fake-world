@@ -3,6 +3,8 @@ import {
 	fromLastGenerateUpperText,
 	setConversationListValue,
 } from "@/stateV2/conversation";
+import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
+import { touchFileHelperDialogue } from "@/stateV2/fileHelper";
 import { prepareImageAsset, prepareVideoAsset } from "@/utils/media";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
@@ -114,6 +116,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 		try {
 			if (file.type.startsWith("video/")) {
 				const asset = await prepareVideoAsset(file);
+				if (conversationId === FILE_HELPER_ID) touchFileHelperDialogue("[视频]");
 				setConversationListValue(conversationId, (prev) => [
 					...prev,
 					{
@@ -127,6 +130,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 				]);
 			} else if (file.type.startsWith("image/")) {
 				const asset = await prepareImageAsset(file);
+				if (conversationId === FILE_HELPER_ID) touchFileHelperDialogue("[图片]");
 				setConversationListValue(conversationId, (prev) => [
 					...prev,
 					{
@@ -158,7 +162,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 	};
 
 	return (
-		<div className="h-[350px] overflow-y-auto bg-[#F6F6F6] px-[23px] pt-4">
+		<div className="h-full overflow-y-auto bg-[#F7F7F7] px-[23px] pt-4">
 			<input
 				ref={albumRef}
 				type="file"

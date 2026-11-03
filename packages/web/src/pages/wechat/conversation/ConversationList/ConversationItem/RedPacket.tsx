@@ -33,25 +33,27 @@ const RedPacket = ({ role, upperText, senderId, redPacketStatus, note, originalS
 		<CommonBlock
 			upperText={upperText}
 			senderId={senderId}
-			blockClassName="w-[276px] max-w-[82vw]"
+			blockClassName="w-auto max-w-none"
 			innerBlockClassName={twJoin(
-				"w-full rounded px-2 pt-1.5 pb-0.5",
+				"h-[83px] w-[243px] max-w-none rounded-[6px] p-0",
 				redPacketStatus === "awaiting" && "bg-wechatOrange-3 before:bg-wechatOrange-3",
 				(redPacketStatus === "accepted" || redPacketStatus === "expired") &&
-					"bg-wechatOrange-5 before:bg-wechatOrange-5",
+					"bg-[#FACE9C] before:bg-[#FACE9C]",
 			)}
 		>
-			<div className="flex flex-col pl-1 text-white">
-				<div className="flex flex-1 items-center border-white/10 border-b pb-1">
-					<img src={IMAGE_MAP[redPacketStatus]} className="h-8 w-8 shrink-0 object-contain" />
-					<div className="ml-2 flex min-h-8 flex-1 flex-col justify-center overflow-hidden">
-						<div className="line-clamp-1 font-medium">
+			<div className="relative h-full text-white">
+				<div className="flex items-start px-[13px] pt-[10px]">
+					<img src={IMAGE_MAP[redPacketStatus]} className="h-9 w-9 shrink-0 object-contain" />
+					<div className="ml-[10px] flex h-9 min-w-0 flex-1 flex-col justify-center overflow-hidden">
+						<div className="line-clamp-1 font-medium text-[17px] leading-[22px]">
 							{isEmpty(note) ? "恭喜发财，大吉大利" : note}
 						</div>
 						{showTips && <div className="font-light text-xs">{tips}</div>}
 					</div>
 				</div>
-				<span className="pt-0.5 font-light text-xs">微信红包</span>
+				<span className="absolute bottom-[10px] left-[10px] text-[11px] text-white/80 leading-[14px]">
+					红包
+				</span>
 			</div>
 		</CommonBlock>
 	);

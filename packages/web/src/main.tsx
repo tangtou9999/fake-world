@@ -9,11 +9,13 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createHashRouter } from "react-router-dom";
 import { initDBImagesCacheStore } from "./db";
 import { routes } from "./router/index.tsx";
+import { ensureFileHelper } from "./stateV2/fileHelper.ts";
 import { mainStore } from "./stateV2/store.ts";
 import { initDayjs } from "./time.ts";
 import { backendHealthCheck } from "./utils.ts";
 
 initDayjs();
+ensureFileHelper();
 initDBImagesCacheStore();
 backendHealthCheck();
 
