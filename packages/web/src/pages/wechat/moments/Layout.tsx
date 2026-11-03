@@ -22,6 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Outlet } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 import { twJoin } from "tailwind-merge";
+import { MomentsCommentBar } from "./CommentComposer";
 import CoverOperations from "./CoverOperations";
 import TopAvatar from "./TopAvatar";
 import { usePartMetaData, useProfile } from "./hook";
@@ -199,7 +200,7 @@ const MomentsLayout = () => {
 					className="h-5 w-5 cursor-pointer"
 					onClick={() => navigate(-1)}
 				/>
-				<div className="text-center font-medium">
+				<div className="text-center font-medium text-[17px]">
 					{barUseBlack && t("wechatPage.moments.title")}
 				</div>
 				<div className="flex justify-end">
@@ -246,9 +247,12 @@ const MomentsLayout = () => {
 							<div ref={animationRef}>{bgExpand ? <CoverOperations /> : <TopAvatar />}</div>
 						</CSSTransition>
 					</SwitchTransition>
-					<Outlet />
+					<div className="bg-white">
+						<Outlet />
+					</div>
 				</div>
 			</div>
+			<MomentsCommentBar />
 		</>
 	);
 };

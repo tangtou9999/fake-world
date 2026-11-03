@@ -28,7 +28,7 @@ const CommentUserText = ({
 				<div className="inline">
 					<span className="mx-[2px]">回复</span>
 					<span
-						className="cursor-pointer text-wechatLink-1"
+						className="cursor-pointer text-wechatLink-3"
 						onClick={() => navigate(`/wechat/friend/${replyUserId}`)}
 					>
 						{replyRemark ?? replyNickname}
@@ -42,7 +42,7 @@ const CommentUserText = ({
 	return (
 		<div className="relative z-10 float-left inline">
 			<span
-				className="cursor-pointer text-wechatLink-1"
+				className="cursor-pointer text-wechatLink-3"
 				onClick={() => navigate(`/wechat/friend/${fromUserId}`)}
 			>
 				{fromRemark ?? fromNickname}
@@ -128,23 +128,23 @@ const CommentItem = ({
 					size="small"
 					className="cursor-pointer"
 				/>
-				<div className="ml-[6px] flex flex-1 flex-col text-sm">
+				<div className="ml-[6px] flex flex-1 flex-col text-[14px] leading-[20px]">
 					<div className="flex items-center justify-between">
 						<UserName
 							id={fromUserId}
 							onClick={() => toUser(fromUserId)}
-							className="cursor-pointer self-start"
+							className="cursor-pointer self-start text-wechatLink-3"
 						/>
 						<div className="text-black/60 text-xs">{dayjs(sendTimestamp).fromNow()}</div>
 					</div>
-					<div className="block text-sm">
+					<div className="block text-[14px] leading-[20px]">
 						{replyUserId && (
 							<div className="relative z-10 float-left inline">
 								回复
 								<UserName
 									id={replyUserId}
 									onClick={() => toUser(replyUserId)}
-									className="cursor-pointer"
+									className="cursor-pointer text-wechatLink-3"
 								/>
 								<span className="mr-1 ml-[2px]">:</span>
 							</div>
@@ -163,7 +163,7 @@ const CommentItem = ({
 		);
 	}
 	return (
-		<canBeDetected.div className="block text-sm" metaData={metaData}>
+		<canBeDetected.div className="block text-[14px] leading-[20px]" metaData={metaData}>
 			<CommentUserText fromUserId={fromUserId} replyUserId={replyUserId} />
 			<SlateText
 				content={text}

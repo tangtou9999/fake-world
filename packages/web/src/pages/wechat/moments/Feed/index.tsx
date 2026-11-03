@@ -1,10 +1,9 @@
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
 import useModeNavigate from "@/components/useModeNavigate";
-import { generateInitFeedComment } from "@/faker/wechat/moments";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { EMetaDataType } from "@/stateV2/detectedNode";
-import { type IStateFeed, feedAtom, feedListAtom } from "@/stateV2/moments";
+import { type IStateFeed, feedListAtom } from "@/stateV2/moments";
 import { profileAtom } from "@/stateV2/profile";
 import UserAvatar from "@/wechatComponents/User/UserAvatar";
 import { CommentOutlined, SelectOutlined, UserOutlined } from "@ant-design/icons";
@@ -13,6 +12,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import { memo, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { twJoin, twMerge } from "tailwind-merge";
+import { commentTargetAtom } from "../CommentComposer";
 import Comments from "./Comments";
 import FeedContent from "./Content";
 import LikeList from "./Likes";
@@ -34,14 +34,17 @@ const Feed = ({
 }: Omit<IStateFeed, "sendTimestamp" | "content"> & Props) => {
 	const { nickname, remark } = useAtomValue(profileAtom(userId))!;
 	const setFeedList = useSetAtom(feedListAtom);
-	const setFeed = useSetAtom(feedAtom(id));
+	const setCommentTarget = useSetAtom(commentTargetAtom);
 	const originalNavigate = useNavigate();
 	const navigate = useModeNavigate({ silence: true });
 
 	const likeAndCommentsContent = useMemo(() => {
 		return (
 			<div
-				className={twMerge("mt-2 flex flex-col rounded bg-wechatBG-3", classNames?.likeAndComments)}
+				className={twMerge(
+					"mt-2 flex flex-col rounded-[4px] bg-[#F7F7F7]",
+					classNames?.likeAndComments,
+				)}
 			>
 				<LikeList id={id} fromDetail={fromDetail} />
 				<Comments id={id} fromDetail={fromDetail} />
@@ -75,10 +78,7 @@ const Feed = ({
 		},
 		{
 			onClick: () => {
-				setFeed((prev) => ({
-					...prev,
-					comments: [...(prev.comments ?? []), generateInitFeedComment()],
-				}));
+				setCommentTarget(id);
 			},
 			element: (
 				<Tooltip title="新增评论">
@@ -142,11 +142,14 @@ const Feed = ({
 				<UserAvatar
 					id={userId}
 					size="middle"
-					className={twJoin("cursor-pointer", classNames?.avatar)}
+					className={twJoin("h-[42px] w-[42px] cursor-pointer rounded-[4px]", classNames?.avatar)}
 					onClick={toFriendPage}
 				/>
-				<div className="ml-3 flex flex-1 flex-col overflow-hidden">
-					<span className="cursor-pointer self-start text-wechatLink-1" onClick={toFriendPage}>
+				<div className="ml-[10px] flex flex-1 flex-col overflow-hidden">
+					<span
+						className="cursor-pointer self-start font-medium text-[16px] text-wechatLink-3 leading-[22px]"
+						onClick={toFriendPage}
+					>
 						{remark ?? nickname}
 					</span>
 					<FeedContent id={id} fromDetail={fromDetail} />
