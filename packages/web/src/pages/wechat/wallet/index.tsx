@@ -13,7 +13,7 @@ import { BusinessIcon, FenfuIcon, GearIcon, IdCardIcon, ServiceCenterIcon } from
 import ZFF_SVG from "./assets/zff.svg?react";
 
 const ROW = "min-h-[57px] text-[17px]";
-const VALUE = "text-[16px] text-black/90";
+const VALUE = "relative -top-[1.5px] text-[16px] text-black/90";
 const TAG = "ml-2 text-[13px] text-[#FA9D3B]";
 
 const Wallet = () => {
