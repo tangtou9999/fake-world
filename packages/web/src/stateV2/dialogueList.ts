@@ -1,3 +1,4 @@
+import { importedDialogues } from "@/faker/wechat/imported";
 import { dequal } from "dequal/lite";
 import type { SetStateAction } from "jotai";
 import { atomEffect } from "jotai-effect";
@@ -31,30 +32,10 @@ export interface IDialogueItem {
 
 export type TStateDialogueList = IDialogueItem[];
 
-export const dialogueListAtom = atomWithStorage<TStateDialogueList>("dialogueList", [
-	{
-		id: "1",
-		friendId: "1",
-		lastMessage: "你好，我是塞尔达",
-		lastMessageTime: "12:55",
-		isPinned: true,
-		unreadMarkNumber: 12,
-	},
-	{
-		id: "3",
-		friendId: "4",
-		lastMessage: "我是 luigi",
-		lastMessageTime: "09:23",
-		unreadMarkNumber: 1,
-	},
-	{
-		id: "2",
-		friendId: "2",
-		lastMessage: "我是星之笨比bot",
-		lastMessageTime: "星期四",
-		isMuted: true,
-	},
-]);
+export const dialogueListAtom = atomWithStorage<TStateDialogueList>(
+	"dialogueList",
+	importedDialogues,
+);
 
 export const dialogueListEffect = atomEffect((get, set) => {
 	const dialogueList = get(dialogueListAtom);
