@@ -35,6 +35,8 @@ export interface IStateFeed {
 	content: IFeedContent;
 	likeUserIds?: IStateProfile["id"][];
 	comments?: IFeedComment[];
+	/** 朋友圈位置，例如「南京·玄武湖」 */
+	location?: string;
 }
 
 export type TStateFeedLst = IStateFeed[];

@@ -53,7 +53,7 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 
 	if (!feed) return null;
 
-	const { content, sendTimestamp, likeUserIds } = feed;
+	const { content, sendTimestamp, likeUserIds, location } = feed;
 
 	const isLiked = likeUserIds?.includes(MYSELF_ID);
 	const isEN = i18n.language === "en-US";
@@ -146,7 +146,10 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 			{renderFeedPureText()}
 			{renderFeedImages()}
 			<div className="mt-2 flex items-center justify-between">
-				<span className="text-gray-400 text-sm">{dayjs(sendTimestamp).fromNow()}</span>
+				<span className="min-w-0 text-gray-400 text-sm">
+					{dayjs(sendTimestamp).fromNow()}
+					{location ? <span className="ml-2 text-wechatLink-1">{location}</span> : null}
+				</span>
 				<div
 					ref={refs.setReference}
 					{...getReferenceProps()}
