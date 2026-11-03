@@ -59,7 +59,7 @@
 	"quickJump": {
 		"wechat": {
 			"index": "微信首頁",
-			"profileEdit": "個人信息編輯",
+			"profileEdit": "個人資料",
 			"services": "服務",
 			"balance": "錢包 - 零錢",
 			"moments": "朋友圈",
@@ -74,7 +74,8 @@
 			"index": "首頁",
 			"cHistory": "聊天記錄",
 			"my": "我",
-			"profileEdit": "個人信息編輯",
+			"profileEdit": "個人資料",
+			"myQr": "我的二維碼",
 			"services": "服務",
 			"wallet": "錢包",
 			"balance": "零錢",
@@ -151,7 +152,7 @@
 			"stickers": "貼圖市集",
 			"settings": "設定",
 			"profile": {
-				"title": "個人資訊",
+				"title": "個人資料",
 				"photo": "大頭貼",
 				"name": "名字",
 				"tickle": "拍一拍",

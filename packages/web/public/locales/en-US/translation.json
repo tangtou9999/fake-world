@@ -59,7 +59,7 @@
 	"quickJump": {
 		"wechat": {
 			"index": "WeChat homepage",
-			"profileEdit": "Edit personal information",
+			"profileEdit": "Profile",
 			"services": "Services",
 			"balance": "Wallet - Balance",
 			"moments": "Moments",
@@ -74,7 +74,8 @@
 			"index": "WeChat homepage",
 			"cHistory": "Chat History",
 			"my": "Me",
-			"profileEdit": "Edit personal information",
+			"profileEdit": "Profile",
+			"myQr": "My QR Code",
 			"services": "Services",
 			"wallet": "Wallet",
 			"balance": "Balance",
@@ -151,7 +152,7 @@
 			"stickers": "Sticker Gallery",
 			"settings": "Settings",
 			"profile": {
-				"title": "My Profile",
+				"title": "Profile",
 				"photo": "Profile Photo",
 				"name": "Name",
 				"tickle": "Tickle",

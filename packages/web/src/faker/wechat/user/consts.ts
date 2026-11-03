@@ -14,8 +14,10 @@ export const INIT_MY_PROFILE: IStateProfile = {
 	thumbnailInfo: [],
 	momentsBackgroundLike: false,
 	privacy: "all",
-	area: "Hyrule",
+	area: "江苏 常州",
+	phone: ["13612345666"],
 	signature: "Master Sword!!!!",
+	ringtone: "晴天",
 };
 
 export const INIT_FRIENDS: TStateAllProfiles = importedFriends;
