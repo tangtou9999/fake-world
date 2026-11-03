@@ -22,7 +22,13 @@ const Balance = () => {
 					className="-ml-0.5 h-6 w-6 cursor-pointer"
 					onClick={() => navigate("/wechat/wallet")}
 				/>
-				<div className="text-[17px]">{t("wechatPage.wallet.balancePage.transactions")}</div>
+				<button
+					type="button"
+					className="cursor-pointer text-[17px]"
+					onClick={() => navigate("/wechat/wallet/balance/records")}
+				>
+					{t("wechatPage.wallet.balancePage.transactions")}
+				</button>
 			</div>
 
 			<canBeDetected.div
@@ -44,8 +50,21 @@ const Balance = () => {
 					<span className="text-[16px] leading-[22px]">
 						{t("wechatPage.wallet.balancePage.ad")}
 					</span>
-					<svg width="8" height="14" viewBox="0 0 8 14" fill="none" className="ml-1" aria-hidden="true">
-						<path d="M1 1l6 6-6 6" stroke="#FA9D3B" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+					<svg
+						width="8"
+						height="14"
+						viewBox="0 0 8 14"
+						fill="none"
+						className="ml-1"
+						aria-hidden="true"
+					>
+						<path
+							d="M1 1l6 6-6 6"
+							stroke="#FA9D3B"
+							strokeWidth="1.6"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						/>
 					</svg>
 				</div>
 
@@ -53,9 +72,13 @@ const Balance = () => {
 					<div className="flex h-[46.5px] w-[178px] cursor-pointer items-center justify-center rounded-[10px] bg-[#07C160] font-medium text-[17px] text-white">
 						{t("wechatPage.wallet.balancePage.topUp")}
 					</div>
-					<div className="flex h-[46.5px] w-[178px] cursor-pointer items-center justify-center rounded-[10px] bg-[#F2F2F2] font-medium text-[17px] text-black/90">
+					<button
+						type="button"
+						className="flex h-[46.5px] w-[178px] cursor-pointer items-center justify-center rounded-[10px] bg-[#F2F2F2] font-medium text-[17px] text-black/90"
+						onClick={() => navigate("/wechat/wallet/balance/withdraw")}
+					>
 						{t("wechatPage.wallet.balancePage.withdraw")}
-					</div>
+					</button>
 				</div>
 				<div className="absolute bottom-[56px] flex flex-col items-center">
 					<div className="mb-[6px] flex items-center text-[#576B95] text-[14px] leading-5">
@@ -63,9 +86,7 @@ const Balance = () => {
 						<i className="mx-[10px] h-[14px] w-px bg-black/10" />
 						<span>账户升级服务</span>
 					</div>
-					<div className="text-[12px] text-black/30 leading-4">
-						本服务由财付通和微众银行提供
-					</div>
+					<div className="text-[12px] text-black/30 leading-4">本服务由财付通和微众银行提供</div>
 				</div>
 			</canBeDetected.div>
 		</div>

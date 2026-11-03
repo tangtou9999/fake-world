@@ -84,7 +84,12 @@
 			"momentDetail": "Details of a Moment",
 			"user": "User",
 			"transaction": "Transaction Details",
-			"contacts": "Contacts"
+			"contacts": "Contacts",
+			"settings": "Settings",
+			"bankCard": "Bank Card",
+			"balanceRecords": "Balance Details",
+			"withdraw": "Withdraw",
+			"withdrawResult": "Withdraw"
 		}
 	},
 	"wechatPage": {
