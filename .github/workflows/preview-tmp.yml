@@ -1,4 +1,4 @@
-name: Build ios-pixel-pass preview (one-off)
+name: Build ios-pass-2 preview (one-off)
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ios-pixel-pass
+          ref: ios-pass-2
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -29,6 +29,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -q -m "Preview build of ios-pixel-pass"
+          git commit -q -m "Preview build of ios-pass-2"
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git push -f origin preview-build
