@@ -10,10 +10,15 @@ import MomentsLayout from "@/pages/wechat/moments/Layout";
 import PersonalMoments from "@/pages/wechat/moments/Personal";
 import My from "@/pages/wechat/my";
 import ProfileEdit from "@/pages/wechat/my/profile-edit";
+import Settings from "@/pages/wechat/my/settings";
+import BankCardForm from "@/pages/wechat/my/settings/BankCardForm";
 import Service from "@/pages/wechat/service";
 import DetailAdapter from "@/pages/wechat/transaction";
 import Wallet from "@/pages/wechat/wallet";
 import Balance from "@/pages/wechat/wallet/Balance";
+import BalanceRecords from "@/pages/wechat/wallet/BalanceRecords";
+import Withdraw from "@/pages/wechat/wallet/Withdraw";
+import WithdrawResult from "@/pages/wechat/wallet/WithdrawResult";
 import { BUILT_IN_TRANSACTION_TYPES_LABELS } from "@/stateV2/transaction";
 import type { TFunction } from "i18next";
 import { Navigate, type RouteObject, type UIMatch } from "react-router-dom";
@@ -68,6 +73,20 @@ export const routes: RouteObject[] = [
 									label: "routerLabel.wechat.profileEdit",
 								},
 							},
+							{
+								path: "settings",
+								element: <Settings />,
+								handle: {
+									label: "routerLabel.wechat.settings",
+								},
+							},
+							{
+								path: "settings/card/:id",
+								element: <BankCardForm />,
+								handle: {
+									label: "routerLabel.wechat.bankCard",
+								},
+							},
 						],
 					},
 					{
@@ -92,6 +111,27 @@ export const routes: RouteObject[] = [
 								element: <Balance />,
 								handle: {
 									label: "routerLabel.wechat.balance",
+								},
+							},
+							{
+								path: "balance/records",
+								element: <BalanceRecords />,
+								handle: {
+									label: "routerLabel.wechat.balanceRecords",
+								},
+							},
+							{
+								path: "balance/withdraw",
+								element: <Withdraw />,
+								handle: {
+									label: "routerLabel.wechat.withdraw",
+								},
+							},
+							{
+								path: "balance/withdraw/result/:id",
+								element: <WithdrawResult />,
+								handle: {
+									label: "routerLabel.wechat.withdrawResult",
 								},
 							},
 						],

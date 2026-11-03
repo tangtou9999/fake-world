@@ -84,7 +84,12 @@
 			"momentDetail": "单条朋友圈详情",
 			"user": "用户",
 			"transaction": "账单详情",
-			"contacts": "通讯录"
+			"contacts": "通讯录",
+			"settings": "设置",
+			"bankCard": "银行卡",
+			"balanceRecords": "零钱明细",
+			"withdraw": "零钱提现",
+			"withdrawResult": "零钱提现"
 		}
 	},
 	"wechatPage": {

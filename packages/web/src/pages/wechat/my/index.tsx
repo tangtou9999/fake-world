@@ -9,24 +9,30 @@ import { h } from "@/components/HashAssets";
 import { canBeDetected } from "@/components/NodeDetected";
 import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
+import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { EBottomNavBars } from "@/stateV2/bottomNavbars";
 import { EMetaDataType } from "@/stateV2/detectedNode";
-import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { dialogueListAtom } from "@/stateV2/dialogueList";
 import { myProfileAtom, profileAtom } from "@/stateV2/profile";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import List, { Chevron } from "@/wechatComponents/List";
-import { mobilePanelAtom } from "@/components/MobilePanel/atom";
-import useMode from "@/components/useMode";
-import { message } from "antd";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtomValue } from "jotai";
 import { useTranslation } from "react-i18next";
 
 const WorksIcon = () => (
 	<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
 		<rect x="9.5" y="2.5" width="11.5" height="11.5" rx="2.3" fill="#FFD7A6" />
 		<rect x="7" y="5" width="11.5" height="11.5" rx="2.3" fill="#C6E6FF" />
-		<rect x="3.2" y="8.2" width="12" height="12" rx="2.3" fill="#fff" stroke="#36B0F4" strokeWidth="1.7" />
+		<rect
+			x="3.2"
+			y="8.2"
+			width="12"
+			height="12"
+			rx="2.3"
+			fill="#fff"
+			stroke="#36B0F4"
+			strokeWidth="1.7"
+		/>
 	</svg>
 );
 
@@ -57,8 +63,6 @@ const My = () => {
 	const { avatarInfo, wechat, nickname } = useAtomValue(myProfileAtom)!;
 	const navigate = useModeNavigate();
 	const { t } = useTranslation();
-	const setMobilePanel = useSetAtom(mobilePanelAtom);
-	const { setMode } = useMode();
 	const friendIds = useAtomValue(dialogueListAtom)
 		.map((v) => v.friendId)
 		.filter((id) => id !== FILE_HELPER_ID)
@@ -80,7 +84,9 @@ const My = () => {
 			>
 				<h.img src={avatarInfo} className="h-16 w-16 shrink-0 rounded-[6px] object-cover" />
 				<div className="ml-[18px] min-w-0 flex-1">
-					<div className="truncate font-semibold text-[20px] text-black/90 leading-7">{nickname}</div>
+					<div className="truncate font-semibold text-[20px] text-black/90 leading-7">
+						{nickname}
+					</div>
 					<div className="mt-1.5 text-[15px] text-black/50 leading-5">
 						<span>{t("wechatPage.my.wid")}: </span>
 						<span>{wechat}</span>
@@ -150,11 +156,7 @@ const My = () => {
 					<List.Item
 						withJump
 						icon={<Setting_Outlined_SVG fill="#2A7FCB" />}
-						onClick={() => {
-							setMobilePanel(null);
-							setMode("edit");
-							message.info("已进入编辑模式：点页面上任意内容就能修改", 2.5);
-						}}
+						onClick={() => navigate("/wechat/my/settings")}
 					>
 						{t("wechatPage.my.settings")}
 					</List.Item>
