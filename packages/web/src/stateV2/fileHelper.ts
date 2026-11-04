@@ -4,6 +4,7 @@ import { setConversationListValue } from "./conversation";
 import { type IDialogueItem, setDialogueListValue } from "./dialogueList";
 import { multipleDeviceLoginAtom } from "./multipleDeviceLogin";
 import { setAllProfilesValue } from "./profile";
+import { seedFriendRequests } from "./friendRequests";
 import { mainStore } from "./store";
 
 const SEEDED_KEY = "fileHelperSeeded";
@@ -16,6 +17,7 @@ export function ensureFileHelper() {
 	try {
 		upgradeV2();
 		upgradeV3();
+		seedFriendRequests();
 		if (localStorage.getItem(SEEDED_KEY)) return;
 		setAllProfilesValue((prev) =>
 			prev.some((v) => v.id === FILE_HELPER_ID) ? prev : [...prev, FILE_HELPER_PROFILE],
