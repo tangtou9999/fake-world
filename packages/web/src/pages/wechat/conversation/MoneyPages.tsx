@@ -15,8 +15,7 @@ import { useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
 import { type ReactNode, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { touchFileHelperDialogue } from "@/stateV2/fileHelper";
-import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
+import { touchDialogue } from "@/stateV2/fileHelper";
 
 type Kind = "redPacket" | "transfer";
 type Sender = "mine" | "friend";
@@ -60,7 +59,7 @@ function useSend(kind: Kind) {
 		} else if (params.done) {
 			applyMoneyMove({ kind, direction: "in", peerId: id, amount });
 		}
-		if (id === FILE_HELPER_ID) touchFileHelperDialogue(kind === "redPacket" ? "[红包]" : "[转账]");
+		touchDialogue(id, kind === "redPacket" ? "[微信红包]" : "[转账]");
 		navigate(`/wechat/conversation/${id}`, { replace: true });
 	};
 }

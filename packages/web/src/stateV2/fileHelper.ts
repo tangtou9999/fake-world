@@ -1,7 +1,7 @@
 import { FILE_HELPER_ID, FILE_HELPER_PROFILE } from "@/faker/wechat/user/fileHelper";
 import dayjs from "dayjs";
 import { setConversationListValue } from "./conversation";
-import { setDialogueListValue } from "./dialogueList";
+import { type IDialogueItem, setDialogueListValue } from "./dialogueList";
 import { multipleDeviceLoginAtom } from "./multipleDeviceLogin";
 import { setAllProfilesValue } from "./profile";
 import { mainStore } from "./store";
@@ -42,16 +42,27 @@ export function ensureFileHelper() {
 	}
 }
 
-/** 在文件传输助手里发了消息后，同步主页那一行的预览文字和时间 */
-export function touchFileHelperDialogue(preview: string) {
-	setDialogueListValue((prev) =>
-		prev.map((v) =>
-			v.friendId === FILE_HELPER_ID
-				? { ...v, lastMessage: preview, lastMessageTime: dayjs().format("HH:mm") }
-				: v,
-		),
-	);
+/**
+ * 在任意聊天里发了消息后：同步主页那一行的预览文字和时间，
+ * 并把这个聊天移到列表最上面（置顶的聊天仍在最前）。
+ */
+export function touchDialogue(friendId: string, preview: string) {
+	setDialogueListValue((prev) => {
+		const time = dayjs().format("HH:mm");
+		const existing = prev.find((v) => v.friendId === friendId);
+		const updated: IDialogueItem = existing
+			? { ...existing, lastMessage: preview, lastMessageTime: time, unreadMarkNumber: undefined }
+			: { id: friendId, friendId, lastMessage: preview, lastMessageTime: time };
+		if (updated.isPinned) {
+			return existing ? prev.map((v) => (v === existing ? updated : v)) : [updated, ...prev];
+		}
+		const rest = prev.filter((v) => v !== existing);
+		const pinnedCount = rest.filter((v) => v.isPinned).length;
+		return [...rest.slice(0, pinnedCount), updated, ...rest.slice(pinnedCount)];
+	});
 }
+
+export const touchFileHelperDialogue = (preview: string) => touchDialogue(FILE_HELPER_ID, preview);
 
 /** v2：换成真实图标、置顶，并默认隐藏「iPad 微信已登录」条（只执行一次） */
 function upgradeV2() {

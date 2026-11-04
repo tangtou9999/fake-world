@@ -3,8 +3,7 @@ import {
 	fromLastGenerateUpperText,
 	setConversationListValue,
 } from "@/stateV2/conversation";
-import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
-import { touchFileHelperDialogue } from "@/stateV2/fileHelper";
+import { touchDialogue } from "@/stateV2/fileHelper";
 import { prepareImageAsset, prepareVideoAsset } from "@/utils/media";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
@@ -150,7 +149,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 		try {
 			if (file.type.startsWith("video/")) {
 				const asset = await prepareVideoAsset(file);
-				if (conversationId === FILE_HELPER_ID) touchFileHelperDialogue("[视频]");
+				touchDialogue(conversationId, "[视频]");
 				setConversationListValue(conversationId, (prev) => [
 					...prev,
 					{
@@ -164,7 +163,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 				]);
 			} else if (file.type.startsWith("image/")) {
 				const asset = await prepareImageAsset(file);
-				if (conversationId === FILE_HELPER_ID) touchFileHelperDialogue("[图片]");
+				touchDialogue(conversationId, "[图片]");
 				setConversationListValue(conversationId, (prev) => [
 					...prev,
 					{

@@ -1,6 +1,6 @@
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
-import { touchFileHelperDialogue } from "@/stateV2/fileHelper";
+import { touchDialogue } from "@/stateV2/fileHelper";
 import {
 	EConversationType,
 	type IConversationTypeRedPacket,
@@ -93,9 +93,7 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 		const sendRole = conversationId === FILE_HELPER_ID ? "mine" : configuredRole;
 		const value = getInputterValueSnapshot();
 		if (isEqual(value, SLATE_INITIAL_VALUE)) return;
-		if (conversationId === FILE_HELPER_ID) {
-			touchFileHelperDialogue(value.map((node) => Node.string(node)).join(""));
-		}
+		touchDialogue(conversationId, value.map((node) => Node.string(node)).join(""));
 		setConversationListValue(conversationId, (prev) => {
 			return [
 				...prev,

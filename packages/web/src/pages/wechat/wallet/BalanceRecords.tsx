@@ -173,19 +173,19 @@ const BalanceRecords = () => {
 									>
 										{row.icon}
 										<div className="ml-[18px] min-w-0 flex-1">
-											<div className="truncate text-[17px] text-black/90 leading-6">{row.title}</div>
-											<div className="mt-[3px] text-[15px] text-black/40 leading-5">
+											<div className="truncate text-[16px] text-black/90 leading-6">{row.title}</div>
+											<div className="mt-[3px] text-[14px] text-black/40 leading-5">
 												{d.getMonth() + 1}月{d.getDate()}日 {pad(d.getHours())}:{pad(d.getMinutes())}
 											</div>
 										</div>
 										<div className="ml-3 shrink-0 text-right">
 											<div
-												className={`font-semibold text-[20px] leading-6 ${income ? "text-[#FFB400]" : "text-black/90"}`}
+												className={`font-medium text-[17px] tracking-tight leading-6 ${income ? "text-[#FFB400]" : "text-black/90"}`}
 											>
 												{income ? "+" : "−"}
 												{centsToYuan(Math.abs(row.deltaCents))}
 											</div>
-											<div className="mt-[3px] text-[15px] text-black/40 leading-5">
+											<div className="mt-[3px] text-[14px] text-black/40 leading-5">
 												零钱余额 {centsToYuan(row.balanceCents)}
 											</div>
 										</div>
