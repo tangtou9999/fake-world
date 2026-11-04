@@ -159,7 +159,7 @@ const BalanceRecords = () => {
 				) : (
 					groups.map((group) => (
 						<div key={group.month}>
-							<div className="flex h-[55px] items-center bg-[#F7F7F7] px-[22px] text-[17px] text-black/90">
+							<div className="sticky top-0 z-10 flex h-[55px] items-center bg-[#F7F7F7] px-[22px] text-[17px] text-black/90">
 								{group.month}
 								<Chevron />
 							</div>
