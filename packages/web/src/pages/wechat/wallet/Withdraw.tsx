@@ -178,14 +178,14 @@ const Withdraw = () => {
 			<div className="min-h-0 flex-1 overflow-auto">
 				<button
 					type="button"
-					className="flex w-full items-center bg-transparent px-[31px] py-8 text-left"
+					className="flex w-full items-start bg-transparent px-[31px] py-8 text-left"
 					onClick={() => {
 						setMoreOpen(false);
 						setSheet("bank");
 					}}
 				>
-					<div className="w-[98px] shrink-0 text-[15px] text-black/90">到账银行卡</div>
-					<div className="flex min-w-0 flex-1 items-center">
+					<div className="w-[98px] shrink-0 text-[15px] text-black/90 leading-5">到账银行卡</div>
+					<div className="flex min-w-0 flex-1 items-start">
 						{card ? (
 							<>
 								<BankLogo name={card.bankName} />
@@ -200,7 +200,7 @@ const Withdraw = () => {
 							<div className="text-[16px] text-black/30">请添加银行卡</div>
 						)}
 					</div>
-					<Chevron />
+					<Chevron className="mt-[3px]" />
 				</button>
 
 				<div className="min-h-full rounded-t-[17px] bg-white px-[31px] pt-7">
