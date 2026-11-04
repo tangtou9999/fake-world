@@ -192,6 +192,7 @@ button,
 [type='reset'],
 [type='submit'] {
   -webkit-appearance: button; /* 1 */
+  background-color: transparent; /* iOS 默认会给 button 灰色底 */
   background-image: none; /* 2 */
 }
 

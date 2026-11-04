@@ -24,7 +24,7 @@ const Balance = () => {
 				/>
 				<button
 					type="button"
-					className="cursor-pointer text-[17px]"
+					className="cursor-pointer bg-transparent p-0 text-[17px]"
 					onClick={() => navigate("/wechat/wallet/balance/records")}
 				>
 					{t("wechatPage.wallet.balancePage.transactions")}

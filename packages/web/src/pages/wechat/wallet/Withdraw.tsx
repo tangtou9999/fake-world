@@ -27,10 +27,10 @@ function CloseIcon() {
 
 function MoreIcon() {
 	return (
-		<svg width="22" height="6" viewBox="0 0 22 6" aria-hidden="true">
-			<circle cx="3" cy="3" r="1.6" />
-			<circle cx="11" cy="3" r="1.6" />
-			<circle cx="19" cy="3" r="1.6" />
+		<svg width="18" height="5" viewBox="0 0 22 6" aria-hidden="true">
+			<circle cx="3" cy="3" r="2.2" />
+			<circle cx="11" cy="3" r="2.2" />
+			<circle cx="19" cy="3" r="2.2" />
 		</svg>
 	);
 }
@@ -148,7 +148,7 @@ const Withdraw = () => {
 				<button
 					type="button"
 					aria-label="关闭"
-					className="flex h-8 w-8 items-center text-black/80"
+					className="ml-1 flex h-8 w-8 items-center text-black/80"
 					onClick={() => navigate("/wechat/wallet/balance")}
 				>
 					<CloseIcon />
@@ -158,7 +158,7 @@ const Withdraw = () => {
 					<button
 						type="button"
 						aria-label="更多"
-						className="flex h-8 w-8 items-center justify-end fill-black/80"
+						className="mr-0.5 flex h-8 w-8 items-center justify-end fill-black/80"
 						onClick={() => setMoreOpen((open) => !open)}
 					>
 						<MoreIcon />
@@ -178,22 +178,22 @@ const Withdraw = () => {
 			<div className="min-h-0 flex-1 overflow-auto">
 				<button
 					type="button"
-					className="flex w-full items-center px-4 py-3 text-left"
+					className="flex w-full items-center bg-transparent px-[31px] py-8 text-left"
 					onClick={() => {
 						setMoreOpen(false);
 						setSheet("bank");
 					}}
 				>
-					<div className="w-[92px] shrink-0 text-[16px] text-black/90">到账银行卡</div>
+					<div className="w-[98px] shrink-0 text-[15px] text-black/90">到账银行卡</div>
 					<div className="flex min-w-0 flex-1 items-center">
 						{card ? (
 							<>
 								<BankLogo name={card.bankName} />
 								<div className="ml-2 min-w-0">
-									<div className="truncate text-[16px] text-black/90 leading-5">
+									<div className="truncate text-[15px] text-black/90 leading-5">
 										{card.bankName}（{card.last4}）
 									</div>
-									<div className="mt-0.5 text-[12px] text-black/30 leading-4">2小时内到账</div>
+									<div className="mt-[7px] text-[15px] text-black/50 leading-4">2小时内到账</div>
 								</div>
 							</>
 						) : (
@@ -203,9 +203,9 @@ const Withdraw = () => {
 					<Chevron />
 				</button>
 
-				<div className="mx-2 rounded-[8px] bg-white px-4 pt-4 pb-1">
-					<div className="text-[15px] text-black/90">提现金额</div>
-					<div className="mt-4 flex items-center" data-testid="withdraw-amount">
+				<div className="min-h-full rounded-t-[17px] bg-white px-[31px] pt-7">
+					<div className="text-[15px] text-black/90 leading-[21px]">提现金额</div>
+					<div className="mt-[13px] flex h-11 items-center" data-testid="withdraw-amount">
 						<span className="mr-1 font-medium text-[32px] leading-none">¥</span>
 						<span
 							className={`font-medium leading-none ${amount.length >= 8 ? "text-[32px]" : "text-[44px]"}`}
@@ -217,12 +217,12 @@ const Withdraw = () => {
 							style={{ animation: "withdraw-caret 1.05s steps(1) infinite" }}
 						/>
 					</div>
-					<div className="mt-3 h-px bg-black/10" />
-					<div className="py-3 text-[14px] text-black/40 leading-5">
+					<div className="mt-[15px] h-px bg-black/10" />
+					<div className="py-[15px] text-[15px] text-black/50 leading-[21px]">
 						当前零钱余额{centsToYuan(balanceCents)}元，
 						<button
 							type="button"
-							className="text-wechatLink-3"
+							className="bg-transparent text-[#576B95]"
 							onClick={() => setAmount(centsToYuan(maxWithdrawCents(balanceCents)))}
 						>
 							全部提现
@@ -231,15 +231,15 @@ const Withdraw = () => {
 					<div className="h-px bg-black/10" />
 					<button
 						type="button"
-						className="flex w-full items-center py-3 text-left"
+						className="flex w-full items-center bg-transparent py-4 text-left"
 						onClick={() => setSheet("coupon")}
 					>
-						<span className="rounded-[3px] bg-[#07C160] px-1 py-px text-[11px] text-white leading-4">
+						<span className="flex h-[23px] w-[31px] items-center justify-center rounded-[3px] bg-[#07C160] text-[10px] text-white">
 							提现券
 						</span>
-						<span className="ml-2 min-w-0 flex-1">
+						<span className="ml-3 min-w-0 flex-1">
 							<span className="block text-[15px] text-black/90 leading-5">提现服务费减免</span>
-							<span className="mt-0.5 block text-[12px] text-black/30 leading-4">
+							<span className="mt-0.5 block text-[15px] text-black/50 leading-5">
 								领取100提现免费额度
 							</span>
 						</span>
@@ -296,7 +296,7 @@ const Withdraw = () => {
 					type="button"
 					data-key="ok"
 					aria-disabled={!canSubmit}
-					className={`flex items-center justify-center rounded-[5px] font-medium text-[18px] text-white ${canSubmit ? "bg-[#07C160] active:opacity-80" : "bg-[#A6D9B8]"}`}
+					className={`flex items-center justify-center rounded-[5px] font-medium text-[18px] text-white ${canSubmit ? "bg-[#07C160] active:opacity-80" : "bg-[#A2E8C3]"}`}
 					style={{ gridColumn: 4, gridRow: "1 / span 3" }}
 					onClick={() => {
 						if (!canSubmit) return;
