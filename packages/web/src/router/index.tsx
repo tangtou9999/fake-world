@@ -2,6 +2,11 @@ import App from "@/App";
 import Contacts from "@/pages/wechat/contacts";
 import Conversation from "@/pages/wechat/conversation";
 import Discover from "@/pages/wechat/discover";
+import AddFriend from "@/pages/wechat/addFriend/AddFriend";
+import NewFriends from "@/pages/wechat/addFriend/NewFriends";
+import PayBill from "@/pages/wechat/pay/PayBill";
+import PayService from "@/pages/wechat/pay/PayService";
+import ScanPay from "@/pages/wechat/pay/ScanPay";
 import Friend from "@/pages/wechat/friend";
 import WechatIndex from "@/pages/wechat/index";
 import MomentsIndex from "@/pages/wechat/moments";
@@ -59,6 +64,11 @@ export const routes: RouteObject[] = [
 							label: "routerLabel.wechat.cHistory",
 						},
 					},
+					{ path: "add-friend", element: <AddFriend /> },
+					{ path: "new-friends", element: <NewFriends /> },
+					{ path: "scan-pay", element: <ScanPay /> },
+					{ path: "pay-service", element: <PayService /> },
+					{ path: "pay-service/bill/:id", element: <PayBill /> },
 					{
 						path: "conversation/:id/red-packet",
 						element: <RedPacketSend />,

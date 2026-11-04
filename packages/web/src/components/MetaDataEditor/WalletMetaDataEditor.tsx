@@ -44,6 +44,23 @@ const WalletMetaDataEditor = ({ data }: EditorProps<TStateWallet>) => {
 					}
 				/>
 			</Form.Item>
+			<Form.Item<TStateWallet> name="business" label="经营账户余额">
+				<Input
+					addonBefore="¥"
+					suffix={
+						<Button
+							onClick={() => {
+								const v = Number.parseFloat(form.getFieldValue("business"));
+								if (Number.isNaN(v)) return;
+								form.setFieldValue("business", v.toFixed(2));
+								form.submit();
+							}}
+						>
+							格式化金额
+						</Button>
+					}
+				/>
+			</Form.Item>
 			<Form.Item<TStateWallet> name="miniFund" label="零钱通余额">
 				<Input
 					addonBefore="¥"

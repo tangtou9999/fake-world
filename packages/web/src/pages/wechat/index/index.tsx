@@ -6,13 +6,17 @@ import { unreadCountAtom, unreadCountEffect } from "@/stateV2/unreadCount";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import SearchBar from "@/wechatComponents/SearchBar";
 import { useAtom, useAtomValue } from "jotai";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import DialogueList from "./DialogueList";
 import MultipleDeviceLogin from "./MultipleDeviceLogin";
 
 const WechatIndex = () => {
 	const { count } = useAtomValue(unreadCountAtom);
 	const { t } = useTranslation();
+	const navigate = useNavigate();
+	const [menuOpen, setMenuOpen] = useState(false);
 	useToggleNavbarActivated(EBottomNavBars.WECHAT);
 	useAtom(unreadCountEffect);
 
@@ -37,7 +41,9 @@ const WechatIndex = () => {
 						: t("wechatPage.main.title2")}
 				</canBeDetected.span>
 				<div className="flex items-center justify-end">
-					<PlusCircleSVG width={20} height={20} fill="black" className="mr-[2px] cursor-pointer" />
+					<button type="button" aria-label="更多" className="bg-transparent p-0" onClick={() => setMenuOpen((v) => !v)}>
+						<PlusCircleSVG width={20} height={20} fill="black" className="mr-[2px] cursor-pointer" />
+					</button>
 				</div>
 			</div>
 			<div className="flex flex-1 flex-col overflow-y-auto bg-white">
@@ -45,6 +51,32 @@ const WechatIndex = () => {
 				<MultipleDeviceLogin />
 				<DialogueList />
 			</div>
+			{menuOpen && (
+				<div className="fixed inset-0 z-50" onClick={() => setMenuOpen(false)}>
+					<div
+						className="absolute right-3 rounded-[6px] bg-[#4C4C4C] py-1 text-white shadow-lg"
+						style={{ top: "calc(max(0px, env(safe-area-inset-top) - 5px) + 48px)" }}
+					>
+						<div className="absolute -top-[6px] right-[14px] h-3 w-3 rotate-45 bg-[#4C4C4C]" />
+						{(
+							[
+								["发起群聊", ""],
+								["添加朋友", "/wechat/add-friend"],
+								["扫一扫", "/wechat/scan-pay"],
+								["收付款", "/wechat/scan-pay"],
+							] as const
+						).map(([label, to]) => (
+							<div
+								key={label}
+								className="relative flex h-[52px] w-[150px] items-center px-5 text-[16px]"
+								onClick={() => to && navigate(to)}
+							>
+								{label}
+							</div>
+						))}
+					</div>
+				</div>
+			)}
 			<BottomNavbar />
 		</>
 	);

@@ -1,3 +1,4 @@
+import { PAY_ID } from "@/stateV2/payService";
 import MUTED_SVG from "@/assets/muted.svg";
 import Badge from "@/components/Badge";
 import { h } from "@/components/HashAssets";
@@ -79,7 +80,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 				},
 			]}
 			onClick={() => {
-				navigate(`/wechat/conversation/${friendId}`);
+				navigate(friendId === PAY_ID ? "/wechat/pay-service" : `/wechat/conversation/${friendId}`);
 			}}
 			nodeTreeSort
 		>

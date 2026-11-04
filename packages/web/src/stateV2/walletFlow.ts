@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { type MoneyRecord, balanceRecordsAtom } from "./balanceRecords";
 import { getProfileValueSnapshot } from "./profile";
 import { mainStore } from "./store";
+import { notifyPay } from "./payService";
 import { walletAtom } from "./wallet";
 
 export function yuanToCents(input: string): number {
@@ -46,4 +47,42 @@ export function applyMoneyMove(params: {
 		},
 		...prev,
 	]);
+	notifyPay(params.direction === "out" ? `已支付¥${centsToYuan(amountCents)}` : `已收款¥${centsToYuan(amountCents)}`);
+}
+
+/** 扫码支付：零钱够就扣零钱并记明细；不够视为银行卡支付，只出现在微信支付里 */
+export function applyScanPay(params: {
+	merchant: string;
+	amount: string;
+	product?: string;
+	acquirer?: string;
+	cardName?: string;
+}) {
+	const amountCents = yuanToCents(params.amount);
+	if (amountCents <= 0) return null;
+	const wallet = mainStore.get(walletAtom);
+	const balance = yuanToCents(wallet.balance);
+	const viaWallet = amountCents <= balance;
+	const next = viaWallet ? balance - amountCents : balance;
+	if (viaWallet) mainStore.set(walletAtom, { ...wallet, balance: centsToYuan(next) });
+	const id = nanoid(8);
+	mainStore.set(balanceRecordsAtom, (prev) => [
+		{
+			id,
+			kind: "scanPay",
+			direction: "out",
+			peerId: "",
+			peerName: params.merchant,
+			amountCents,
+			balanceAfterCents: next,
+			timestamp: Date.now(),
+			product: params.product,
+			acquirer: params.acquirer,
+			payMethod: viaWallet ? "零钱" : params.cardName || "银行卡",
+			viaCard: !viaWallet,
+		},
+		...prev,
+	]);
+	notifyPay(`已支付¥${centsToYuan(amountCents)}`);
+	return id;
 }

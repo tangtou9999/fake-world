@@ -2,6 +2,7 @@ import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { balanceRecordsAtom } from "@/stateV2/balanceRecords";
 import { bankCardsAtom, selectedBankCardIdAtom } from "@/stateV2/bankCards";
+import { notifyPay } from "@/stateV2/payService";
 import { walletAtom } from "@/stateV2/wallet";
 import { Chevron } from "@/wechatComponents/List";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
@@ -121,6 +122,7 @@ const Withdraw = () => {
 			},
 			...prev,
 		]);
+		notifyPay("零钱提现发起");
 		navigate(`/wechat/wallet/balance/withdraw/result/${id}`, { replace: true });
 	};
 

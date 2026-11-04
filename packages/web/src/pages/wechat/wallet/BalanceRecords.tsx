@@ -62,6 +62,16 @@ const RedPacketIcon = () => (
 	</Circle>
 );
 
+const PurseIcon = () => (
+	<Circle bg="#F6B93B">
+		<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+			<path d="M8 3.500l2 2.500h4l2-2.500z" fill="#fff" />
+			<path d="M9.500 7h5C18.500 9.500 21 13 21 16.500 21 19.800 18.500 21.500 12 21.500S3 19.800 3 16.500C3 13 5.500 9.500 9.500 7z" fill="#fff" />
+			<text x="12" y="18" textAnchor="middle" fontSize="9" fontWeight="700" fill="#F6B93B">¥</text>
+		</svg>
+	</Circle>
+);
+
 const PeerIcon = ({ peerId }: { peerId: string }) => {
 	const avatar = getProfileValueSnapshot(peerId)?.avatarInfo;
 	return (
@@ -74,7 +84,17 @@ const PeerIcon = ({ peerId }: { peerId: string }) => {
 function toRows(records: BalanceRecord[]): Row[] {
 	const rows: Row[] = [];
 	for (const record of records) {
-		if (record.kind === "withdraw") {
+		if (record.kind === "scanPay") {
+			if (record.viaCard) continue;
+			rows.push({
+				key: record.id,
+				title: `扫二维码付款-给${record.peerName}`,
+				timestamp: record.timestamp,
+				deltaCents: -record.amountCents,
+				balanceCents: record.balanceAfterCents,
+				icon: <PurseIcon />,
+			});
+		} else if (record.kind === "withdraw") {
 			const total = record.amountCents + record.feeCents;
 			rows.push({
 				key: `${record.id}-fee`,
