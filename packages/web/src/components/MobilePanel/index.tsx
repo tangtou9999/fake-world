@@ -1,7 +1,9 @@
 import { activatedNodeAtom } from "@/stateV2/detectedNode";
+import { getModeValueSnapshot } from "@/stateV2/mode";
 import { App as AntdApp, Button, Drawer, Tabs } from "antd";
 import { useAtom } from "jotai";
 import { memo, useEffect } from "react";
+import { isMobileOnly } from "react-device-detect";
 import CommonBlock from "../LeftPanel/CommonBlock";
 import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
@@ -9,7 +11,9 @@ import useMode from "../useMode";
 import ChatRecordsEditor from "./ChatRecordsEditor";
 import { mobilePanelAtom } from "./atom";
 
-export const APP_VERSION = "v1.1";
+export const APP_VERSION = "v1.2";
+
+const isPreviewNow = () => getModeValueSnapshot() === "preview";
 
 const floatingBtn =
 	"rounded-full px-4 py-2 text-sm shadow-lg lg:hidden pointer-events-auto active:opacity-80";
@@ -25,6 +29,33 @@ const MobilePanel = () => {
 	const [activatedNode, setActivatedNode] = useAtom(activatedNodeAtom);
 	const { isEdit, setMode } = useMode();
 	const open = panel !== null;
+
+	// 手机上任意页面快速连点三下，进入当前页面的编辑模式
+	const { message } = AntdApp.useApp();
+	useEffect(() => {
+		if (!isMobileOnly) return;
+		let taps: { t: number; x: number; y: number }[] = [];
+		const onClick = (e: MouseEvent) => {
+			const target = e.target as HTMLElement | null;
+			if (!isPreviewNow() || target?.closest("input,textarea,[contenteditable=true],.ant-drawer")) {
+				taps = [];
+				return;
+			}
+			const now = Date.now();
+			taps = [...taps, { t: now, x: e.clientX, y: e.clientY }].filter(
+				(p) => now - p.t < 700 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < 60,
+			);
+			if (taps.length >= 3) {
+				taps = [];
+				e.preventDefault();
+				e.stopPropagation();
+				setMode("edit");
+				message.info("已进入编辑模式：点页面上任意内容就能修改", 2.5);
+			}
+		};
+		document.addEventListener("click", onClick, true);
+		return () => document.removeEventListener("click", onClick, true);
+	}, []);
 
 	// 点选了内容就弹出编辑表单
 	useEffect(() => {
