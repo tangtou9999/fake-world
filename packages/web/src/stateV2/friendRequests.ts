@@ -19,12 +19,17 @@ export const friendRequestsAtom = atomWithStorage<FriendRequest[]>("wechat-frien
 
 const text = (s: string) => [{ type: "paragraph", children: [{ text: s }] }] as never;
 
+const letterAvatar = (name: string) =>
+	`data:image/svg+xml;utf8,${encodeURIComponent(
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#B9BEC6"/><text x="48" y="64" text-anchor="middle" font-size="46" fill="#fff" font-family="sans-serif">${(name.trim()[0] || "?").replace(/[<>&]/g, "")}</text></svg>`,
+	)}`;
+
 function newProfile(p: { nickname: string; wechat: string; avatarInfo: string }): IStateProfile {
 	return {
 		id: `friend-${nanoid(6)}`,
 		nickname: p.nickname,
 		wechat: p.wechat || p.nickname,
-		avatarInfo: p.avatarInfo,
+		avatarInfo: p.avatarInfo || letterAvatar(p.nickname),
 		privacy: "all",
 		momentsPrivacy: "all",
 		thumbnailInfo: [],
