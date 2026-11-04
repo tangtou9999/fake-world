@@ -1,9 +1,11 @@
+import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
 import useMode from "@/components/useMode";
 import {
 	ConversationTypeLabel,
 	EConversationType,
+	type IConversationTypeRedPacket,
 	type IConversationTypeTransfer,
 	type TConversationItem,
 	conversationListAtom,
@@ -46,6 +48,9 @@ const ConversationList = () => {
 			(v) => v.id === conversationItemId,
 		);
 		const { amount, originalSender, role } = item as IConversationTypeTransfer;
+		if (originalSender === "friend") {
+			applyMoneyMove({ kind: "transfer", direction: "in", peerId: conversationId, amount });
+		}
 		setConversationList((prev) =>
 			prev.map((item) =>
 				item.id === conversationItemId
@@ -64,6 +69,17 @@ const ConversationList = () => {
 	const generateRedPacketAcceptedReplyConversation = (
 		conversationItemId: TConversationItem["id"],
 	) => {
+		const packet = getConversationListValueSnapshot(conversationId).find(
+			(v) => v.id === conversationItemId,
+		) as IConversationTypeRedPacket | undefined;
+		if (packet && packet.originalSender === "friend" && packet.redPacketStatus === "awaiting") {
+			applyMoneyMove({
+				kind: "redPacket",
+				direction: "in",
+				peerId: conversationId,
+				amount: packet.amount,
+			});
+		}
 		setConversationList((prev) =>
 			prev.map((item) =>
 				item.id === conversationItemId

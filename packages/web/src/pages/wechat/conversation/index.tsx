@@ -1,9 +1,24 @@
+import { setDialogueListValue } from "@/stateV2/dialogueList";
+import { useEffect } from "react";
+import { useParams } from "react-router-dom";
 import ConversationFooter from "./ConversationFooter";
 import ConversationHeader from "./ConversationHeader";
 import ConversationList from "./ConversationList";
 import { ConversationAPIProvider } from "./context";
 
 const Conversation = () => {
+	const { id } = useParams<{ id: string }>();
+
+	// 点进聊天窗口就算已读：返回首页时未读角标消失
+	useEffect(() => {
+		if (!id) return;
+		setDialogueListValue((prev) =>
+			prev.some((v) => v.friendId === id && v.unreadMarkNumber)
+				? prev.map((v) => (v.friendId === id ? { ...v, unreadMarkNumber: undefined } : v))
+				: prev,
+		);
+	}, [id]);
+
 	return (
 		<ConversationAPIProvider>
 			<ConversationHeader />

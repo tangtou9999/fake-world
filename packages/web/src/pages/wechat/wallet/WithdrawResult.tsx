@@ -24,7 +24,8 @@ function ClockIcon() {
 const WithdrawResult = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useModeNavigate();
-	const record = useAtomValue(balanceRecordsAtom).find((item) => item.id === id);
+	const found = useAtomValue(balanceRecordsAtom).find((item) => item.id === id);
+	const record = found?.kind === "withdraw" ? found : undefined;
 	useScreenTopBg("#fff");
 
 	const done = () => navigate("/wechat/wallet/balance", { replace: true });
