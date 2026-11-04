@@ -15,6 +15,7 @@ const SEEDED_KEY = "fileHelperSeeded";
 export function ensureFileHelper() {
 	try {
 		upgradeV2();
+		upgradeV3();
 		if (localStorage.getItem(SEEDED_KEY)) return;
 		setAllProfilesValue((prev) =>
 			prev.some((v) => v.id === FILE_HELPER_ID) ? prev : [...prev, FILE_HELPER_PROFILE],
@@ -77,4 +78,26 @@ function upgradeV2() {
 		prev.map((v) => (v.friendId === FILE_HELPER_ID ? { ...v, isPinned: true } : v)),
 	);
 	mainStore.set(multipleDeviceLoginAtom, (prev) => ({ ...prev, visible: false }));
+}
+
+/** v3：修正导入数据里超过 24 点的错误时间（如"昨天 28:31"） */
+function upgradeV3() {
+	if (localStorage.getItem("fileHelperV3")) return;
+	localStorage.setItem("fileHelperV3", "1");
+	setDialogueListValue((prev) =>
+		prev.map((v) =>
+			v.lastMessageTime.replace(
+				/(\d{1,2}):(\d{2})/,
+				(whole, h: string, m: string) => (Number(h) > 23 ? `${String(Number(h) - 12).padStart(2, "0")}:${m}` : whole),
+			) === v.lastMessageTime
+				? v
+				: {
+						...v,
+						lastMessageTime: v.lastMessageTime.replace(
+							/(\d{1,2}):(\d{2})/,
+							(whole, h: string, m: string) => (Number(h) > 23 ? `${String(Number(h) - 12).padStart(2, "0")}:${m}` : whole),
+						),
+					},
+		),
+	);
 }
