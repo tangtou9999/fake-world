@@ -50,7 +50,8 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[] } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
-	const models = Array.from(new Set([model || DEFAULT_GEMINI_MODEL, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]));
+	const models = Array.from(new Set([model || DEFAULT_GEMINI_MODEL, "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.5-flash"]));
+	const failures: string[] = [];
 	let last: GeminiError = { message: "未知错误" };
 	for (const m of models) {
 		for (let attempt = 0; attempt < 2; attempt++) {
@@ -61,7 +62,10 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 				if (last.status === 400 || last.status === 403 || last.status === 401) {
 					throw new Error(`密钥或请求有问题（${last.status}）：${last.message}`);
 				}
-				if (last.status === 404) break; // 模型不存在 → 换下一个
+				if (last.status === 404) {
+					failures.push(`${m}：已停用或不存在`);
+					break; // 模型不存在 → 换下一个
+				}
 				if (!last.status || RETRYABLE.has(last.status)) {
 					await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
 					continue;
@@ -70,7 +74,24 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 			}
 		}
 	}
-	throw new Error(`Gemini 暂时不可用（${last.status ?? "网络"}）：${last.message}`);
+	throw new Error(
+		`Gemini 暂时不可用（${last.status ?? "网络"}）。已依次尝试：${models.join("、")}。${failures.length ? `\n${failures.join("；")}` : ""}\n可在上方「模型」处换一个再试，或稍后重试。`,
+	);
+}
+
+/** 查询这个密钥能用的聊天模型名 */
+export async function listGeminiModels(): Promise<string[]> {
+	const { apiKey } = getGeminiConfig();
+	if (!apiKey) throw new Error("请先填写密钥");
+	const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=200", {
+		headers: { "x-goog-api-key": apiKey },
+	});
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+	return (data.models ?? [])
+		.filter((m: { supportedGenerationMethods?: string[] }) => m.supportedGenerationMethods?.includes("generateContent"))
+		.map((m: { name: string }) => m.name.replace(/^models\//, ""))
+		.filter((n: string) => !/tts|image|embedding|live|audio/i.test(n));
 }
 
 /** 从模型返回里取出 JSON（容忍 ```json 包裹） */

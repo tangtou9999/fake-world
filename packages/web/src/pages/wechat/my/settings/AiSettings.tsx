@@ -4,6 +4,7 @@ import { callGemini } from "@/utils/gemini";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { NavBar } from "../../addFriend/Shared";
+import ModelPicker from "./ModelPicker";
 
 const AiSettings = () => {
 	const [config, setConfig] = useAtom(geminiConfigAtom);
@@ -44,17 +45,12 @@ const AiSettings = () => {
 					</button>
 				</div>
 				<div className="px-4 py-2 text-[12px] text-black/40 leading-5">密钥只保存在这台手机的浏览器里，不会上传，也不会写进网站代码。</div>
-				<div className="px-4 pt-2 pb-1 text-[13px] text-black/40">模型名称</div>
-				<div className="bg-white px-4">
-					<input
-						className="w-full bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
-						placeholder={DEFAULT_GEMINI_MODEL}
-						value={config.model}
-						onChange={(e) => setConfig((v) => ({ ...v, model: e.target.value.trim() }))}
-					/>
+				<div className="px-4 pt-2 pb-1 text-[13px] text-black/40">模型</div>
+				<div className="bg-white p-4">
+					<ModelPicker />
 				</div>
 				<div className="px-4 py-2 text-[12px] text-black/40 leading-5">
-					默认 {DEFAULT_GEMINI_MODEL}。遇到「服务器繁忙」会自动换备用模型重试。
+					默认 {DEFAULT_GEMINI_MODEL}。某个模型停用或繁忙时，会自动换备用模型重试。
 				</div>
 				<button
 					type="button"

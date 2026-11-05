@@ -12,6 +12,7 @@ import { getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
 import { callGemini, fileToGeminiImage, parseJsonLoose } from "@/utils/gemini";
+import ModelPicker from "../../my/settings/ModelPicker";
 import { applyParsedItems, parseScreenshots } from "./importScreenshots";
 import { Node } from "slate";
 import { useNavigate } from "react-router-dom";
@@ -183,6 +184,9 @@ ${history || "（暂无）"}
 							</>
 						) : (
 							<>
+								<div className="mb-3 rounded-[8px] bg-[#F7F7F7] p-3">
+									<ModelPicker compact />
+								</div>
 								<div className="mb-3 flex rounded-[8px] bg-black/5 p-[3px] text-[14px]">
 									{(
 										[
