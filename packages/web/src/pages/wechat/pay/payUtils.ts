@@ -26,3 +26,8 @@ export const orderNo = (r: BalanceRecord, prefix = "4200") => {
 
 export const productOf = (r: Exclude<BalanceRecord, { kind: "withdraw" }>) =>
 	r.kind === "redPacket" ? "微信红包" : r.kind === "transfer" ? "转账" : r.product || "商品";
+
+export const fmtDash = (ts: number) => {
+	const d = new Date(ts);
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+};

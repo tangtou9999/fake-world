@@ -40,7 +40,14 @@ const AddFriend = () => {
 			navigate(`/wechat/conversation/${id}`, { replace: true });
 		} else {
 			setRequests((prev) => [
-				{ id: nanoid(6), ...base, greeting: greeting.trim() || `我是${nickname.trim()}`, timestamp: Date.now() },
+				{
+					id: nanoid(6),
+					direction: "in",
+					status: "pending",
+					...base,
+					greeting: greeting.trim() || `我是${nickname.trim()}`,
+					timestamp: Date.now(),
+				},
 				...prev,
 			]);
 			navigate("/wechat/new-friends", { replace: true });

@@ -1,53 +1,69 @@
 import { type BalanceRecord, balanceRecordsAtom } from "@/stateV2/balanceRecords";
 import { setDialogueListValue } from "@/stateV2/dialogueList";
+import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { PAY_ID } from "@/stateV2/payService";
 import { useAtomValue } from "jotai";
 import { type ReactNode, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { centsToYuan } from "../wallet/money";
-import { fmtShort, productOf } from "./payUtils";
+import { fmtDash, fmtShort, productOf } from "./payUtils";
 import useScreenTopBg from "@/components/useScreenTopBg";
 
 type Ev = { key: string; ts: number; node: ReactNode };
 
-const Row = ({ k, v }: { k: string; v: string }) => (
-	<div className="flex py-[3px] text-[15px] leading-6">
-		<div className="w-[92px] shrink-0 text-black/50">{k}</div>
-		<div className="min-w-0 flex-1 text-black/90">{v}</div>
-	</div>
+const Chev = () => (
+	<svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true" className="ml-2 shrink-0">
+		<path d="M1 1l6 6-6 6" stroke="rgba(60,60,67,0.42)" strokeWidth="2" strokeLinecap="round" />
+	</svg>
 );
+
+type CardLink = { label: string; right?: string; onClick?: () => void };
 
 const Card = ({
 	title,
+	label,
 	amount,
 	rows,
-	onDetail,
-	detail = "详情",
+	links = [],
 }: {
 	title: string;
+	label: string;
 	amount: string;
 	rows: [string, string][];
-	onDetail?: () => void;
-	detail?: string;
+	links?: CardLink[];
 }) => (
-	<div className="mx-4 rounded-[6px] bg-white pt-4">
-		<div className="px-4 font-medium text-[17px] text-black/90">{title}</div>
-		<div className="px-4 pt-3 pb-2 font-medium text-[34px] text-black leading-[44px]">{amount}</div>
-		<div className="px-4 pb-3">
+	<div className="mx-[25px] rounded-[6px] bg-white pt-[14px]">
+		<div className="px-[19px] font-medium text-[17px] text-black/90 leading-6">{title}</div>
+		<div className="mt-[14px] text-center text-[15px] text-black/50">{label}</div>
+		<div className="mt-[2px] flex items-baseline justify-center font-medium text-black">
+			<span className="mr-[6px] text-[24px]">¥</span>
+			<span className="text-[42px] leading-[52px]">{amount}</span>
+		</div>
+		<div className="grid gap-x-5 gap-y-[8px] px-[19px] pt-[14px] pb-[22px] text-[15px] leading-[21px]" style={{ gridTemplateColumns: "max-content 1fr" }}>
 			{rows.map(([k, v]) => (
-				<Row key={k} k={k} v={v} />
+				<div key={k} className="contents">
+					<div className="text-black/50">{k}</div>
+					<div className="min-w-0 text-black/90">{v}</div>
+				</div>
 			))}
 		</div>
-		<button
-			type="button"
-			onClick={onDetail}
-			className="flex h-[46px] w-full items-center justify-between border-black/10 border-t px-4 text-[15px] text-black/90"
-		>
-			<span>{detail}</span>
-			<svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
-				<path d="M1 1l6 6-6 6" stroke="rgba(60,60,67,0.42)" strokeWidth="2" strokeLinecap="round" />
-			</svg>
-		</button>
+		{links.length > 0 && (
+			<div className="mx-[19px] border-black/10 border-t">
+				{links.map((l) => (
+					<button
+						key={l.label}
+						type="button"
+						onClick={l.onClick}
+						className="flex h-[43px] w-full items-center border-black/10 border-b text-left text-[16px] text-black/90 last:border-b-0"
+					>
+						<span className="flex-1">{l.label}</span>
+						{l.right && <span className="text-black/45">{l.right}</span>}
+						<Chev />
+					</button>
+				))}
+			</div>
+		)}
+		{links.length === 0 && <div className="h-0" />}
 	</div>
 );
 
@@ -56,19 +72,20 @@ function buildEvents(records: BalanceRecord[], go: (id: string) => void): Ev[] {
 	const now = Date.now();
 	for (const r of records) {
 		if (r.kind === "withdraw") {
+			const bank = `${r.bankName} (${r.last4})`;
 			evs.push({
 				key: `${r.id}-s`,
 				ts: r.timestamp,
 				node: (
 					<Card
 						title="零钱提现发起"
-						amount={`¥${centsToYuan(r.amountCents)}`}
+						label="提现金额"
+						amount={centsToYuan(r.amountCents)}
 						rows={[
-							["提现银行", `${r.bankName}（${r.last4}）`],
-							["手续费", `¥${centsToYuan(r.feeCents)}`],
-							["预计到账", fmtShort(r.arrivalAt)],
+							["提现银行", bank],
+							["提现时间", fmtDash(r.timestamp)],
+							["预计到账时间", fmtDash(r.arrivalAt)],
 						]}
-						onDetail={() => go(r.id)}
 					/>
 				),
 			});
@@ -79,12 +96,18 @@ function buildEvents(records: BalanceRecord[], go: (id: string) => void): Ev[] {
 					node: (
 						<Card
 							title="零钱提现已到账"
-							amount={`¥${centsToYuan(r.amountCents)}`}
+							label="提现金额"
+							amount={centsToYuan(r.amountCents)}
 							rows={[
-								["到账银行卡", `${r.bankName}（${r.last4}）`],
-								["到账时间", fmtShort(r.arrivalAt)],
+								["提现银行", bank],
+								["提现时间", fmtDash(r.timestamp)],
+								["到账时间", fmtDash(r.arrivalAt)],
+								["备注", "如有银行入账结果等疑问，轻触消息可查看详情和联系银行客服等"],
 							]}
-							onDetail={() => go(r.id)}
+							links={[
+								{ label: "查看此银行卡余额" },
+								{ label: "提现笔笔省", right: "领取提现免费券" },
+							]}
 						/>
 					),
 				});
@@ -96,13 +119,15 @@ function buildEvents(records: BalanceRecord[], go: (id: string) => void): Ev[] {
 				node: (
 					<Card
 						title={`使用${r.payMethod || "零钱"}支付`}
-						amount={`¥${centsToYuan(r.amountCents)}`}
+						label="支付金额"
+						amount={centsToYuan(r.amountCents)}
 						rows={[
 							["收款方", r.peerName],
 							["商品", productOf(r)],
 							["支付方式", r.payMethod || "零钱"],
+							["支付时间", fmtDash(r.timestamp)],
 						]}
-						onDetail={() => go(r.id)}
+						links={[{ label: "详情", onClick: () => go(r.id) }]}
 					/>
 				),
 			});
@@ -113,13 +138,15 @@ function buildEvents(records: BalanceRecord[], go: (id: string) => void): Ev[] {
 				node: (
 					<Card
 						title="收款到账"
-						amount={`¥${centsToYuan(r.amountCents)}`}
+						label="收款金额"
+						amount={centsToYuan(r.amountCents)}
 						rows={[
 							["付款方", r.peerName],
 							["类型", productOf(r)],
 							["到账方式", "零钱"],
+							["到账时间", fmtDash(r.timestamp)],
 						]}
-						onDetail={() => go(r.id)}
+						links={[{ label: "详情", onClick: () => go(r.id) }]}
 					/>
 				),
 			});
@@ -137,6 +164,7 @@ const BarItem = ({ children, onClick }: { children: ReactNode; onClick?: () => v
 const PayService = () => {
 	const navigate = useNavigate();
 	const records = useAtomValue(balanceRecordsAtom);
+	const unread = useAtomValue(unreadCountAtom).count;
 	useScreenTopBg("#EDEDED");
 
 	useEffect(() => {
@@ -155,18 +183,28 @@ const PayService = () => {
 				<button
 					type="button"
 					aria-label="返回"
-					className="absolute left-3 flex h-8 w-8 items-center"
+					className="absolute left-3 flex h-8 items-center"
 					onClick={() => navigate("/wechat")}
 				>
 					<svg width="12" height="20" viewBox="0 0 12 20" fill="none" aria-hidden="true">
 						<path d="M10 2L2 10l8 8" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
 					</svg>
+					{unread > 0 && (
+						<span className="ml-2 flex h-[22px] min-w-[22px] items-center justify-center rounded-full bg-black/10 px-1 text-[14px] text-black/70">
+							{unread}
+						</span>
+					)}
 				</button>
 				<div className="font-medium text-[17.5px]">微信支付</div>
-				<div className="absolute right-4 flex gap-[3px]">
-					<i className="h-[4px] w-[4px] rounded-full bg-black" />
-					<i className="h-[4px] w-[4px] rounded-full bg-black" />
-					<i className="h-[4px] w-[4px] rounded-full bg-black" />
+				<div className="absolute right-4 flex items-center gap-5">
+					<svg width="22" height="22" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+						<circle cx="9.500" cy="9.500" r="7" stroke="#000" strokeWidth="1.8" />
+						<path d="M15 15l5 5" stroke="#000" strokeWidth="1.8" strokeLinecap="round" />
+					</svg>
+					<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+						<circle cx="12" cy="12" r="3.200" stroke="#000" strokeWidth="1.8" />
+						<path d="M12 2.500l1.800 2.300 2.800-.6 1 2.700 2.700 1-.6 2.800 2.300 1.800-2.300 1.800.6 2.800-2.700 1-1 2.700-2.800-.6L12 21.500l-1.800-2.300-2.800.6-1-2.700-2.700-1 .6-2.800L2 12l2.300-1.800-.6-2.800 2.700-1 1-2.700 2.800.6z" stroke="#000" strokeWidth="1.600" strokeLinejoin="round" />
+					</svg>
 				</div>
 			</div>
 			<div className="flex min-h-0 flex-1 flex-col justify-end overflow-auto pb-3">
@@ -178,15 +216,18 @@ const PayService = () => {
 					</div>
 				))}
 			</div>
-			<div className="flex h-[56px] shrink-0 items-center border-black/10 border-t bg-[#F7F7F7]">
-				<BarItem>
-					<svg width="26" height="20" viewBox="0 0 26 20" fill="none" aria-hidden="true">
-						<rect x="1" y="2" width="24" height="16" rx="3" stroke="#222" strokeWidth="1.6" />
-						<path d="M5 7h2M9 7h2M13 7h2M17 7h2M21 7h1M7 11h12M5 14.500h16" stroke="#222" strokeWidth="1.5" strokeLinecap="round" />
+			<div className="flex h-[48px] shrink-0 items-stretch border-black/10 border-t bg-[#F7F7F7]">
+				<div className="flex w-[48px] items-center justify-center border-black/10 border-r">
+					<svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+						<circle cx="13" cy="14" r="11" stroke="#222" strokeWidth="1.5" />
+						<path d="M9 2.500l4-2 4 2" stroke="#222" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+						<path d="M7.500 10h1.500M11 10h1.500M14.500 10H16M18 10h1M7.500 13.500H9M11 13.500h1.500M14.500 13.500H16M18 13.500h1M9 17.500h8" stroke="#222" strokeWidth="1.500" strokeLinecap="round" />
 					</svg>
-				</BarItem>
+				</div>
 				<BarItem onClick={() => navigate("/wechat/wallet/balance/records")}>我的账单</BarItem>
+				<div className="my-[6px] w-px bg-black/10" />
 				<BarItem onClick={() => navigate("/wechat/wallet")}>支付服务</BarItem>
+				<div className="my-[6px] w-px bg-black/10" />
 				<BarItem>优惠</BarItem>
 			</div>
 		</div>

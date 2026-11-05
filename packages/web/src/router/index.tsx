@@ -3,6 +3,7 @@ import Contacts from "@/pages/wechat/contacts";
 import Conversation from "@/pages/wechat/conversation";
 import Discover from "@/pages/wechat/discover";
 import AddFriend from "@/pages/wechat/addFriend/AddFriend";
+import RequestDetail from "@/pages/wechat/addFriend/RequestDetail";
 import NewFriends from "@/pages/wechat/addFriend/NewFriends";
 import PayBill from "@/pages/wechat/pay/PayBill";
 import PayService from "@/pages/wechat/pay/PayService";
@@ -66,6 +67,7 @@ export const routes: RouteObject[] = [
 					},
 					{ path: "add-friend", element: <AddFriend /> },
 					{ path: "new-friends", element: <NewFriends /> },
+					{ path: "new-friends/:id", element: <RequestDetail /> },
 					{ path: "scan-pay", element: <ScanPay /> },
 					{ path: "pay-service", element: <PayService /> },
 					{ path: "pay-service/bill/:id", element: <PayBill /> },

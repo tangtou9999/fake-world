@@ -18,7 +18,7 @@ const iconClass = "mr-3 h-10 w-10 shrink-0 rounded";
 const TopMenus = () => {
 	const { t } = useTranslation();
 	const navigate = useNavigate();
-	const pending = useAtomValue(friendRequestsAtom).filter((v) => !v.accepted).length;
+	const pending = useAtomValue(friendRequestsAtom).filter((v) => v.direction === "in" && v.status === "pending").length;
 
 	const imageIcon = (src: string) => (
 		<div

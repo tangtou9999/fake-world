@@ -4,18 +4,61 @@ import atomWithStorage from "./atomWithStorage";
 import { EConversationType, type TConversationItem, setConversationListValue } from "./conversation";
 import { touchDialogue } from "./fileHelper";
 import { type IStateProfile, setAllProfilesValue } from "./profile";
+import { mainStore } from "./store";
 
 export type FriendRequest = {
 	id: string;
+	/** in：别人加我；out：我加别人 */
+	direction: "in" | "out";
+	status: "pending" | "added" | "expired";
 	nickname: string;
 	wechat: string;
+	phone?: string;
 	avatarInfo: string;
 	greeting: string;
-	accepted?: boolean;
 	timestamp: number;
 };
 
-export const friendRequestsAtom = atomWithStorage<FriendRequest[]>("wechat-friend-requests", []);
+const H = 3600 * 1000;
+const av = (path: string) => `${import.meta.env.BASE_URL}imported/${path}`;
+const mk = (
+	id: string,
+	hoursAgo: number,
+	direction: FriendRequest["direction"],
+	status: FriendRequest["status"],
+	nickname: string,
+	greeting: string,
+	avatar: string,
+	phone?: string,
+): FriendRequest => ({
+	id,
+	direction,
+	status,
+	nickname,
+	greeting,
+	phone,
+	wechat: `wxid_${id}`,
+	avatarInfo: av(avatar),
+	timestamp: Date.now() - hoursAgo * H,
+});
+
+const SEED_REQUESTS: FriendRequest[] = [
+	mk("r01", 3, "in", "pending", "王", "我是王", "c010/thumb2.jpg"),
+	mk("r02", 9, "in", "pending", "A0张经理", "你好，看到你发的信息，想了解一下", "c009/thumb1.jpg", "18796969891"),
+	mk("r03", 20, "in", "pending", "Linh Trần", "Xin chào, mình là Linh, bạn của anh Minh", "c013/thumb3.jpg"),
+	mk("r04", 30, "in", "pending", "李想", "我是李想，朋友推荐的", "c010/thumb4.jpg"),
+	mk("r05", 44, "in", "pending", "Hoàng Mai Nail", "Chào anh, em muốn hỏi về dịch vụ ạ", "c014/thumb2.jpg", "0912345678"),
+	mk("r06", 60, "in", "pending", "陈老师", "我是陈老师，之前在群里聊过", "c003/thumb2.jpg"),
+	mk("r07", 70, "in", "pending", "小周", "在吗，加一下", "c012/thumb1.jpg"),
+	mk("r08", 100, "in", "added", "Tuấn 河内", "你好，我是Tuấn", "c009/thumb3.jpg"),
+	mk("r09", 130, "in", "expired", "刘总-新课推荐", "新课推荐：《AI建模+3D打印》限时优惠，欢迎了解", "c015/thumb2.jpg"),
+	mk("r10", 150, "out", "added", "Nguyen Thi Hoa", "我是戴先生", "c016/thumb1.jpg"),
+];
+
+export const friendRequestsAtom = atomWithStorage<FriendRequest[]>(
+	"wechat-friend-requests-v2",
+	SEED_REQUESTS,
+);
 
 const text = (s: string) => [{ type: "paragraph", children: [{ text: s }] }] as never;
 
@@ -50,6 +93,19 @@ export function addFriendByMe(p: {
 	const profile = newProfile(p);
 	setAllProfilesValue((prev) => [...prev, profile]);
 	const now = Date.now();
+	mainStore.set(friendRequestsAtom, (prev) => [
+		{
+			id: nanoid(6),
+			direction: "out",
+			status: "added",
+			nickname: p.nickname,
+			wechat: p.wechat,
+			avatarInfo: profile.avatarInfo,
+			greeting: p.greeting || "我是我",
+			timestamp: now,
+		},
+		...prev,
+	]);
 	const items: TConversationItem[] = [
 		{
 			id: nanoid(8),
@@ -93,6 +149,9 @@ export function acceptFriendRequest(req: FriendRequest) {
 	const profile = newProfile(req);
 	setAllProfilesValue((prev) => [...prev, profile]);
 	const now = Date.now();
+	mainStore.set(friendRequestsAtom, (prev) =>
+		prev.map((v) => (v.id === req.id ? { ...v, status: "added" } : v)),
+	);
 	setConversationListValue(profile.id, [
 		{
 			id: nanoid(8),
