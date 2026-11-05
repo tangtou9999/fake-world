@@ -107,7 +107,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 			onTouchEnd={cancelPress}
 			onTouchMove={cancelPress}
 			onTouchCancel={cancelPress}
-			onContextMenu={(e: React.MouseEvent) => {
+			onContextMenu={(e) => {
 				e.preventDefault();
 				setSheet(true);
 			}}
