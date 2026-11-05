@@ -1,5 +1,5 @@
 const base24 = { width: 24, height: 24, viewBox: "0 0 24 24", fill: "none", strokeWidth: 1.5 } as const;
-const base = { width: 21, height: 21, viewBox: "0 0 64 64", fill: "none", strokeWidth: 3.8, style: { width: 21, height: 21 } } as const;
+const base = { width: 21, height: 21, viewBox: "0 0 64 64", fill: "none", strokeWidth: 3.8, style: { width: 21, height: 21, marginLeft: 0.5 } } as const;
 const line = { strokeLinecap: "round", strokeLinejoin: "round" } as const;
 
 /** 经营账户：店铺雨棚 + 右下角硬币 */
@@ -33,9 +33,9 @@ export const KinCardIcon = () => (
 export const FenfuIcon = () => (
 	<svg {...base} stroke="#07C160" {...line} aria-hidden="true">
 		<circle cx="19.5" cy="44" r="15.4" />
-		<circle cx="33.5" cy="22" r="16" />
+		<circle cx="33.5" cy="22" r="16" fill="#fff" />
 		<circle cx="45.5" cy="41.5" r="16" fill="#fff" />
-		<path d="M36.5 43.5L40.5 48.5L55 39.5" strokeWidth="4" />
+		<path d="M35.2 43.3L38.2 41.3L41 45.5L57.8 37L59 40L42 50.3L40.3 50.3Z" fill="#07C160" strokeWidth="0.8" />
 	</svg>
 );
 
@@ -51,9 +51,9 @@ export const ScoreIcon = () => (
 
 /** 支付设置：齿轮 */
 export const GearIcon = () => (
-	<svg {...base} stroke="#1485EE" {...line} aria-hidden="true">
-		<path d="M27.62 12.32 L28.59 5.21 L36.81 5.21 L37.78 12.32 L43.52 14.7 L49.24 10.35 L55.05 16.16 L50.7 21.88 L53.08 27.62 L60.19 28.59 L60.19 36.81 L53.08 37.78 L50.7 43.52 L55.05 49.24 L49.24 55.05 L43.52 50.7 L37.78 53.08 L36.81 60.19 L28.59 60.19 L27.62 53.08 L21.88 50.7 L16.16 55.05 L10.35 49.24 L14.7 43.52 L12.32 37.78 L5.21 36.81 L5.21 28.59 L12.32 27.62 L14.7 21.88 L10.35 16.16 L16.16 10.35 L21.88 14.7Z" />
-		<circle cx="32.7" cy="32.7" r="10.2" />
+	<svg {...base} stroke="#1485EE" strokeWidth={3.5} {...line} aria-hidden="true">
+		<path d="M28.25 13.41 L28.72 4.38 L36.68 4.38 L37.15 13.41 L43.19 15.91 L49.91 9.86 L55.54 15.49 L49.49 22.21 L51.99 28.25 L61.02 28.72 L61.02 36.68 L51.99 37.15 L49.49 43.19 L55.54 49.91 L49.91 55.54 L43.19 49.49 L37.15 51.99 L36.68 61.02 L28.72 61.02 L28.25 51.99 L22.21 49.49 L15.49 55.54 L9.86 49.91 L15.91 43.19 L13.41 37.15 L4.38 36.68 L4.38 28.72 L13.41 28.25 L15.91 22.21 L9.86 15.49 L15.49 9.86 L22.21 15.91Z" />
+		<circle cx="32.7" cy="32.7" r="10.4" />
 	</svg>
 );
 
@@ -69,8 +69,8 @@ export const IdCardIcon = () => (
 /** 客服中心：对话气泡 + 勾 + 耳机线圈 */
 export const ServiceCenterIcon = () => (
 	<svg {...base} stroke="#07C160" {...line} aria-hidden="true">
-		<path d="M32.5 57L12.3 60.8L13.2 49.5A28 24 0 1 1 59.5 44" />
-		<ellipse cx="46.5" cy="52.5" rx="7.8" ry="4" transform="rotate(-25 46.5 52.5)" />
-		<path d="M22 34L28.5 40L43.5 24.5" strokeLinecap="butt" strokeLinejoin="miter" />
+		<path d="M31 52.500L11.500 58L12.700 46.500A27 21.800 0 1 1 52.500 43" />
+		<ellipse cx="45.300" cy="49.800" rx="6.600" ry="4.300" transform="rotate(-30 45.300 49.800)" />
+		<path d="M21 33L28.500 40.500L44.500 24" strokeWidth="4.2" strokeLinecap="butt" strokeLinejoin="miter" />
 	</svg>
 );
