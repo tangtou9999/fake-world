@@ -27,7 +27,7 @@ const AiSettings = () => {
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-[#EDEDED]">
-			<NavBar title="AI 助手（Gemini）" />
+			<NavBar title="Gemini 密钥" />
 			<div className="min-h-0 flex-1 overflow-auto pb-10">
 				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">API 密钥</div>
 				<div className="flex items-center bg-white px-4">
@@ -70,7 +70,7 @@ const AiSettings = () => {
 					</div>
 				)}
 				<div className="mt-6 px-4 text-[12px] text-black/40 leading-5">
-					用法：快速点屏幕 3 下进入编辑模式 → 打开任意聊天 → 底部「AI 生成」。
+					用法详见上一页「AI 助手」的介绍。
 				</div>
 			</div>
 		</div>

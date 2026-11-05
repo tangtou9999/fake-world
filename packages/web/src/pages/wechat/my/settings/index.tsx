@@ -105,7 +105,7 @@ const Settings = () => {
 						onClick={() => navigate("/wechat/my/settings/ai")}
 						extra={<span className={grey}>{gemini.apiKey ? "已配置" : "未配置"}</span>}
 					>
-						AI 助手（Gemini）
+						AI 助手
 					</List.Item>
 				</List>
 				<List className="mt-2">

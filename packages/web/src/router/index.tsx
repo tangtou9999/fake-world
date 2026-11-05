@@ -5,6 +5,7 @@ import Discover from "@/pages/wechat/discover";
 import AddFriend from "@/pages/wechat/addFriend/AddFriend";
 import RequestDetail from "@/pages/wechat/addFriend/RequestDetail";
 import NewFriends from "@/pages/wechat/addFriend/NewFriends";
+import AiIntro from "@/pages/wechat/my/settings/AiIntro";
 import AiSettings from "@/pages/wechat/my/settings/AiSettings";
 import PayBill from "@/pages/wechat/pay/PayBill";
 import PayService from "@/pages/wechat/pay/PayService";
@@ -113,6 +114,13 @@ export const routes: RouteObject[] = [
 							},
 							{
 								path: "settings/ai",
+								element: <AiIntro />,
+								handle: {
+									label: "routerLabel.wechat.settings",
+								},
+							},
+							{
+								path: "settings/ai/key",
 								element: <AiSettings />,
 								handle: {
 									label: "routerLabel.wechat.settings",

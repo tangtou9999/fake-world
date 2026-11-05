@@ -153,7 +153,7 @@ ${history || "（暂无）"}
 						{!gemini.apiKey ? (
 							<>
 								<div className="mb-4 text-[14px] text-black/60 leading-6">还没有填 Gemini 密钥，请先到「我 → 设置 → AI 助手」填写。</div>
-								<button type="button" onClick={() => navigate("/wechat/my/settings/ai")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">
+								<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">
 									去填写密钥
 								</button>
 							</>
