@@ -32,10 +32,10 @@ export const KinCardIcon = () => (
 /** 分付：三个叠放的圆 + 勾 */
 export const FenfuIcon = () => (
 	<svg {...base} stroke="#07C160" {...line} aria-hidden="true">
-		<circle cx="19.5" cy="44" r="15.4" />
-		<circle cx="33.5" cy="22" r="16" fill="#fff" />
-		<circle cx="45.5" cy="41.5" r="16" fill="#fff" />
-		<path d="M35.2 43.3L38.2 41.3L41 45.5L57.8 37L59 40L42 50.3L40.3 50.3Z" fill="#07C160" strokeWidth="0.8" />
+		<circle cx="19.3" cy="44" r="15.5" />
+		<circle cx="33.4" cy="22.6" r="15.9" fill="#fff" />
+		<circle cx="45" cy="43" r="16.3" fill="#fff" />
+		<path d="M35.3 41L40 44.4L58.7 37.7L58.7 40.3L39.6 50Z" fill="#07C160" strokeWidth="1.8" />
 	</svg>
 );
 
@@ -52,7 +52,7 @@ export const ScoreIcon = () => (
 /** 支付设置：齿轮 */
 export const GearIcon = () => (
 	<svg {...base} stroke="#1485EE" strokeWidth={3.5} {...line} aria-hidden="true">
-		<path d="M28.58 13.33 L29.31 4.3 L36.09 4.3 L36.82 13.33 L43.48 16.09 L50.39 10.22 L55.18 15.01 L49.31 21.92 L52.07 28.58 L61.1 29.31 L61.1 36.09 L52.07 36.82 L49.31 43.48 L55.18 50.39 L50.39 55.18 L43.48 49.31 L36.82 52.07 L36.09 61.1 L29.31 61.1 L28.58 52.07 L21.92 49.31 L15.01 55.18 L10.22 50.39 L16.09 43.48 L13.33 36.82 L4.3 36.09 L4.3 29.31 L13.33 28.58 L16.09 21.92 L10.22 15.01 L15.01 10.22 L21.92 16.09Z" />
+		<path d="M27.91 11.95 L29.43 5.29 L35.97 5.29 L37.49 11.95 L43.99 14.64 L49.77 11.01 L54.39 15.63 L50.76 21.41 L53.45 27.91 L60.11 29.43 L60.11 35.97 L53.45 37.49 L50.76 43.99 L54.39 49.77 L49.77 54.39 L43.99 50.76 L37.49 53.45 L35.97 60.11 L29.43 60.11 L27.91 53.45 L21.41 50.76 L15.63 54.39 L11.01 49.77 L14.64 43.99 L11.95 37.49 L5.29 35.97 L5.29 29.43 L11.95 27.91 L14.64 21.41 L11.01 15.63 L15.63 11.01 L21.41 14.64Z" />
 		<circle cx="32.7" cy="32.7" r="10.4" />
 	</svg>
 );
@@ -69,8 +69,8 @@ export const IdCardIcon = () => (
 /** 客服中心：对话气泡 + 勾 + 耳机线圈 */
 export const ServiceCenterIcon = () => (
 	<svg {...base} stroke="#07C160" {...line} aria-hidden="true">
-		<path d="M31 52.500L11.500 58L12.700 46.500A27 24 0 1 1 52.500 43" />
-		<ellipse cx="44.800" cy="50.300" rx="7.600" ry="4.600" transform="rotate(-30 44.800 50.300)" />
-		<path d="M21 33L28.500 40.500L44.500 24" strokeWidth="4.2" strokeLinecap="butt" strokeLinejoin="miter" />
+		<path d="M32 55L23.7 52.4L13 59.8L15.2 49.5C9 44.5 4.9 38 4.9 29.5C4.9 17 17 7.4 32.7 7.4C48.5 7.4 60.5 16 60.5 28C60.5 35 58.5 41 56.6 46" />
+		<ellipse cx="47.3" cy="52.3" rx="7.5" ry="3.5" transform="rotate(-28 47.3 52.3)" />
+		<path d="M22.5 34L28.3 39.8L42.5 25" strokeWidth="3.4" strokeLinecap="butt" strokeLinejoin="miter" />
 	</svg>
 );
