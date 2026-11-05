@@ -12,6 +12,7 @@ import { getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
 import { callGemini, fileToGeminiImage, parseJsonLoose } from "@/utils/gemini";
+import ModelPicker from "../../my/settings/ModelPicker";
 import { applyParsedItems, parseScreenshots } from "./importScreenshots";
 import { Node } from "slate";
 import { useNavigate } from "react-router-dom";
@@ -194,6 +195,10 @@ ${history || "（暂无）"}
 											{label}
 										</button>
 									))}
+								</div>
+								<div className="mb-3">
+									<div className="mb-1 text-[12px] text-black/50">当前模型（点一下切换）</div>
+									<ModelPicker />
 								</div>
 								{aiTab === "shots" ? (
 									<>

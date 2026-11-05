@@ -1,6 +1,7 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { DEFAULT_GEMINI_MODEL, geminiConfigAtom } from "@/stateV2/gemini";
-import { callGemini } from "@/utils/gemini";
+import { callGemini, listGeminiModels } from "@/utils/gemini";
+import ModelPicker from "./ModelPicker";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { NavBar } from "../../addFriend/Shared";
@@ -9,8 +10,19 @@ const AiSettings = () => {
 	const [config, setConfig] = useAtom(geminiConfigAtom);
 	const [show, setShow] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [models, setModels] = useState<string[]>([]);
+	const [listErr, setListErr] = useState("");
 	const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 	useScreenTopBg("#EDEDED");
+
+	const loadModels = async () => {
+		setListErr("");
+		try {
+			setModels(await listGeminiModels());
+		} catch (e) {
+			setListErr(e instanceof Error ? e.message : String(e));
+		}
+	};
 
 	const test = async () => {
 		setBusy(true);
@@ -53,8 +65,19 @@ const AiSettings = () => {
 						onChange={(e) => setConfig((v) => ({ ...v, model: e.target.value.trim() }))}
 					/>
 				</div>
+				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">点一下切换常用模型</div>
+				<div className="px-4">
+					<ModelPicker extra={models} />
+				</div>
+				<div className="px-4 pt-3">
+					<button type="button" onClick={loadModels} disabled={!config.apiKey} className="text-[14px] text-[#576B95] disabled:opacity-40">
+						获取我的密钥能用的全部模型
+					</button>
+					{listErr && <div className="mt-1 text-[12px] text-[#C62828]">{listErr}</div>}
+					{models.length > 0 && <div className="mt-1 text-[12px] text-black/40">已列出 {models.length} 个，点上面的名字就能切换。</div>}
+				</div>
 				<div className="px-4 py-2 text-[12px] text-black/40 leading-5">
-					默认 {DEFAULT_GEMINI_MODEL}。遇到「服务器繁忙」会自动换备用模型重试。
+					默认 {DEFAULT_GEMINI_MODEL}。如果某个模型被谷歌停用（提示 404），在这里换一个就行；遇到「服务器繁忙」会自动换备用模型重试。
 				</div>
 				<button
 					type="button"

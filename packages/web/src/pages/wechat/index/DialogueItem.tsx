@@ -11,7 +11,7 @@ import { profileAtom } from "@/stateV2/profile";
 import { Modal } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { RESET } from "jotai/utils";
-import { memo } from "react";
+import { memo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 import styles from "./style.module.scss";
@@ -20,6 +20,39 @@ type Props = {
 	itemId: IDialogueItem["id"];
 	className?: string;
 };
+
+const LongPressSheet = ({
+	pinned,
+	unread,
+	onPin,
+	onUnread,
+	onDelete,
+	onClose,
+}: {
+	pinned: boolean;
+	unread: boolean;
+	onPin: () => void;
+	onUnread: () => void;
+	onDelete: () => void;
+	onClose: () => void;
+}) => (
+	<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onTouchStart={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); onClose(); }}>
+		<div className="rounded-t-[12px] bg-[#F7F7F7] pb-[calc(8px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+			{[
+				[pinned ? "取消置顶" : "置顶该聊天", onPin, "text-black/90"],
+				[unread ? "标为已读" : "标为未读", onUnread, "text-black/90"],
+				["删除该聊天", onDelete, "text-[#FA5151]"],
+			].map(([label, fn, color]) => (
+				<button key={label as string} type="button" onClick={() => { (fn as () => void)(); onClose(); }} className={`block h-[56px] w-full border-black/10 border-b bg-white text-[17px] ${color}`}>
+					{label as string}
+				</button>
+			))}
+			<button type="button" onClick={onClose} className="mt-2 block h-[56px] w-full bg-white text-[17px]">
+				取消
+			</button>
+		</div>
+	</div>
+);
 
 const DialogueItem = ({ itemId, className }: Props) => {
 	const {
@@ -37,6 +70,19 @@ const DialogueItem = ({ itemId, className }: Props) => {
 	const setConversationList = useSetAtom(conversationListAtom(friendId));
 	const setDialogueList = useSetAtom(dialogueListAtom);
 	const navigate = useNavigate();
+	const setItem = useSetAtom(dialogueItemAtom(itemId));
+	const [sheet, setSheet] = useState(false);
+	const pressTimer = useRef<number>();
+	const longPressed = useRef(false);
+	const startPress = () => {
+		longPressed.current = false;
+		window.clearTimeout(pressTimer.current);
+		pressTimer.current = window.setTimeout(() => {
+			longPressed.current = true;
+			setSheet(true);
+		}, 500);
+	};
+	const cancelPress = () => window.clearTimeout(pressTimer.current);
 
 	const { nickname, avatarInfo, remark } = friendProfile;
 
@@ -79,11 +125,32 @@ const DialogueItem = ({ itemId, className }: Props) => {
 					treeItemDisplayName: (data) => `对话项目（${data.nickname}）`,
 				},
 			]}
+			onTouchStart={startPress}
+			onTouchEnd={cancelPress}
+			onTouchMove={cancelPress}
+			onTouchCancel={cancelPress}
+			onContextMenu={(e: React.MouseEvent) => {
+				e.preventDefault();
+			}}
 			onClick={() => {
+				if (longPressed.current) {
+					longPressed.current = false;
+					return;
+				}
 				navigate(friendId === PAY_ID ? "/wechat/pay-service" : `/wechat/conversation/${friendId}`);
 			}}
 			nodeTreeSort
 		>
+			{sheet && (
+				<LongPressSheet
+					pinned={!!isPinned}
+					unread={!!unreadMarkNumber}
+					onPin={() => setItem((prev) => ({ ...prev, isPinned: !prev.isPinned }))}
+					onUnread={() => setItem((prev) => ({ ...prev, unreadMarkNumber: prev.unreadMarkNumber ? undefined : 1 }))}
+					onDelete={handleOperationDelete}
+					onClose={() => setSheet(false)}
+				/>
+			)}
 			<Badge type={unreadDisplayType} text={unreadMarkNumber} hidden={badgeHide}>
 				<h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />
 			</Badge>
