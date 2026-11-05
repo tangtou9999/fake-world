@@ -14,3 +14,5 @@ img {
   color: rgba(0, 0, 0, 0.9);
   -webkit-font-smoothing: antialiased;
 }
+
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}

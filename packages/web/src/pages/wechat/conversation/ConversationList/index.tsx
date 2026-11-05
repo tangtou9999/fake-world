@@ -90,6 +90,40 @@ const ConversationList = () => {
 		sendRedPacketAcceptedReply(conversationItemId);
 	};
 
+	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
+	const handleTap = (item: TConversationItem) => {
+		if (isEdit) return;
+		const isPacket = item.type === EConversationType.redPacket && item.redPacketStatus === "awaiting";
+		const isTransfer = item.type === EConversationType.transfer && item.transferStatus === "awaiting";
+		if (!isPacket && !isTransfer) return;
+		const run = () =>
+			isPacket
+				? generateRedPacketAcceptedReplyConversation(item.id)
+				: generateTransferReplyConversation(item.id);
+		const label = isPacket ? "红包" : "转账";
+		if ((item as IConversationTypeRedPacket).originalSender === "friend") {
+			Modal.confirm({
+				title: isPacket ? "领取红包？" : "确认收款？",
+				content: `金额 ¥${(item as IConversationTypeRedPacket).amount} 将存入零钱`,
+				okText: isPacket ? "开" : "确认收款",
+				cancelText: "取消",
+				centered: true,
+				onOk: run,
+			});
+		} else {
+			Modal.confirm({
+				title: `模拟对方领取${label}？`,
+				content: isPacket
+					? "红包会变成「已被领取」，聊天里出现「xx领取了你的红包」"
+					: "转账会变成「已被接收」",
+				okText: "对方已领取",
+				cancelText: "取消",
+				centered: true,
+				onOk: run,
+			});
+		}
+	};
+
 	return (
 		<canBeDetected.div
 			className="flex flex-1 flex-col-reverse overflow-auto bg-[#EDEDED] p-3"
@@ -183,7 +217,9 @@ const ConversationList = () => {
 							nodeTreeSort
 							data-conversation-id={item.id}
 						>
-							<ConversationItem data={item} />
+							<div onClick={() => handleTap(item)}>
+								<ConversationItem data={item} />
+							</div>
 						</canBeDetected.div>
 					);
 				})}

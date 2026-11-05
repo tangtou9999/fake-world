@@ -8,6 +8,7 @@ import BottomPopup from "./BottomPopup";
 import EmojiPanel from "./EmojiPanel";
 import Input from "./Input";
 import MorePanel from "./MorePanel";
+import RoleBar from "./RoleBar";
 
 type Panel = "emoji" | "more" | null;
 
@@ -21,9 +22,12 @@ const ConversationFooter = () => {
 
 	return (
 		<div className="flex flex-col">
+			<div className="border-black/10 border-t">
+				<RoleBar />
+			</div>
 			<div
 				className={twJoin(
-					"flex flex-col border-black/10 border-t bg-[#F7F7F7] px-2 pt-2",
+					"flex flex-col bg-[#F7F7F7] px-2 pt-2",
 					panel ? "pb-2" : "pb-[calc(8px+env(safe-area-inset-bottom))]",
 				)}
 			>
