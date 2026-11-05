@@ -11,7 +11,8 @@ import { touchDialogue } from "@/stateV2/fileHelper";
 import { getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
-import { callGemini, parseJsonLoose } from "@/utils/gemini";
+import { callGemini, fileToGeminiImage, parseJsonLoose } from "@/utils/gemini";
+import { applyParsedItems, parseScreenshots } from "./importScreenshots";
 import { Node } from "slate";
 import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
@@ -37,6 +38,10 @@ const RoleBar = () => {
 	const [count, setCount] = useState("10");
 	const [aiBusy, setAiBusy] = useState(false);
 	const [aiErr, setAiErr] = useState("");
+	const [aiTab, setAiTab] = useState<"scene" | "shots">("scene");
+	const [shots, setShots] = useState<File[]>([]);
+	const [replace, setReplace] = useState(false);
+	const [aiDone, setAiDone] = useState("");
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -48,6 +53,25 @@ const RoleBar = () => {
 			{label}
 		</button>
 	);
+
+	const importShots = async () => {
+		if (shots.length === 0) return;
+		setAiBusy(true);
+		setAiErr("");
+		setAiDone("");
+		try {
+			const images = await Promise.all(shots.map((f) => fileToGeminiImage(f)));
+			const list = await parseScreenshots(images);
+			const n = applyParsedItems(conversationId, list, replace);
+			setAiDone(`已复刻 ${n} 条消息${replace ? "（已替换原聊天）" : "（已追加到聊天末尾）"}`);
+			setShots([]);
+			scrollConversationListToBtm();
+		} catch (e) {
+			setAiErr(e instanceof Error ? e.message : String(e));
+		} finally {
+			setAiBusy(false);
+		}
+	};
 
 	const generate = async () => {
 		setAiBusy(true);
@@ -159,6 +183,44 @@ ${history || "（暂无）"}
 							</>
 						) : (
 							<>
+								<div className="mb-3 flex rounded-[8px] bg-black/5 p-[3px] text-[14px]">
+									{(
+										[
+											["scene", "按场景生成"],
+											["shots", "截图复刻"],
+										] as const
+									).map(([k, label]) => (
+										<button key={k} type="button" onClick={() => { setAiTab(k); setAiErr(""); setAiDone(""); }} className={`h-8 flex-1 rounded-[6px] ${aiTab === k ? "bg-white font-medium shadow-sm" : "text-black/60"}`}>
+											{label}
+										</button>
+									))}
+								</div>
+								{aiTab === "shots" ? (
+									<>
+										<div className="mb-2 text-[12px] text-black/50 leading-5">
+											从相册选多张聊天截图（按时间从早到晚选），AI 会按左右气泡、时间、红包、转账原样复刻到当前聊天。图片、表情、视频无法复刻，会变成「[图片]」这样的文字。
+										</div>
+										<label className="flex h-[88px] cursor-pointer flex-col items-center justify-center rounded-[8px] border border-black/20 border-dashed text-[14px] text-black/60">
+											{shots.length ? `已选 ${shots.length} 张，点此重新选择` : "点此从相册选择截图（可多选）"}
+											<input type="file" accept="image/*" multiple hidden onChange={(e) => { setShots(Array.from(e.target.files ?? []).slice(0, 12)); setAiDone(""); e.target.value = ""; }} />
+										</label>
+										<div className="mt-3 flex gap-4 text-[14px]">
+											<label className="flex items-center gap-1"><input type="radio" checked={!replace} onChange={() => setReplace(false)} />追加到末尾</label>
+											<label className="flex items-center gap-1"><input type="radio" checked={replace} onChange={() => setReplace(true)} />清空后替换</label>
+										</div>
+										{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}</div>}
+										{aiDone && <div className="mt-3 rounded-[6px] bg-[#E6F6EC] p-2 text-[13px] text-[#0a7a3c] leading-5">{aiDone}</div>}
+										<div className="mt-3 flex gap-3">
+											<button type="button" disabled={aiBusy} onClick={() => setAiOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">
+												{aiDone ? "完成" : "取消"}
+											</button>
+											<button type="button" disabled={aiBusy || shots.length === 0} onClick={importShots} className="h-[44px] flex-1 rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-50">
+												{aiBusy ? "识别中…" : "识别并复刻"}
+											</button>
+										</div>
+									</>
+								) : (
+								<>
 								<div className="mb-2 text-[12px] text-black/50 leading-5">
 									会参考对方的资料和最近的聊天。生成后先放进「批量输入」里，你可以改完再发送。
 								</div>
@@ -186,6 +248,8 @@ ${history || "（暂无）"}
 										{aiBusy ? "生成中…" : "生成"}
 									</button>
 								</div>
+								</>
+								)}
 							</>
 						)}
 					</div>

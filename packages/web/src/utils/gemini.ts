@@ -6,12 +6,25 @@ type GeminiError = { status?: number; message: string };
 
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
-async function callOnce(model: string, apiKey: string, prompt: string, json: boolean) {
+export type GeminiImage = { mime: string; data: string };
+
+async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = []) {
 	const res = await fetch(`${BASE}/${model}:generateContent`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
 		body: JSON.stringify({
-			contents: [{ role: "user", parts: [{ text: prompt }] }],
+			contents: [
+				{
+					role: "user",
+					parts: [
+						...images.flatMap((img, i) => [
+							{ text: `第 ${i + 1} 张截图：` },
+							{ inline_data: { mime_type: img.mime, data: img.data } },
+						]),
+						{ text: prompt },
+					],
+				},
+			],
 			generationConfig: {
 				temperature: 1,
 				...(json ? { responseMimeType: "application/json" } : {}),
@@ -34,7 +47,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-export async function callGemini(prompt: string, options: { json?: boolean } = {}) {
+export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[] } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
 	const models = Array.from(new Set([model || DEFAULT_GEMINI_MODEL, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]));
@@ -42,7 +55,7 @@ export async function callGemini(prompt: string, options: { json?: boolean } = {
 	for (const m of models) {
 		for (let attempt = 0; attempt < 2; attempt++) {
 			try {
-				return await callOnce(m, apiKey, prompt, !!options.json);
+				return await callOnce(m, apiKey, prompt, !!options.json, options.images);
 			} catch (e) {
 				last = e as GeminiError;
 				if (last.status === 400 || last.status === 403 || last.status === 401) {
@@ -64,4 +77,16 @@ export async function callGemini(prompt: string, options: { json?: boolean } = {
 export function parseJsonLoose<T>(text: string): T {
 	const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 	return JSON.parse(cleaned) as T;
+}
+
+/** 把相册里的图片压缩到最长边 1600px 的 JPEG，再转成 base64（减小请求体积） */
+export async function fileToGeminiImage(file: File, maxSide = 1600): Promise<GeminiImage> {
+	const bitmap = await createImageBitmap(file);
+	const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+	const canvas = document.createElement("canvas");
+	canvas.width = Math.round(bitmap.width * scale);
+	canvas.height = Math.round(bitmap.height * scale);
+	canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+	const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+	return { mime: "image/jpeg", data: dataUrl.split(",")[1] };
 }
