@@ -8,9 +8,15 @@ import {
 	setConversationListValue,
 } from "@/stateV2/conversation";
 import { touchDialogue } from "@/stateV2/fileHelper";
+import { getConversationListValueSnapshot } from "@/stateV2/conversation";
+import { geminiConfigAtom } from "@/stateV2/gemini";
+import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
+import { callGemini, parseJsonLoose } from "@/utils/gemini";
+import { Node } from "slate";
+import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import dayjs from "dayjs";
-import { useAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
@@ -24,6 +30,13 @@ const RoleBar = () => {
 	const [open, setOpen] = useState(false);
 	const [text, setText] = useState("");
 	const { isEdit } = useMode();
+	const navigate = useNavigate();
+	const gemini = useAtomValue(geminiConfigAtom);
+	const [aiOpen, setAiOpen] = useState(false);
+	const [scene, setScene] = useState("");
+	const [count, setCount] = useState("10");
+	const [aiBusy, setAiBusy] = useState(false);
+	const [aiErr, setAiErr] = useState("");
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -35,6 +48,49 @@ const RoleBar = () => {
 			{label}
 		</button>
 	);
+
+	const generate = async () => {
+		setAiBusy(true);
+		setAiErr("");
+		try {
+			const friend = getProfileValueSnapshot(conversationId);
+			const me = getMyProfileValueSnapshot();
+			const history = getConversationListValueSnapshot(conversationId)
+				.filter((v) => v.type === EConversationType.text)
+				.slice(-12)
+				.map((v) => {
+					const t = (v as unknown as { textContent: Parameters<typeof Node.string>[0][] }).textContent
+						.map((n) => Node.string(n))
+						.join("");
+					return `${v.role === "mine" ? "我" : "对方"}：${t}`;
+				})
+				.join("\n");
+			const n = Math.min(Math.max(Number.parseInt(count) || 10, 2), 30);
+			const prompt = `你在为一个微信聊天界面的演示生成对话内容。
+对方：${friend?.remark || friend?.nickname || "朋友"}${friend?.description ? `（${friend.description}）` : ""}${friend?.signature ? `，签名：${friend.signature}` : ""}
+我：${me?.nickname || "我"}
+已有的最近聊天（可能为空，请自然衔接，不要重复）：
+${history || "（暂无）"}
+
+场景要求：${scene || "日常闲聊"}
+
+请生成 ${n} 条左右的微信聊天消息，对话要有来有回，口语化、简短，每条一句话，符合各自身份的语气，不要旁白、不要编号、不要表情描述。
+只输出 JSON 数组，格式：[{"who":"friend","text":"..."},{"who":"me","text":"..."}]，who 只能是 friend（对方）或 me（我）。`;
+			const raw = await callGemini(prompt, { json: true });
+			const list = parseJsonLoose<{ who: string; text: string }[]>(raw);
+			const lines = list
+				.filter((v) => v?.text)
+				.map((v) => `${v.who === "me" ? "我" : "对方"}：${String(v.text).replace(/\n/g, " ")}`);
+			if (lines.length === 0) throw new Error("没有生成出内容，再试一次");
+			setText(lines.join("\n"));
+			setAiOpen(false);
+			setOpen(true);
+		} catch (e) {
+			setAiErr(e instanceof Error ? e.message : String(e));
+		} finally {
+			setAiBusy(false);
+		}
+	};
 
 	const sendAll = () => {
 		let role: TConversationRole = config.sendRole;
@@ -77,12 +133,64 @@ const RoleBar = () => {
 				{roleBtn("friend", "对方")}
 				<button
 					type="button"
+					onClick={() => setAiOpen(true)}
+					className="ml-auto h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]"
+				>
+					AI 生成
+				</button>
+				<button
+					type="button"
 					onClick={() => setOpen(true)}
-					className="ml-auto h-7 rounded-full bg-black/5 px-4 text-[14px] text-black/70"
+					className="h-7 rounded-full bg-black/5 px-3 text-[14px] text-black/70"
 				>
 					批量输入
 				</button>
 			</div>
+			{aiOpen && (
+				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !aiBusy && setAiOpen(false)}>
+					<div className="rounded-t-[12px] bg-white p-4 pb-[calc(16px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+						<div className="mb-2 font-medium text-[16px]">AI 生成聊天记录</div>
+						{!gemini.apiKey ? (
+							<>
+								<div className="mb-4 text-[14px] text-black/60 leading-6">还没有填 Gemini 密钥，请先到「我 → 设置 → AI 助手」填写。</div>
+								<button type="button" onClick={() => navigate("/wechat/my/settings/ai")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">
+									去填写密钥
+								</button>
+							</>
+						) : (
+							<>
+								<div className="mb-2 text-[12px] text-black/50 leading-5">
+									会参考对方的资料和最近的聊天。生成后先放进「批量输入」里，你可以改完再发送。
+								</div>
+								<textarea
+									className="h-[110px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
+									placeholder="描述场景，例如：同事催我交周报，我在拖延，语气半开玩笑"
+									value={scene}
+									onChange={(e) => setScene(e.target.value)}
+								/>
+								<div className="mt-3 flex items-center text-[15px]">
+									<span className="mr-3 text-black/60">条数</span>
+									<input
+										className="h-9 w-[70px] rounded-[6px] bg-[#F5F5F5] px-3 text-center outline-none"
+										inputMode="numeric"
+										value={count}
+										onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))}
+									/>
+								</div>
+								{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}</div>}
+								<div className="mt-3 flex gap-3">
+									<button type="button" disabled={aiBusy} onClick={() => setAiOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">
+										取消
+									</button>
+									<button type="button" disabled={aiBusy} onClick={generate} className="h-[44px] flex-1 rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-50">
+										{aiBusy ? "生成中…" : "生成"}
+									</button>
+								</div>
+							</>
+						)}
+					</div>
+				</div>
+			)}
 			{open && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setOpen(false)}>
 					<div className="rounded-t-[12px] bg-white p-4 pb-[calc(16px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>

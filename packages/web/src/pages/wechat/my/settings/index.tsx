@@ -4,6 +4,7 @@ import useMode from "@/components/useMode";
 import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { bankCardsAtom } from "@/stateV2/bankCards";
+import { geminiConfigAtom } from "@/stateV2/gemini";
 import { myProfileAtom } from "@/stateV2/profile";
 import List from "@/wechatComponents/List";
 import { message } from "antd";
@@ -15,6 +16,7 @@ const Settings = () => {
 	const navigate = useModeNavigate();
 	const cards = useAtomValue(bankCardsAtom);
 	const profile = useAtomValue(myProfileAtom);
+	const gemini = useAtomValue(geminiConfigAtom);
 	const setMobilePanel = useSetAtom(mobilePanelAtom);
 	const { setMode } = useMode();
 	useScreenTopBg("#EDEDED");
@@ -96,6 +98,16 @@ const Settings = () => {
 					</List.Item>
 				</List>
 				<div className="px-4 py-2 text-[12px] text-black/30">仅在本机展示，不会连接银行</div>
+				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">AI</div>
+				<List>
+					<List.Item
+						withJump
+						onClick={() => navigate("/wechat/my/settings/ai")}
+						extra={<span className={grey}>{gemini.apiKey ? "已配置" : "未配置"}</span>}
+					>
+						AI 助手（Gemini）
+					</List.Item>
+				</List>
 				<List className="mt-2">
 					<List.Item
 						withJump
