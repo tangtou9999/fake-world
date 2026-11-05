@@ -13,6 +13,7 @@ import dayjs from "dayjs";
 import { useAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useState } from "react";
+import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
 
 const PREFIX = /^\s*(我|对方|他|她|friend|me)\s*[:：]\s*/i;
@@ -22,7 +23,8 @@ const RoleBar = () => {
 	const [config, setConfig] = useAtom(inputterConfigAtom);
 	const [open, setOpen] = useState(false);
 	const [text, setText] = useState("");
-	if (conversationId === FILE_HELPER_ID) return null;
+	const { isEdit } = useMode();
+	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
 		<button

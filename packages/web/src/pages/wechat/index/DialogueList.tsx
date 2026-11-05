@@ -3,7 +3,7 @@ import useMode from "@/components/useMode";
 import { EMetaDataType, allNodesTreeAtom } from "@/stateV2/detectedNode";
 import { dialogueListAtom, dialogueListEffect } from "@/stateV2/dialogueList";
 import { useAtom, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ReactSortable } from "react-sortablejs";
 import DialogueItem from "./DialogueItem";
 
@@ -12,6 +12,14 @@ const DialogueList = () => {
 	const [dialogueList, setDialogueList] = useAtom(dialogueListAtom);
 	const rebuildTree = useSetAtom(allNodesTreeAtom);
 	useAtom(dialogueListEffect);
+
+	// 置顶的对话永远排在最前面（新对话、手动设置置顶后都会自动归位），背景条也就不会残留在中间
+	useEffect(() => {
+		const pinned = dialogueList.filter((v) => v.isPinned);
+		if (pinned.length === 0) return;
+		const sorted = [...pinned, ...dialogueList.filter((v) => !v.isPinned)];
+		if (sorted.some((v, i) => v !== dialogueList[i])) setDialogueList(sorted);
+	}, [dialogueList, setDialogueList]);
 
 	const mappedSortableListData = useMemo(() => {
 		return dialogueList.map((item) => ({

@@ -217,7 +217,7 @@ const ConversationList = () => {
 							nodeTreeSort
 							data-conversation-id={item.id}
 						>
-							<div onClick={() => handleTap(item)}>
+							<div className="contents" onClick={() => handleTap(item)}>
 								<ConversationItem data={item} />
 							</div>
 						</canBeDetected.div>
