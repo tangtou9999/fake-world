@@ -1,4 +1,4 @@
-import { DEFAULT_GEMINI_MODEL, getGeminiConfig } from "@/stateV2/gemini";
+import { DEFAULT_GEMINI_MODEL, RETIRED_MODELS, getGeminiConfig } from "@/stateV2/gemini";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -50,7 +50,8 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[] } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
-	const models = Array.from(new Set([model || DEFAULT_GEMINI_MODEL, "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite"]));
+	const chosen = !model || RETIRED_MODELS.includes(model) ? DEFAULT_GEMINI_MODEL : model;
+	const models = Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));
 	let last: GeminiError = { message: "未知错误" };
 	for (const m of models) {
 		for (let attempt = 0; attempt < 2; attempt++) {
@@ -70,7 +71,31 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 			}
 		}
 	}
+	// 预设的模型都不行时：向谷歌查询这个密钥当前可用的模型，挑 flash 系列再试一次
+	try {
+		const available = (await listGeminiModels(apiKey)).filter((n) => /flash/.test(n) && !models.includes(n)).slice(0, 3);
+		for (const m of available) {
+			try {
+				return await callOnce(m, apiKey, prompt, !!options.json, options.images);
+			} catch (e) {
+				last = e as GeminiError;
+			}
+		}
+	} catch {
+		// ignore
+	}
 	throw new Error(`Gemini 暂时不可用（${last.status ?? "网络"}）：${last.message}`);
+}
+
+/** 列出这个密钥可用于聊天的模型（只要名字） */
+export async function listGeminiModels(apiKey = getGeminiConfig().apiKey): Promise<string[]> {
+	const res = await fetch(`${BASE}?pageSize=200`, { headers: { "x-goog-api-key": apiKey } });
+	const data = await res.json().catch(() => ({}));
+	if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
+	return (data.models ?? [])
+		.filter((m: { supportedGenerationMethods?: string[]; name: string }) => m.supportedGenerationMethods?.includes("generateContent"))
+		.map((m: { name: string }) => m.name.replace(/^models\//, ""))
+		.filter((n: string) => !/tts|image|embedding|live|audio|robotics|computer/.test(n));
 }
 
 /** 从模型返回里取出 JSON（容忍 ```json 包裹） */

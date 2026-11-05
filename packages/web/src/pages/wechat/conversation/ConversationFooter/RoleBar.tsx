@@ -208,7 +208,7 @@ ${history || "（暂无）"}
 											<label className="flex items-center gap-1"><input type="radio" checked={!replace} onChange={() => setReplace(false)} />追加到末尾</label>
 											<label className="flex items-center gap-1"><input type="radio" checked={replace} onChange={() => setReplace(true)} />清空后替换</label>
 										</div>
-										{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}</div>}
+										{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}<button type="button" className="mt-1 block text-[#576B95]" onClick={() => navigate("/wechat/my/settings/ai/key")}>去换模型 / 改密钥 ›</button></div>}
 										{aiDone && <div className="mt-3 rounded-[6px] bg-[#E6F6EC] p-2 text-[13px] text-[#0a7a3c] leading-5">{aiDone}</div>}
 										<div className="mt-3 flex gap-3">
 											<button type="button" disabled={aiBusy} onClick={() => setAiOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">
@@ -239,7 +239,7 @@ ${history || "（暂无）"}
 										onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))}
 									/>
 								</div>
-								{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}</div>}
+								{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}<button type="button" className="mt-1 block text-[#576B95]" onClick={() => navigate("/wechat/my/settings/ai/key")}>去换模型 / 改密钥 ›</button></div>}
 								<div className="mt-3 flex gap-3">
 									<button type="button" disabled={aiBusy} onClick={() => setAiOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">
 										取消

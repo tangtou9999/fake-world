@@ -11,7 +11,7 @@ import { profileAtom } from "@/stateV2/profile";
 import { Modal } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { RESET } from "jotai/utils";
-import { memo } from "react";
+import { memo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
 import styles from "./style.module.scss";
@@ -39,6 +39,30 @@ const DialogueItem = ({ itemId, className }: Props) => {
 	const navigate = useNavigate();
 
 	const { nickname, avatarInfo, remark } = friendProfile;
+	const [sheet, setSheet] = useState(false);
+	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
+	const pressed = useRef(false);
+	const startPress = () => {
+		pressed.current = false;
+		pressTimer.current = setTimeout(() => {
+			pressed.current = true;
+			setSheet(true);
+		}, 500);
+	};
+	const cancelPress = () => clearTimeout(pressTimer.current);
+
+	/** 置顶 / 取消置顶：置顶的排最前面，取消后放到置顶区的下面 */
+	const togglePin = () => {
+		setDialogueList((prev) => {
+			const updated = prev.map((v) => (v.id === id ? { ...v, isPinned: !v.isPinned } : v));
+			const target = updated.find((v) => v.id === id)!;
+			const rest = updated.filter((v) => v.id !== id);
+			const pinned = rest.filter((v) => v.isPinned);
+			const normal = rest.filter((v) => !v.isPinned);
+			return target.isPinned ? [target, ...pinned, ...normal] : [...pinned, target, ...normal];
+		});
+		setSheet(false);
+	};
 
 	const handleOperationDelete = () => {
 		Modal.confirm({
@@ -79,11 +103,52 @@ const DialogueItem = ({ itemId, className }: Props) => {
 					treeItemDisplayName: (data) => `对话项目（${data.nickname}）`,
 				},
 			]}
+			onTouchStart={startPress}
+			onTouchEnd={cancelPress}
+			onTouchMove={cancelPress}
+			onTouchCancel={cancelPress}
+			onContextMenu={(e: React.MouseEvent) => {
+				e.preventDefault();
+				setSheet(true);
+			}}
 			onClick={() => {
+				if (pressed.current) {
+					pressed.current = false;
+					return;
+				}
 				navigate(friendId === PAY_ID ? "/wechat/pay-service" : `/wechat/conversation/${friendId}`);
 			}}
 			nodeTreeSort
 		>
+			{sheet && (
+				<div
+					className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40"
+					onClick={(e) => {
+						e.stopPropagation();
+						setSheet(false);
+					}}
+				>
+					<div className="overflow-hidden rounded-t-[12px] bg-[#F7F7F7] pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
+						<div className="bg-white py-3 text-center text-[13px] text-black/40">{remark ?? nickname}</div>
+						<button type="button" className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px]" onClick={togglePin}>
+							{isPinned ? "取消置顶" : "置顶聊天"}
+						</button>
+						<button
+							type="button"
+							className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px] text-[#FA5151]"
+							onClick={() => {
+								setSheet(false);
+								handleOperationDelete();
+							}}
+						>
+							删除聊天
+						</button>
+						<button type="button" className="mt-2 block h-[56px] w-full bg-white text-[17px]" onClick={() => setSheet(false)}>
+							取消
+						</button>
+					</div>
+				</div>
+			)}
 			<Badge type={unreadDisplayType} text={unreadMarkNumber} hidden={badgeHide}>
 				<h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />
 			</Badge>
