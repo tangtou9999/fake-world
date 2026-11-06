@@ -8,12 +8,9 @@ import {
 	setConversationListValue,
 } from "@/stateV2/conversation";
 import { touchDialogue } from "@/stateV2/fileHelper";
-import { getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { geminiConfigAtom } from "@/stateV2/gemini";
-import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
-import { callGemini, fileToGeminiImage, parseJsonLoose } from "@/utils/gemini";
+import { fileToGeminiImage } from "@/utils/gemini";
 import { type ParsedItem, applyParsedItems, generateScript, parseScreenshots, previewLine } from "./importScreenshots";
-import { Node } from "slate";
 import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import dayjs from "dayjs";
@@ -35,7 +32,6 @@ const RoleBar = () => {
 	const gemini = useAtomValue(geminiConfigAtom);
 	const [aiOpen, setAiOpen] = useState(false);
 	const [scene, setScene] = useState("");
-	const [count, setCount] = useState("10");
 	const [aiBusy, setAiBusy] = useState(false);
 	const [aiErr, setAiErr] = useState("");
 	const [aiTab, setAiTab] = useState<"scene" | "shots">("scene");
