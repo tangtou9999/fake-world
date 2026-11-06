@@ -8,10 +8,10 @@ type Props = {
 
 const AnchorItem = ({ active, children, className, ...rest }: ComponentProps<"div"> & Props) => {
 	return (
-		<div className="cursor-pointer pr-2 pl-3" {...omit(rest, "key")}>
+		<div className="cursor-pointer pr-[3px] pl-3" {...omit(rest, "key")}>
 			<div
 				className={twJoin(
-					"flex h-[15px] w-[15px] items-center justify-center rounded-full text-[10px] leading-none",
+					"flex h-[16px] w-[16px] items-center justify-center rounded-full text-[11px] leading-none",
 					active && "bg-[#07C160] text-white",
 					className,
 				)}

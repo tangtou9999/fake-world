@@ -32,7 +32,7 @@ const AnchorLabel = forwardRef<HTMLDivElement, Props>(({ labelKey, labelTitle },
 			id={labelKey}
 			data-key={labelKey}
 			ref={ref}
-			className="sticky top-0 z-40 flex h-8 items-center bg-[#EDEDED] px-4 text-[14px] text-black/50"
+			className="sticky top-0 z-40 flex h-[40px] items-end bg-white px-4 pb-[6px] text-[15px] text-black/50"
 		>
 			{renderTitle()}
 		</div>
