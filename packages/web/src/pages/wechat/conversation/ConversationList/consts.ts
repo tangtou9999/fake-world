@@ -35,8 +35,8 @@ export const TRANSFER_TEXT_NOTE_MAP: Record<
 		},
 		friend: {
 			awaiting: "请收款",
-			accepted: "已被接受",
-			rejected: "已被退还",
+			accepted: "已收款",
+			rejected: "已退还",
 			expired: "已过期",
 		},
 	},

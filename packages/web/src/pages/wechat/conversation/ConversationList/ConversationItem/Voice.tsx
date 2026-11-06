@@ -23,7 +23,7 @@ const Voice = ({ senderId, upperText, duration, role, isRead, showStt, stt }: Pr
 				upperText={upperText}
 				innerBlockClassName="w-full group-[.friend]:bg-white group-[.mine]:bg-[#8CE97F] group-[.friend]:before:bg-white group-[.mine]:before:bg-[#8CE97F]"
 				blockStyle={{
-					width: `${duration <= 10 ? 30 + duration * 2.2 : 52}%`,
+					width: `${duration <= 10 ? 33 + duration * 2.2 : 52}%`,
 					maxWidth: "52%",
 				}}
 				extraElement={
@@ -41,7 +41,7 @@ const Voice = ({ senderId, upperText, duration, role, isRead, showStt, stt }: Pr
 						height={28}
 						className={twJoin("self-center", role === "mine" && "rotate-180")}
 					/>
-					<span className="self-center text-sm">{duration}&apos;&apos;</span>
+					<span className="self-center text-sm">{duration}&quot;</span>
 				</div>
 			</CommonBlock>
 			{showStt && !!stt && (

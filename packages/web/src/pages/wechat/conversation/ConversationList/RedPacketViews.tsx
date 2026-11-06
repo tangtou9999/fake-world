@@ -12,7 +12,7 @@ export const RedPacketOpen = ({
 }: Base & { onOpen: () => void; onClose: () => void }) => {
 	const [spin, setSpin] = useState(false);
 	return (
-		<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/55" onClick={onClose}>
+		<div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[rgba(246,246,246,0.82)] backdrop-blur-[2px]" onClick={onClose}>
 			<div
 				className="relative w-[77vw] max-w-[320px] overflow-hidden rounded-[8px] bg-[#E8523F]"
 				style={{ aspectRatio: "0.605" }}
@@ -25,15 +25,15 @@ export const RedPacketOpen = ({
 							<stop offset="1" stopColor="#C8402F" stopOpacity="0" />
 						</linearGradient>
 					</defs>
-					<path d="M0 116 Q50 134 100 116 L100 165 L0 165 Z" fill="#F55641" />
-					<path d="M0 116 Q50 134 100 116 L100 121 Q50 139 0 121 Z" fill="url(#rp-sh)" />
+					<path d="M0 117 Q50 140 100 117 L100 165 L0 165 Z" fill="#F55641" />
+					<path d="M0 117 Q50 140 100 117 L100 122 Q50 145 0 122 Z" fill="url(#rp-sh)" />
 				</svg>
-				<div className="absolute inset-x-0 top-[17%] flex flex-col items-center px-4 text-[#F8D9A0]">
+				<div className="absolute inset-x-0 top-[23%] flex flex-col items-center px-4 text-[#F8D9A0]">
 					<div className="flex items-center gap-2 text-[15px]">
 						<img src={avatar} className="h-[22px] w-[22px] rounded-[3px] object-cover" />
 						<span className="max-w-[200px] truncate">{name}发出的红包</span>
 					</div>
-					<div className="mt-[18px] text-center font-medium text-[21px] leading-[28px]">{note || "恭喜发财，大吉大利"}</div>
+					<div className="mt-[20px] text-center font-medium text-[23px] leading-[28px]">{note || "恭喜发财，大吉大利"}</div>
 				</div>
 				<button
 					type="button"
@@ -70,12 +70,12 @@ export const RedPacketDetail = ({
 	onClose,
 }: Base & { amount: string; onClose: () => void }) => (
 	<div className="fixed inset-0 z-50 flex flex-col bg-white">
-		<div className="relative h-[calc(env(safe-area-inset-top)+96px)] shrink-0">
-			<svg viewBox="0 0 100 20" preserveAspectRatio="none" className="absolute inset-x-0 top-0 h-full w-full" aria-hidden="true">
-				<path d="M0 0H100V12Q50 24 0 12Z" fill="#F45745" />
-				<path d="M0 12Q50 24 100 12" fill="none" stroke="#F8CF73" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
+		<div className="relative h-[33vw] shrink-0">
+			<svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-x-0 top-0 h-full w-full" aria-hidden="true">
+				<path d="M0 0H100V69Q50 131 0 69Z" fill="#F45745" />
+				<path d="M0 69Q50 131 100 69" fill="none" stroke="#F8CF73" strokeWidth="0.35" vectorEffect="non-scaling-stroke" />
 			</svg>
-			<div className="absolute inset-x-0 bottom-[34px] flex items-center justify-between px-4 text-white">
+			<div className="absolute inset-x-0 top-[66px] flex items-center justify-between px-4 text-white">
 				<button type="button" onClick={onClose} aria-label="返回">
 					<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true">
 						<path d="M10 2L2 10l8 8" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -88,14 +88,14 @@ export const RedPacketDetail = ({
 				</svg>
 			</div>
 		</div>
-		<div className="flex flex-col items-center pt-[22px]">
+		<div className="flex flex-col items-center pt-[32px]">
 			<div className="flex items-center gap-2">
 				<img src={avatar} className="h-[24px] w-[24px] rounded-[4px] object-cover" />
 				<span className="max-w-[240px] truncate font-medium text-[20px] text-black/90">{name}发出的红包</span>
 			</div>
 			<div className="mt-2 text-[15px] text-black/30">{note || "恭喜发财，大吉大利"}</div>
 			<div className="mt-5 flex items-baseline text-[#C4A26B]">
-				<span className="font-medium text-[70px] leading-[76px] tracking-tight" style={{ fontFamily: "-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" }}>
+				<span className="font-normal text-[70px] leading-[76px] tracking-tight" style={{ fontFamily: "-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" }}>
 					{Number(amount).toFixed(2)}
 				</span>
 				<span className="ml-1 text-[16px]">元</span>
@@ -106,8 +106,8 @@ export const RedPacketDetail = ({
 					<path d="M1.5 1.5L7 7l-5.5 5.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			</div>
-			<button type="button" onClick={onClose} className="mt-7 flex h-[52px] items-center gap-2 rounded-[6px] bg-[#F7F7F7] px-5 text-[16px] text-[#C4A26B]">
-				<svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+			<button type="button" onClick={onClose} className="mt-7 flex h-[47px] items-center gap-[6px] rounded-[6px] bg-[#F7F7F7] px-4 text-[15px] text-[#C4A26B]">
+				<svg width="22" height="22" viewBox="0 0 26 26" fill="none" aria-hidden="true">
 					<circle cx="13" cy="13" r="11" stroke="currentColor" strokeWidth="1.6" />
 					<circle cx="9.3" cy="10.5" r="1.3" fill="currentColor" />
 					<circle cx="16.7" cy="10.5" r="1.3" fill="currentColor" />

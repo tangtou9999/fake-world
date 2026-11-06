@@ -69,7 +69,7 @@ const Transfer = ({
 					</span>
 					<div className="ml-[9px] flex min-w-0 flex-1 flex-col overflow-hidden">
 						<div className="font-medium text-[17px] leading-[22px]">
-							¥<span className="ml-[1px]">{amount}</span>
+							¥<span className="ml-[1px]">{Number.isFinite(Number(amount)) ? Number(amount).toFixed(2) : amount}</span>
 						</div>
 						<span className="line-clamp-1 text-[13px] leading-4">{getTransferNote()}</span>
 					</div>
