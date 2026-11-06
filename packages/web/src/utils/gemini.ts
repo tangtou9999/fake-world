@@ -9,7 +9,12 @@ const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 export type GeminiImage = { mime: string; data: string };
 
 export type GeminiTurn = { role: "user" | "model"; text: string };
-type Extra = { history?: GeminiTurn[]; system?: string };
+type Extra = { history?: GeminiTurn[]; system?: string; audio?: GeminiImage };
+
+/** 被 Gemini 的内容过滤拦截（不是网络问题，不用重试） */
+export class GeminiBlockedError extends Error {
+	blocked = true;
+}
 
 async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = [], extra: Extra = {}) {
 	const adult = getGeminiConfig().adultMode !== false;
@@ -39,6 +44,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 				{
 					role: "user",
 					parts: [
+						...(extra.audio ? [{ inline_data: { mime_type: extra.audio.mime, data: extra.audio.data } }] : []),
 						...images.flatMap((img, i) => [
 							{ text: `第 ${i + 1} 张截图：` },
 							{ inline_data: { mime_type: img.mime, data: img.data } },
@@ -63,13 +69,17 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	}
 	const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
 	if (!text) {
-		throw { message: data?.promptFeedback?.blockReason ? `内容被 Gemini 拦截（${data?.promptFeedback?.blockReason}），换个说法或模型试试` : "Gemini 没有返回内容" } as GeminiError;
+		const reason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason;
+		if (reason && reason !== "STOP") {
+			throw new GeminiBlockedError(`内容被 Gemini 拦截（${reason}）`);
+		}
+		throw { message: "Gemini 没有返回内容" } as GeminiError;
 	}
 	return text as string;
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string } = {}) {
+export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
 	const chosen = !model || RETIRED_MODELS.includes(model) ? DEFAULT_GEMINI_MODEL : model;
@@ -80,6 +90,7 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 			try {
 				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
+				if (e instanceof GeminiBlockedError) throw e;
 				last = e as GeminiError;
 				if (last.status === 400 || last.status === 403 || last.status === 401) {
 					throw new Error(`密钥或请求有问题（${last.status}）：${last.message}`);
@@ -100,10 +111,12 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 			try {
 				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
+				if (e instanceof GeminiBlockedError) throw e;
 				last = e as GeminiError;
 			}
 		}
-	} catch {
+	} catch (e) {
+		if (e instanceof GeminiBlockedError) throw e;
 		// ignore
 	}
 	throw new Error(`Gemini 暂时不可用（${last.status ?? "网络"}）：${last.message}`);

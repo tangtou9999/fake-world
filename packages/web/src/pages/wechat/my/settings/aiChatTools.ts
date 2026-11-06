@@ -1,0 +1,127 @@
+import { MYSELF_ID } from "@/faker/wechat/user";
+import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
+import { applyParsedItems } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
+import type { AiChatAction } from "@/stateV2/aiChat";
+import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
+import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { parseJsonLoose } from "@/utils/gemini";
+import dayjs from "dayjs";
+import { Node } from "slate";
+
+export type Contact = { id: string; name: string; tokens: string[] };
+
+export const listContacts = (): Contact[] =>
+	getAllProfilesValueSnapshot()
+		.filter((p) => p.id !== MYSELF_ID)
+		.map((p) => {
+			const name = p.remark || p.nickname || p.id;
+			const tokens = Array.from(
+				new Set([p.remark, p.nickname, ...(p.remark ?? "").split(/[-—_（(\s]/)].filter((t): t is string => !!t && t.length >= 2)),
+			);
+			return { id: p.id, name, tokens };
+		});
+
+export const findMentioned = (text: string, contacts: Contact[]) =>
+	contacts.filter((c) => c.tokens.some((t) => text.includes(t)));
+
+const describe = (v: Record<string, any>, name: string) => {
+	const who = v.role === "mine" ? "我" : name;
+	let body: string;
+	switch (v.type) {
+		case EConversationType.text:
+			body = (v.textContent ?? []).map((n: never) => Node.string(n)).join("\n");
+			break;
+		case EConversationType.image:
+			body = "[图片]";
+			break;
+		case EConversationType.video:
+			body = "[视频]";
+			break;
+		case EConversationType.voice:
+			body = `[语音 ${v.duration ?? ""}″${v.stt ? ` 转文字：${v.stt}` : ""}]`;
+			break;
+		case EConversationType.redPacket:
+			body = `[红包 ¥${v.amount} ${v.note ?? ""} 状态：${v.redPacketStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : name}]`;
+			break;
+		case EConversationType.transfer:
+			body = `[转账 ¥${v.amount} ${v.note ?? ""} 状态：${v.transferStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : name}]`;
+			break;
+		case EConversationType.centerText:
+			return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.simpleContent ?? ""}`;
+		default:
+			body = `[${String(v.type)}]`;
+	}
+	return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] ${who}：${body}`;
+};
+
+/** 某个联系人的全部聊天记录（不再只取最近几条）；极端过长时保留最新的部分 */
+export const chatLog = (id: string, name: string, maxLines?: number) => {
+	const all = getConversationListValueSnapshot(id) as unknown as Record<string, any>[];
+	const list = maxLines ? all.slice(-maxLines) : all;
+	let text = list.map((v) => describe(v, name)).join("\n");
+	if (text.length > 200_000) text = `（更早的记录因太长已省略）\n${text.slice(-200_000)}`;
+	return { count: all.length, text };
+};
+
+export const WXCHAT_RULES = (now: string, contactNames: string) => `
+【把内容放进聊天窗口】
+当用户要你为某个联系人生成、续写、改写聊天记录时：先正常回复（简短说明即可），然后在回复的最末尾附一个代码块，格式固定：
+\`\`\`wxchat
+{"target":"联系人名字","mode":"append","items":[{"kind":"text","who":"friend","text":"内容","at":"YYYY-MM-DD HH:mm"}]}
+\`\`\`
+- target 必须是下面联系人列表里的名字（照抄）。
+- mode：append=追加到该聊天末尾；replace=清空后用 items 整个替换。用户说「把某某的聊天改成……」「重写」就用 replace，且 items 要包含修改后的**全部**记录（未改的部分照抄聊天记录原文和原时间）。
+- items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是转文字内容；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds；外语消息可加 translation（中文译文）；每项都要有 at。
+- at 单调递增，不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现；追加时 at 不早于该聊天最后一条的时间。
+- 只有用户明确要求生成/修改聊天内容时才附代码块；普通聊天、咨询不要附。
+- 你能看到被提到的联系人的完整聊天记录，用户可以在任何窗口里让你处理任何联系人。
+当前所有联系人：${contactNames || "（暂无）"}`;
+
+export type Level = 0 | 1 | 2 | 3;
+
+/** 拦截后逐级缩减上下文：0 完整 → 1 少量历史 → 2 只带每个聊天的最近 40 条且不带历史 → 3 什么都不带 */
+export const buildSystem = (
+	base: string,
+	level: Level,
+	contacts: Contact[],
+	ctxIds: string[],
+) => {
+	const now = dayjs().format("YYYY-MM-DD HH:mm dddd");
+	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
+	let s = `${base}\n${WXCHAT_RULES(now, names)}`;
+	if (level >= 3) return s;
+	for (const id of ctxIds) {
+		const c = contacts.find((x) => x.id === id);
+		if (!c) continue;
+		const log = chatLog(id, c.name, level === 2 ? 40 : undefined);
+		s += `\n\n【与「${c.name}」的${level === 2 ? "最近" : "完整"}聊天记录（共 ${log.count} 条，格式：[时间] 说话人：内容）】\n${log.text || "（还没有消息）"}`;
+	}
+	return s;
+};
+
+export const parseAction = (raw: string): { text: string; action?: AiChatAction } => {
+	const m = raw.match(/```wxchat\s*([\s\S]*?)```/);
+	const text = raw.replace(/```wxchat[\s\S]*?(```|$)/g, "").trim();
+	if (!m) return { text };
+	try {
+		const j = parseJsonLoose<{ target?: string; mode?: string; items?: unknown[] }>(m[1]);
+		if (!Array.isArray(j.items) || j.items.length === 0) return { text };
+		return {
+			text,
+			action: { target: String(j.target ?? ""), mode: j.mode === "replace" ? "replace" : "append", items: j.items },
+		};
+	} catch {
+		return { text: `${text}\n\n（AI 附上的聊天数据格式有误，没能识别，请让它重新输出一次）` };
+	}
+};
+
+export const resolveTarget = (target: string, contacts: Contact[], fallbackId?: string | null) => {
+	const exact = contacts.find((c) => c.name === target || c.tokens.includes(target));
+	if (exact) return exact;
+	const loose = contacts.find((c) => c.tokens.some((t) => target.includes(t) || t.includes(target)));
+	if (loose) return loose;
+	return fallbackId ? contacts.find((c) => c.id === fallbackId) : undefined;
+};
+
+export const applyAction = (conversationId: string, action: AiChatAction) =>
+	applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true);

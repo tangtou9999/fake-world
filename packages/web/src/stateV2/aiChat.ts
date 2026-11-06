@@ -1,9 +1,44 @@
 import atomWithStorage from "./atomWithStorage";
 
-export type AiChatMessage = { id: string; role: "user" | "model"; text: string; error?: boolean };
+export type AiChatAction = {
+	target: string;
+	targetId?: string;
+	mode: "append" | "replace";
+	items: unknown[];
+	/** 已放进聊天的时间文字，有值说明已导入 */
+	applied?: string;
+};
 
-/** 只保存在这台手机的浏览器里 */
-export const aiChatHistoryAtom = atomWithStorage<AiChatMessage[]>("ai-chat-history", []);
+export type AiChatMessage = {
+	id: string;
+	role: "user" | "model";
+	text: string;
+	error?: boolean;
+	/** 被拦截 / 失败的提问：不再带进之后的对话 */
+	failed?: boolean;
+	voice?: boolean;
+	action?: AiChatAction;
+};
+
+export type AiChatSession = { id: string; no: number; messages: AiChatMessage[] };
+export type AiChatsState = { sessions: AiChatSession[]; activeId: string; counter: number; speak: boolean };
+
+const legacy = (() => {
+	try {
+		const raw = localStorage.getItem("ai-chat-history");
+		return raw ? (JSON.parse(raw) as AiChatMessage[]) : [];
+	} catch {
+		return [];
+	}
+})();
+
+/** 可无限新建的多个 AI 窗口（1号AI、2号AI……），只保存在这台手机的浏览器里 */
+export const aiChatsAtom = atomWithStorage<AiChatsState>("ai-chats-v2", {
+	sessions: [{ id: "s1", no: 1, messages: legacy }],
+	activeId: "s1",
+	counter: 1,
+	speak: true,
+});
 
 export const AI_CHAT_SYSTEM = `你是用户的私人助手兼聊天剧本编剧，运行在他自己做的「微信仿真」小工具里。用户是成年人，会和你聊各种话题：当前正在编辑的聊天、这个工具怎么用、日常生活问题，也包括个人隐私和私密话题。
 你的做事方式：
