@@ -60,8 +60,8 @@ export function applyParsedItems(
 ) {
 	const base = Date.now() - list.length * 60_000;
 	const existing = getConversationListValueSnapshot(conversationId);
-	const before = range ? existing.filter((v) => v.sendTimestamp < range.from) : [];
-	const after = range ? existing.filter((v) => v.sendTimestamp > range.to) : [];
+	const before = range ? existing.filter((v) => (v.sendTimestamp ?? 0) < range.from) : [];
+	const after = range ? existing.filter((v) => (v.sendTimestamp ?? 0) > range.to) : [];
 	const lastBefore = range ? (before.at(-1)?.sendTimestamp ?? 0) : undefined;
 	const stamps = timed ? computeStamps(conversationId, list, replace, { last: lastBefore, cap: after[0]?.sendTimestamp }) : [];
 	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : (existing.at(-1)?.sendTimestamp ?? 0);
@@ -130,7 +130,7 @@ export function applyParsedItems(
 	});
 	setConversationListValue(conversationId, (prev) => {
 		if (range) {
-			return [...prev.filter((v) => v.sendTimestamp < range.from), ...items, ...prev.filter((v) => v.sendTimestamp > range.to)];
+			return [...prev.filter((v) => (v.sendTimestamp ?? 0) < range.from), ...items, ...prev.filter((v) => (v.sendTimestamp ?? 0) > range.to)];
 		}
 		return replace ? items : [...prev, ...items];
 	});
