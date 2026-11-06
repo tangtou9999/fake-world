@@ -8,15 +8,24 @@ const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
 export type GeminiImage = { mime: string; data: string };
 
-async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = []) {
+export type GeminiTurn = { role: "user" | "model"; text: string };
+type Extra = { history?: GeminiTurn[]; system?: string };
+
+async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = [], extra: Extra = {}) {
 	const adult = getGeminiConfig().adultMode !== false;
 	const res = await fetch(`${BASE}/${model}:generateContent`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
 		body: JSON.stringify({
+			...(adult || extra.system
+				? {
+						systemInstruction: {
+							parts: [{ text: [adult ? ADULT_MODE_PROMPT : "", extra.system ?? ""].filter(Boolean).join("\n\n") }],
+						},
+					}
+				: {}),
 			...(adult
 				? {
-						systemInstruction: { parts: [{ text: ADULT_MODE_PROMPT }] },
 						safetySettings: [
 							"HARM_CATEGORY_HARASSMENT",
 							"HARM_CATEGORY_HATE_SPEECH",
@@ -26,6 +35,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 					}
 				: {}),
 			contents: [
+				...(extra.history ?? []).map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
 				{
 					role: "user",
 					parts: [
@@ -59,7 +69,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[] } = {}) {
+export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
 	const chosen = !model || RETIRED_MODELS.includes(model) ? DEFAULT_GEMINI_MODEL : model;
@@ -68,7 +78,7 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 	for (const m of models) {
 		for (let attempt = 0; attempt < 2; attempt++) {
 			try {
-				return await callOnce(m, apiKey, prompt, !!options.json, options.images);
+				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
 				last = e as GeminiError;
 				if (last.status === 400 || last.status === 403 || last.status === 401) {
@@ -88,7 +98,7 @@ export async function callGemini(prompt: string, options: { json?: boolean; imag
 		const available = (await listGeminiModels(apiKey)).filter((n) => /flash/.test(n) && !models.includes(n)).slice(0, 3);
 		for (const m of available) {
 			try {
-				return await callOnce(m, apiKey, prompt, !!options.json, options.images);
+				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
 				last = e as GeminiError;
 			}

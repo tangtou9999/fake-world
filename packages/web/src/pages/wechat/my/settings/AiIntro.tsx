@@ -34,6 +34,17 @@ const AiIntro = () => {
 		<div className="flex min-h-0 flex-1 flex-col bg-[#EDEDED]">
 			<NavBar title="AI 助手" />
 			<div className="min-h-0 flex-1 overflow-auto pb-10">
+				<button
+					type="button"
+					onClick={() => navigate("/wechat/my/settings/ai/chat")}
+					className="mx-4 mt-3 flex w-[calc(100%-32px)] items-center justify-between rounded-[8px] bg-[#07C160] p-4 text-left text-white"
+				>
+					<div>
+						<div className="font-medium text-[16px]">和 AI 对话</div>
+						<div className="mt-1 text-[13px] text-white/80">自由聊天：构思剧情、问系统怎么用、私人问题都可以</div>
+					</div>
+					<span className="text-[20px]">›</span>
+				</button>
 				<div className="mx-4 mt-3 flex items-center rounded-[8px] bg-white p-4">
 					<div className="min-w-0 flex-1">
 						<div className="font-medium text-[16px]">Gemini 密钥</div>

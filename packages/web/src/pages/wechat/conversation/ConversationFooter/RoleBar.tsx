@@ -145,6 +145,13 @@ const RoleBar = () => {
 				</button>
 				<button
 					type="button"
+					onClick={() => navigate(`/wechat/my/settings/ai/chat?from=${conversationId}`)}
+					className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]"
+				>
+					AI 对话
+				</button>
+				<button
+					type="button"
 					onClick={() => setOpen(true)}
 					className="h-7 rounded-full bg-black/5 px-3 text-[14px] text-black/70"
 				>
