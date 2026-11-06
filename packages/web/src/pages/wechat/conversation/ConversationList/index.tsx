@@ -22,6 +22,7 @@ import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
+import RedPacketFlow from "./RedPacketFlow";
 
 const ConversationList = () => {
 	const { listRef, conversationId, sendTransfer, sendRedPacketAcceptedReply } =
@@ -95,6 +96,8 @@ const ConversationList = () => {
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
 	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean } | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [rp, setRp] = useState<{ id: string; stage: "open" | "detail" } | null>(null);
+	const [dlg, setDlg] = useState<{ title: string; content: string; okText: string; onOk: () => void } | null>(null);
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const openTextMenu = (item: TConversationItem) => {
 		if (isEdit || item.type !== EConversationType.text) return;
@@ -136,6 +139,12 @@ const ConversationList = () => {
 	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const handleTap = (item: TConversationItem) => {
 		if (isEdit) return;
+		if (item.type === EConversationType.redPacket) {
+			const st = item.redPacketStatus;
+			if (st === "accepted") return setRp({ id: item.id, stage: "detail" });
+			if (st === "awaiting" && item.originalSender === "friend")
+				return setRp({ id: item.id, stage: "open" });
+		}
 		const isPacket = item.type === EConversationType.redPacket && item.redPacketStatus === "awaiting";
 		const isTransfer = item.type === EConversationType.transfer && item.transferStatus === "awaiting";
 		if (!isPacket && !isTransfer) return;
@@ -145,12 +154,10 @@ const ConversationList = () => {
 				: generateTransferReplyConversation(item.id);
 		const label = isPacket ? "红包" : "转账";
 		if ((item as IConversationTypeRedPacket).originalSender === "friend") {
-			Modal.confirm({
+			setDlg({
 				title: isPacket ? "领取红包？" : "确认收款？",
 				content: `金额 ¥${(item as IConversationTypeRedPacket).amount} 将存入零钱`,
 				okText: isPacket ? "开" : "确认收款",
-				cancelText: "取消",
-				centered: true,
 				onOk: run,
 			});
 		} else {
@@ -160,14 +167,12 @@ const ConversationList = () => {
 			lastTap.current = { id: item.id, t: now };
 			if (!isDouble) return;
 			lastTap.current = { id: "", t: 0 };
-			Modal.confirm({
+			setDlg({
 				title: `模拟对方领取${label}？`,
 				content: isPacket
 					? "红包会变成「已被领取」，聊天里出现「xx领取了你的红包」"
 					: "转账会变成「已被接收」",
 				okText: "对方已领取",
-				cancelText: "取消",
-				centered: true,
 				onOk: run,
 			});
 		}
@@ -286,6 +291,37 @@ const ConversationList = () => {
 					);
 				})}
 			</ReactSortable>
+			{rp &&
+				(() => {
+					const pk = conversationList.find((v) => v.id === rp.id) as IConversationTypeRedPacket | undefined;
+					if (!pk) return null;
+					return (
+						<RedPacketFlow
+							stage={rp.stage}
+							peerId={conversationId}
+							originalSender={pk.originalSender as "mine" | "friend"}
+							amount={pk.amount}
+							note={pk.note}
+							onClose={() => setRp(null)}
+							onOpen={() => {
+								generateRedPacketAcceptedReplyConversation(rp.id);
+								setRp({ id: rp.id, stage: "detail" });
+							}}
+						/>
+					);
+				})()}
+			{dlg && (
+				<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-8" onClick={() => setDlg(null)}>
+					<div className="w-full max-w-[320px] overflow-hidden rounded-[12px] bg-white" onClick={(e) => e.stopPropagation()}>
+						<div className="px-6 pt-6 text-center font-medium text-[17px] text-black/90">{dlg.title}</div>
+						<div className="px-6 pt-2 pb-6 text-center text-[14px] text-black/60 leading-5">{dlg.content}</div>
+						<div className="flex border-black/10 border-t text-[17px]">
+							<button type="button" className="h-[52px] flex-1 border-black/10 border-r text-black/70" onClick={() => setDlg(null)}>取消</button>
+							<button type="button" className="h-[52px] flex-1 font-medium text-[#07C160]" onClick={() => { const f = dlg.onOk; setDlg(null); f(); }}>{dlg.okText}</button>
+						</div>
+					</div>
+				</div>
+			)}
 			{menu && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !busy && setMenu(null)}>
 					<div className="rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
