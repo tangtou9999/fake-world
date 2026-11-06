@@ -91,6 +91,8 @@ const RoleBar = () => {
 		const n = applyParsedItems(conversationId, preview, rep, true);
 		setAiDone(`已${rep ? "替换为" : "追加"} ${n} 条消息`);
 		setPreview(null);
+		setScene("");
+		setAiErr("");
 		setAiOpen(false);
 		scrollConversationListToBtm();
 	};
@@ -136,7 +138,7 @@ const RoleBar = () => {
 				{roleBtn("friend", "对方")}
 				<button
 					type="button"
-					onClick={() => setAiOpen(true)}
+					onClick={() => { setPreview(null); setAiErr(""); setAiDone(""); setAiOpen(true); }}
 					className="ml-auto h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]"
 				>
 					AI 生成
@@ -222,6 +224,11 @@ const RoleBar = () => {
 								<div className="mb-2 text-[12px] text-black/50 leading-5">
 									像写剧本一样描述：谁说几句、停顿多久、新的时间点、谁发红包/转账、外语消息都行。AI 会按剧本执行，时间不会晚于现在。
 								</div>
+								{scene && (
+									<button type="button" className="mb-1 ml-auto block text-[13px] text-[#576B95]" onClick={() => setScene("")}>
+										清空
+									</button>
+								)}
 								<textarea
 									className="h-[130px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
 									placeholder="例：对方说两句催我交周报，我回一句，停顿两小时，对方又说一句，最后我发一个 66 元红包给对方"
