@@ -1,4 +1,4 @@
-import { DEFAULT_GEMINI_MODEL, RETIRED_MODELS, getGeminiConfig } from "@/stateV2/gemini";
+import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, getGeminiConfig } from "@/stateV2/gemini";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -9,10 +9,22 @@ const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 export type GeminiImage = { mime: string; data: string };
 
 async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = []) {
+	const adult = getGeminiConfig().adultMode !== false;
 	const res = await fetch(`${BASE}/${model}:generateContent`, {
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
 		body: JSON.stringify({
+			...(adult
+				? {
+						systemInstruction: { parts: [{ text: ADULT_MODE_PROMPT }] },
+						safetySettings: [
+							"HARM_CATEGORY_HARASSMENT",
+							"HARM_CATEGORY_HATE_SPEECH",
+							"HARM_CATEGORY_SEXUALLY_EXPLICIT",
+							"HARM_CATEGORY_DANGEROUS_CONTENT",
+						].map((category) => ({ category, threshold: "BLOCK_NONE" })),
+					}
+				: {}),
 			contents: [
 				{
 					role: "user",
@@ -41,7 +53,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	}
 	const text = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
 	if (!text) {
-		throw { message: data?.promptFeedback?.blockReason ? "内容被 Gemini 拦截，换个说法试试" : "Gemini 没有返回内容" } as GeminiError;
+		throw { message: data?.promptFeedback?.blockReason ? `内容被 Gemini 拦截（${data?.promptFeedback?.blockReason}），换个说法或模型试试` : "Gemini 没有返回内容" } as GeminiError;
 	}
 	return text as string;
 }

@@ -87,6 +87,20 @@ const AiSettings = () => {
 						</div>
 					)}
 				</div>
+				<div className="mt-3 flex items-center justify-between bg-white px-4 py-3">
+					<div className="pr-3">
+						<div className="text-[16px]">成人虚构聊天模式</div>
+						<div className="mt-1 text-[12px] text-black/40 leading-5">
+							开启后给 Gemini 附加「成年人虚构聊天、不回避成人用语」的系统指令，并把它的内容过滤调到最宽。仍受 Gemini 自身硬性限制，被拦截时会提示原因。
+						</div>
+					</div>
+					<input
+						type="checkbox"
+						className="h-5 w-5 shrink-0 accent-[#07C160]"
+						checked={config.adultMode !== false}
+						onChange={(e) => setConfig((v) => ({ ...v, adultMode: e.target.checked }))}
+					/>
+				</div>
 				<button
 					type="button"
 					disabled={busy || !config.apiKey}

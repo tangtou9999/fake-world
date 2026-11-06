@@ -60,7 +60,11 @@ export const usePopup = () => useContext(PopUpContext)!;
 
 const WrappedChildren = ({ children }: PropsWithChildren) => {
 	const { nodeRef } = usePopup();
-	return <div ref={nodeRef}>{children}</div>;
+	return (
+		<div ref={nodeRef} className="overflow-hidden border-t-[0.5px] border-t-[#D6D6D6]">
+			{children}
+		</div>
+	);
 };
 
 const MemoWrappedChildren = memo(WrappedChildren);

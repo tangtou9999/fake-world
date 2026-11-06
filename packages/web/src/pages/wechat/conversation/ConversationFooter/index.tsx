@@ -22,7 +22,7 @@ const ConversationFooter = () => {
 
 	return (
 		<div className="flex flex-col">
-			<div className="border-black/10 border-t">
+			<div className="border-t-[0.5px] border-t-[#D6D6D6]">
 				<RoleBar />
 			</div>
 			<div

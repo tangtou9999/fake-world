@@ -4,6 +4,7 @@ import {
 	setConversationListValue,
 } from "@/stateV2/conversation";
 import { touchDialogue } from "@/stateV2/fileHelper";
+import { CENTER_LINK, IMAGE_NOTE_LINK } from "@/stateV2/friendRequests";
 import { prepareImageAsset, prepareVideoAsset } from "@/utils/media";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
@@ -164,17 +165,36 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 			} else if (file.type.startsWith("image/")) {
 				const asset = await prepareImageAsset(file);
 				touchDialogue(conversationId, "[图片]");
-				setConversationListValue(conversationId, (prev) => [
-					...prev,
-					{
-						type: EConversationType.image,
-						role: "mine",
-						id: nanoid(8),
-						sendTimestamp: dayjs().valueOf(),
-						upperText: fromLastGenerateUpperText(prev),
-						...asset,
-					},
-				]);
+				setConversationListValue(conversationId, (prev) => {
+					const next = [
+						...prev,
+						{
+							type: EConversationType.image,
+							role: "mine",
+							id: nanoid(8),
+							sendTimestamp: dayjs().valueOf(),
+							upperText: fromLastGenerateUpperText(prev),
+							...asset,
+						},
+					] as typeof prev;
+					// 新加的好友：发图后微信会提示「将图片 添加到备注」
+					const isNewFriend = prev.some(
+						(v) => v.type === EConversationType.centerText && v.simpleContent.includes(CENTER_LINK),
+					);
+					const hinted = prev.some(
+						(v) => v.type === EConversationType.centerText && v.simpleContent.includes(IMAGE_NOTE_LINK),
+					);
+					if (isNewFriend && !hinted) {
+						next.push({
+							id: nanoid(8),
+							type: EConversationType.centerText,
+							role: "friend",
+							simpleContent: `将图片 ${IMAGE_NOTE_LINK}`,
+							sendTimestamp: dayjs().valueOf(),
+						} as (typeof prev)[number]);
+					}
+					return next;
+				});
 			} else {
 				setError("请选择图片或视频");
 				return;

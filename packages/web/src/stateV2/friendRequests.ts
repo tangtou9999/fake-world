@@ -81,6 +81,7 @@ function newProfile(p: { nickname: string; wechat: string; avatarInfo: string })
 }
 
 export const CENTER_LINK = "使用常用打招呼内容";
+export const IMAGE_NOTE_LINK = "添加到备注";
 
 /** 我添加别人：对方已通过 */
 export function addFriendByMe(p: {
