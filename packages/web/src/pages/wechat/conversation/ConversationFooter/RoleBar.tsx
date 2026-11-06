@@ -45,7 +45,7 @@ const RoleBar = () => {
 		<button
 			type="button"
 			onClick={() => setConfig((v) => ({ ...v, sendRole: role }))}
-			className={`h-7 rounded-full px-4 text-[14px] ${config.sendRole === role ? "bg-[#07C160] text-white" : "bg-black/5 text-black/60"}`}
+			className={`h-7 rounded-full px-3 text-[14px] ${config.sendRole === role ? "bg-[#07C160] text-white" : "bg-black/5 text-black/60"}`}
 		>
 			{label}
 		</button>
@@ -132,7 +132,7 @@ const RoleBar = () => {
 
 	return (
 		<>
-			<div className="flex items-center gap-2 bg-[#F7F7F7] px-3 pt-2">
+			<div className="flex items-center gap-1.5 whitespace-nowrap bg-[#F7F7F7] px-3 pt-2 [&>*]:shrink-0">
 				<span className="text-[13px] text-black/40">发送人</span>
 				{roleBtn("mine", "我")}
 				{roleBtn("friend", "对方")}
