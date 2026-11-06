@@ -24,6 +24,8 @@ export interface IConversationItemBase {
 export interface IConversationTypeText extends IConversationItemBase {
 	type: EConversationType.text;
 	textContent: Descendant[];
+	/** 长按「翻译」后显示在气泡下方的译文 */
+	translation?: string;
 	referenceId?: IConversationItemBase["id"];
 }
 

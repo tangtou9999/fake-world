@@ -12,7 +12,7 @@ import { getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
 import { callGemini, fileToGeminiImage, parseJsonLoose } from "@/utils/gemini";
-import { applyParsedItems, parseScreenshots } from "./importScreenshots";
+import { type ParsedItem, applyParsedItems, generateScript, parseScreenshots, previewLine } from "./importScreenshots";
 import { Node } from "slate";
 import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
@@ -42,6 +42,7 @@ const RoleBar = () => {
 	const [shots, setShots] = useState<File[]>([]);
 	const [replace, setReplace] = useState(false);
 	const [aiDone, setAiDone] = useState("");
+	const [preview, setPreview] = useState<ParsedItem[] | null>(null);
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -74,46 +75,28 @@ const RoleBar = () => {
 	};
 
 	const generate = async () => {
+		if (!scene.trim()) {
+			setAiErr("先写一下剧本或场景");
+			return;
+		}
 		setAiBusy(true);
 		setAiErr("");
 		try {
-			const friend = getProfileValueSnapshot(conversationId);
-			const me = getMyProfileValueSnapshot();
-			const history = getConversationListValueSnapshot(conversationId)
-				.filter((v) => v.type === EConversationType.text)
-				.slice(-12)
-				.map((v) => {
-					const t = (v as unknown as { textContent: Parameters<typeof Node.string>[0][] }).textContent
-						.map((n) => Node.string(n))
-						.join("");
-					return `${v.role === "mine" ? "我" : "对方"}：${t}`;
-				})
-				.join("\n");
-			const n = Math.min(Math.max(Number.parseInt(count) || 10, 2), 30);
-			const prompt = `你在为一个微信聊天界面的演示生成对话内容。
-对方：${friend?.remark || friend?.nickname || "朋友"}${friend?.description ? `（${friend.description}）` : ""}${friend?.signature ? `，签名：${friend.signature}` : ""}
-我：${me?.nickname || "我"}
-已有的最近聊天（可能为空，请自然衔接，不要重复）：
-${history || "（暂无）"}
-
-场景要求：${scene || "日常闲聊"}
-
-请生成 ${n} 条左右的微信聊天消息，对话要有来有回，口语化、简短，每条一句话，符合各自身份的语气，不要旁白、不要编号、不要表情描述。
-只输出 JSON 数组，格式：[{"who":"friend","text":"..."},{"who":"me","text":"..."}]，who 只能是 friend（对方）或 me（我）。`;
-			const raw = await callGemini(prompt, { json: true });
-			const list = parseJsonLoose<{ who: string; text: string }[]>(raw);
-			const lines = list
-				.filter((v) => v?.text)
-				.map((v) => `${v.who === "me" ? "我" : "对方"}：${String(v.text).replace(/\n/g, " ")}`);
-			if (lines.length === 0) throw new Error("没有生成出内容，再试一次");
-			setText(lines.join("\n"));
-			setAiOpen(false);
-			setOpen(true);
+			setPreview(await generateScript(conversationId, scene));
 		} catch (e) {
 			setAiErr(e instanceof Error ? e.message : String(e));
 		} finally {
 			setAiBusy(false);
 		}
+	};
+
+	const applyPreview = (rep: boolean) => {
+		if (!preview) return;
+		const n = applyParsedItems(conversationId, preview, rep, true);
+		setAiDone(`已${rep ? "替换为" : "追加"} ${n} 条消息`);
+		setPreview(null);
+		setAiOpen(false);
+		scrollConversationListToBtm();
 	};
 
 	const sendAll = () => {
@@ -221,33 +204,45 @@ ${history || "（暂无）"}
 									</>
 								) : (
 								<>
+								{preview ? (
+									<>
+										<div className="mb-2 text-[12px] text-black/50 leading-5">
+											共 {preview.length} 条，时间都不会晚于现在。确认后再放进聊天。
+										</div>
+										<div className="max-h-[300px] space-y-1 overflow-auto rounded-[8px] bg-[#F5F5F5] p-3 text-[14px] leading-5">
+											{preview.map((it, i) => (
+												<div key={i}>{previewLine(it)}</div>
+											))}
+										</div>
+										<div className="mt-3 grid grid-cols-3 gap-2">
+											<button type="button" onClick={generate} disabled={aiBusy} className="h-[44px] rounded-[6px] bg-black/5 text-[15px] disabled:opacity-50">{aiBusy ? "生成中…" : "重新生成"}</button>
+											<button type="button" onClick={() => applyPreview(true)} className="h-[44px] rounded-[6px] bg-black/5 text-[15px]">清空替换</button>
+											<button type="button" onClick={() => applyPreview(false)} className="h-[44px] rounded-[6px] bg-[#07C160] text-[15px] text-white">追加到末尾</button>
+										</div>
+										<button type="button" className="mt-2 w-full text-[13px] text-black/50" onClick={() => setPreview(null)}>返回修改剧本</button>
+									</>
+								) : (
+								<>
 								<div className="mb-2 text-[12px] text-black/50 leading-5">
-									会参考对方的资料和最近的聊天。生成后先放进「批量输入」里，你可以改完再发送。
+									像写剧本一样描述：谁说几句、停顿多久、新的时间点、谁发红包/转账、外语消息都行。AI 会按剧本执行，时间不会晚于现在。
 								</div>
 								<textarea
-									className="h-[110px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
-									placeholder="描述场景，例如：同事催我交周报，我在拖延，语气半开玩笑"
+									className="h-[130px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
+									placeholder="例：对方说两句催我交周报，我回一句，停顿两小时，对方又说一句，最后我发一个 66 元红包给对方"
 									value={scene}
 									onChange={(e) => setScene(e.target.value)}
 								/>
-								<div className="mt-3 flex items-center text-[15px]">
-									<span className="mr-3 text-black/60">条数</span>
-									<input
-										className="h-9 w-[70px] rounded-[6px] bg-[#F5F5F5] px-3 text-center outline-none"
-										inputMode="numeric"
-										value={count}
-										onChange={(e) => setCount(e.target.value.replace(/\D/g, ""))}
-									/>
-								</div>
 								{aiErr && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{aiErr}<button type="button" className="mt-1 block text-[#576B95]" onClick={() => navigate("/wechat/my/settings/ai/key")}>去换模型 / 改密钥 ›</button></div>}
 								<div className="mt-3 flex gap-3">
 									<button type="button" disabled={aiBusy} onClick={() => setAiOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">
 										取消
 									</button>
 									<button type="button" disabled={aiBusy} onClick={generate} className="h-[44px] flex-1 rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-50">
-										{aiBusy ? "生成中…" : "生成"}
+										{aiBusy ? "生成中…" : "生成预览"}
 									</button>
 								</div>
+								</>
+								)}
 								</>
 								)}
 							</>

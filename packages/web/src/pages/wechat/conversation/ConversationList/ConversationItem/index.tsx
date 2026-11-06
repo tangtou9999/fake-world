@@ -1,5 +1,6 @@
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { EConversationType, type TConversationItem } from "@/stateV2/conversation";
+import { normalizeUpperText } from "@/stateV2/conversation/helpers";
 import { memo } from "react";
 import { useParams } from "react-router-dom";
 import CenterText from "./CenterText";
@@ -16,7 +17,8 @@ type Props = {
 };
 
 const ConversationItem = ({ data }: Props) => {
-	const { type, role, upperText, id: conversationItemId } = data;
+	const { type, role, id: conversationItemId } = data;
+	const upperText = normalizeUpperText(data.upperText, data.sendTimestamp);
 	const { id } = useParams<{ id: string }>();
 	const senderId = role === "friend" ? id! : MYSELF_ID;
 
@@ -28,6 +30,7 @@ const ConversationItem = ({ data }: Props) => {
 					upperText={upperText}
 					senderId={senderId}
 					textContent={data.textContent}
+					translation={data.translation}
 					referenceId={data.referenceId}
 				/>
 			);

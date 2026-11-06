@@ -15,7 +15,9 @@ import { EMetaDataType, type StaticMetaData, allNodesTreeAtom } from "@/stateV2/
 import { SubnodeOutlined } from "@ant-design/icons";
 import { Modal, Tooltip } from "antd";
 import { useAtom, useSetAtom } from "jotai";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Node } from "slate";
+import { translateText } from "../ConversationFooter/importScreenshots";
 import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
@@ -91,6 +93,47 @@ const ConversationList = () => {
 	};
 
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
+	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean } | null>(null);
+	const [busy, setBusy] = useState(false);
+	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
+	const openTextMenu = (item: TConversationItem) => {
+		if (isEdit || item.type !== EConversationType.text) return;
+		const text = item.textContent.map((n) => Node.string(n)).join("\n");
+		setMenu({ id: item.id, text, translated: !!item.translation });
+	};
+	const startPress = (item: TConversationItem) => {
+		clearTimeout(pressTimer.current);
+		pressTimer.current = setTimeout(() => openTextMenu(item), 500);
+	};
+	const stopPress = () => clearTimeout(pressTimer.current);
+	const setTranslation = (id: string, translation?: string) =>
+		setConversationList((prev) =>
+			prev.map((v) => (v.id === id ? ({ ...v, translation } as TConversationItem) : v)),
+		);
+	const doTranslate = async () => {
+		if (!menu) return;
+		const { id, text, translated } = menu;
+		if (translated) {
+			setTranslation(id, undefined);
+			setMenu(null);
+			return;
+		}
+		setBusy(true);
+		try {
+			setTranslation(id, await translateText(text));
+			setMenu(null);
+		} catch (e) {
+			setMenu(null);
+			Modal.error({
+				title: "翻译失败",
+				content: `${e instanceof Error ? e.message : String(e)}（需要先在「我 → 设置 → AI 助手」填写密钥）`,
+				centered: true,
+			});
+		} finally {
+			setBusy(false);
+		}
+	};
+	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const handleTap = (item: TConversationItem) => {
 		if (isEdit) return;
 		const isPacket = item.type === EConversationType.redPacket && item.redPacketStatus === "awaiting";
@@ -111,6 +154,12 @@ const ConversationList = () => {
 				onOk: run,
 			});
 		} else {
+			// 我发出的：真实聊天里只能等对方领取；这里「双击」才模拟对方领取
+			const now = Date.now();
+			const isDouble = lastTap.current.id === item.id && now - lastTap.current.t < 400;
+			lastTap.current = { id: item.id, t: now };
+			if (!isDouble) return;
+			lastTap.current = { id: "", t: 0 };
 			Modal.confirm({
 				title: `模拟对方领取${label}？`,
 				content: isPacket
@@ -217,13 +266,37 @@ const ConversationList = () => {
 							nodeTreeSort
 							data-conversation-id={item.id}
 						>
-							<div className="contents" onClick={() => handleTap(item)}>
+							<div
+								className="contents"
+								onClick={() => handleTap(item)}
+								onTouchStart={() => startPress(item)}
+								onTouchMove={stopPress}
+								onTouchEnd={stopPress}
+								onTouchCancel={stopPress}
+								onContextMenu={(e) => {
+									if (item.type === EConversationType.text && !isEdit) {
+										e.preventDefault();
+										openTextMenu(item);
+									}
+								}}
+							>
 								<ConversationItem data={item} />
 							</div>
 						</canBeDetected.div>
 					);
 				})}
 			</ReactSortable>
+			{menu && (
+				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !busy && setMenu(null)}>
+					<div className="rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
+						<button type="button" disabled={busy} onClick={doTranslate} className="h-[54px] w-full text-[17px] disabled:opacity-50">
+							{busy ? "翻译中…" : menu.translated ? "取消翻译" : "翻译"}
+						</button>
+						<div className="h-2 bg-[#F7F7F7]" />
+						<button type="button" disabled={busy} onClick={() => setMenu(null)} className="h-[54px] w-full text-[17px]">取消</button>
+					</div>
+				</div>
+			)}
 		</canBeDetected.div>
 	);
 };

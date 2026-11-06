@@ -1,3 +1,4 @@
+import useMode from "@/components/useMode";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import { h } from "@/components/HashAssets";
 import useScreenTopBg from "@/components/useScreenTopBg";
@@ -142,6 +143,7 @@ export const RedPacketSend = () => {
 	const send = useSend("redPacket");
 	const [amount, setAmount] = useState("");
 	const [note, setNote] = useState("");
+	const { isEdit } = useMode();
 	const [sender, setSender] = useState<Sender>("mine");
 	const [done, setDone] = useState(false);
 	const ok = validAmount(amount);
@@ -203,11 +205,11 @@ export const RedPacketSend = () => {
 					type="button"
 					disabled={!ok}
 					className={`mx-auto mt-[22px] flex h-[46px] w-[178px] items-center justify-center rounded-[6px] text-[17px] text-white ${ok ? "bg-[#FF6146]" : "bg-[#FF6146]/70"}`}
-					onClick={() => ok && send({ sender, amount, note: note.trim() || "恭喜发财，大吉大利", done })}
+					onClick={() => ok && send({ sender: isEdit ? sender : "mine", amount, note: note.trim() || "恭喜发财，大吉大利", done: isEdit && done })}
 				>
 					塞钱进红包
 				</button>
-				<FakeControls sender={sender} setSender={setSender} done={done} setDone={setDone} kind="redPacket" />
+				{isEdit && <FakeControls sender={sender} setSender={setSender} done={done} setDone={setDone} kind="redPacket" />}
 			</div>
 			<div className="pb-[calc(24px+env(safe-area-inset-bottom))] text-center text-[15px] text-black/40">
 				未领取的红包，将于24小时后发起退款
@@ -228,6 +230,7 @@ export const TransferSend = () => {
 	const [amount, setAmount] = useState("");
 	const [note, setNote] = useState("");
 	const [editNote, setEditNote] = useState(false);
+	const { isEdit } = useMode();
 	const [sender, setSender] = useState<Sender>("mine");
 	const [done, setDone] = useState(false);
 	const ok = validAmount(amount);
@@ -289,7 +292,7 @@ export const TransferSend = () => {
 						</button>
 					)}
 				</div>
-				<FakeControls sender={sender} setSender={setSender} done={done} setDone={setDone} kind="transfer" />
+				{isEdit && <FakeControls sender={sender} setSender={setSender} done={done} setDone={setDone} kind="transfer" />}
 			</div>
 			<div
 				className="grid shrink-0 gap-[6px] bg-[#F7F7F7] p-[6px] pb-[calc(6px+env(safe-area-inset-bottom))]"
@@ -322,7 +325,7 @@ export const TransferSend = () => {
 					type="button"
 					className={`flex items-center justify-center rounded-[5px] text-[18px] text-white ${ok ? "bg-[#07C160]" : "bg-[#07C160]/60"}`}
 					style={{ gridColumn: 4, gridRow: "2 / span 3" }}
-					onClick={() => ok && send({ sender, amount, note: note.trim(), done })}
+					onClick={() => ok && send({ sender: isEdit ? sender : "mine", amount, note: note.trim(), done: isEdit && done })}
 				>
 					转账
 				</button>
