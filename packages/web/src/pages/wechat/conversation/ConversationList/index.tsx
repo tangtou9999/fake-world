@@ -165,7 +165,7 @@ const ConversationList = () => {
 				stage: "open",
 				id: item.id,
 				amount: (item as IConversationTypeRedPacket).amount,
-				note: (item as IConversationTypeRedPacket).note,
+				note: (item as IConversationTypeRedPacket).note ?? "",
 			});
 			return;
 		}
