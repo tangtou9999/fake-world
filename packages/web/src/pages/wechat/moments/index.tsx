@@ -40,15 +40,20 @@ const MomentsIndex = () => {
 	}, [isEdit]);
 
 	return (
+		<>
+		{isEdit && (
+			<div className="relative z-10 mt-12 pt-2">
+				<AiMoments />
+			</div>
+		)}
 		<canBeDetected.div
-			className="mt-12 flex flex-col"
+			className={isEdit ? "flex flex-col" : "mt-12 flex flex-col"}
 			metaData={{
 				type: EMetaDataType.AllFeeds,
 				treeItemDisplayName: "所有朋友圈",
 				label: "新增朋友圈",
 			}}
 		>
-			{isEdit && <AiMoments />}
 			<ReactSortable
 				disabled={!isEdit}
 				list={mappedSortableListData}
@@ -70,6 +75,7 @@ const MomentsIndex = () => {
 				))}
 			</ReactSortable>
 		</canBeDetected.div>
+		</>
 	);
 };
 
