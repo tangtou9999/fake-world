@@ -7,7 +7,33 @@ export type GeminiConfig = {
 	model: string;
 	/** 成人虚构聊天模式（默认开启）：附加系统指令并放宽 Gemini 的内容过滤档位 */
 	adultMode?: boolean;
+	/** 截图识别用的模型；留空 = 和文字模型一样 */
+	visionModel?: string;
+	/** 语音合成（声音）模型；留空 = 自动 */
+	ttsModel?: string;
+	/** 三种场景的声音：私人 AI 朗读 / 对方的语音消息 / 我的语音消息 */
+	voices?: { ai?: string; friend?: string; mine?: string };
 };
+
+export type VoiceOption = { id: string; label: string; desc: string };
+
+/** Gemini 语音合成自带的声音（名字是官方声音名，说明是它们的大致听感） */
+export const GEMINI_VOICES: VoiceOption[] = [
+	{ id: "Kore", label: "Kore", desc: "女声·干练坚定" },
+	{ id: "Aoede", label: "Aoede", desc: "女声·轻松明快" },
+	{ id: "Leda", label: "Leda", desc: "女声·年轻清亮" },
+	{ id: "Zephyr", label: "Zephyr", desc: "女声·明亮活泼" },
+	{ id: "Achernar", label: "Achernar", desc: "女声·温柔柔和" },
+	{ id: "Sulafat", label: "Sulafat", desc: "女声·温暖亲切" },
+	{ id: "Puck", label: "Puck", desc: "男声·欢快有活力" },
+	{ id: "Charon", label: "Charon", desc: "男声·沉稳知性" },
+	{ id: "Fenrir", label: "Fenrir", desc: "男声·兴奋热情" },
+	{ id: "Orus", label: "Orus", desc: "男声·坚定有力" },
+	{ id: "Algenib", label: "Algenib", desc: "男声·低沉沙哑" },
+	{ id: "Iapetus", label: "Iapetus", desc: "男声·清晰随和" },
+];
+
+export const DEFAULT_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 export const DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest";
 

@@ -5,6 +5,7 @@ import Discover from "@/pages/wechat/discover";
 import AddFriend from "@/pages/wechat/addFriend/AddFriend";
 import RequestDetail from "@/pages/wechat/addFriend/RequestDetail";
 import NewFriends from "@/pages/wechat/addFriend/NewFriends";
+import ChatAi from "@/pages/wechat/conversation/ChatAi";
 import AiChat from "@/pages/wechat/my/settings/AiChat";
 import AiIntro from "@/pages/wechat/my/settings/AiIntro";
 import AiSettings from "@/pages/wechat/my/settings/AiSettings";
@@ -68,6 +69,7 @@ export const routes: RouteObject[] = [
 							label: "routerLabel.wechat.cHistory",
 						},
 					},
+					{ path: "conversation/:id/ai", element: <ChatAi /> },
 					{ path: "add-friend", element: <AddFriend /> },
 					{ path: "new-friends", element: <NewFriends /> },
 					{ path: "new-friends/:id", element: <RequestDetail /> },

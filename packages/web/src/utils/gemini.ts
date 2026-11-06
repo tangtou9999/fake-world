@@ -79,10 +79,11 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage } = {}) {
+export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string } = {}) {
 	const { apiKey, model } = getGeminiConfig();
 	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
-	const chosen = !model || RETIRED_MODELS.includes(model) ? DEFAULT_GEMINI_MODEL : model;
+	const pick = options.model || model;
+	const chosen = !pick || RETIRED_MODELS.includes(pick) ? DEFAULT_GEMINI_MODEL : pick;
 	const models = Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));
 	let last: GeminiError = { message: "未知错误" };
 	for (const m of models) {

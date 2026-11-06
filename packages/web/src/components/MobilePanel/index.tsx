@@ -16,13 +16,13 @@ export const APP_VERSION = "v1.2";
 const isPreviewNow = () => getModeValueSnapshot() === "preview";
 
 const floatingBtn =
-	"rounded-full px-4 py-2 text-sm shadow-lg lg:hidden pointer-events-auto active:opacity-80";
+	"rounded-full px-6 py-[11px] font-medium text-[16px] shadow-lg lg:hidden pointer-events-auto active:opacity-80";
 
 /**
  * 手机端编辑模式：
  * - 「我 → 设置」打开设置页，可管理提现银行卡，或从那里进入编辑模式。
  * - 编辑模式下点页面上的任意内容，底部自动弹出对应的编辑表单（页面上半部分仍可继续点选）。
- * - 右下角「⚙ 工具」打开截图、聊天记录等工具，「完成」退出编辑模式。
+ * - 顶部居中的「⚙ 工具」打开截图、聊天记录等工具，「完成」退出编辑模式。
  */
 const MobilePanel = () => {
 	const [panel, setPanel] = useAtom(mobilePanelAtom);
@@ -76,7 +76,7 @@ const MobilePanel = () => {
 	return (
 		<>
 			{isEdit && !open && (
-				<div className="pointer-events-none fixed right-3 bottom-[calc(96px+env(safe-area-inset-bottom))] z-[900] flex flex-col items-end gap-2">
+				<div className="pointer-events-none fixed top-[calc(env(safe-area-inset-top)+4px)] left-1/2 z-[900] flex -translate-x-1/2 flex-row items-center gap-3">
 					<button
 						type="button"
 						onClick={() => setPanel("tools")}

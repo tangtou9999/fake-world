@@ -40,8 +40,8 @@ const AiIntro = () => {
 					className="mx-4 mt-3 flex w-[calc(100%-32px)] items-center justify-between rounded-[8px] bg-[#07C160] p-4 text-left text-white"
 				>
 					<div>
-						<div className="font-medium text-[16px]">和 AI 对话</div>
-						<div className="mt-1 text-[13px] text-white/80">自由聊天：构思剧情、问系统怎么用、私人问题都可以</div>
+						<div className="font-medium text-[16px]">私人 AI</div>
+						<div className="mt-1 text-[13px] text-white/80">自由聊天，可无限新建窗口，也可绑定某个聊天让它读取</div>
 					</div>
 					<span className="text-[20px]">›</span>
 				</button>
@@ -67,7 +67,13 @@ const AiIntro = () => {
 						<b>截图复刻</b>：从相册一次选多张真实聊天截图，AI 识别左右气泡、时间、红包、转账，1:1 生成到当前聊天。
 					</div>
 					<div className="mt-2">
-						<b>AI 对话</b>：可无限新建窗口（右上角 +，1号AI、2号AI……），每个窗口独立。它能读取任何联系人的完整聊天记录，你说「把张三的聊天改成……」，它会生成一张卡片，点「清空替换 / 追加到末尾」就放进对应聊天。支持按住说话的语音提问，并可朗读回复。
+						<b>私人 AI</b>：设置里的独立聊天窗口，右上角 + 可无限新建（1号AI、2号AI……）。可以绑定某几个聊天让它读取，用来咨询、构思、问系统怎么用，包括私人问题；它不会改动聊天。支持按住说话和朗读回复。
+					</div>
+					<div className="mt-2">
+						<b>聊天 AI</b>：在聊天页点三下进入编辑模式后，底部的「聊天 AI」。每个聊天各有一个专属 AI，对话保存在本机，下次打开还在。它读取这个聊天的全部记录，能续写、改写，也能只改之前的某一段（如「把昨天晚上那段改成吵架」），点卡片上的按钮就写进聊天。
+					</div>
+					<div className="mt-2">
+						<b>声音</b>：在「AI 模型与声音」里为对方、我、AI 各选一个 Gemini 声音（可试听）。点聊天里的语音消息，就会用对应声音读出它的文字。
 					</div>
 					<div className="mt-2">
 						<b>长按翻译</b>：在聊天里长按对方（或自己）的文字消息，选「翻译」，译文会以白色卡片显示在气泡下方（中文译成越南语，其他语言译成中文）。

@@ -63,18 +63,20 @@ export const chatLog = (id: string, name: string, maxLines?: number) => {
 	return { count: all.length, text };
 };
 
-export const WXCHAT_RULES = (now: string, contactNames: string) => `
+export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: string) => `
 【把内容放进聊天窗口】
 当用户要你为某个联系人生成、续写、改写聊天记录时：先正常回复（简短说明即可），然后在回复的最末尾附一个代码块，格式固定：
 \`\`\`wxchat
 {"target":"联系人名字","mode":"append","items":[{"kind":"text","who":"friend","text":"内容","at":"YYYY-MM-DD HH:mm"}]}
 \`\`\`
-- target 必须是下面联系人列表里的名字（照抄）。
-- mode：append=追加到该聊天末尾；replace=清空后用 items 整个替换。用户说「把某某的聊天改成……」「重写」就用 replace，且 items 要包含修改后的**全部**记录（未改的部分照抄聊天记录原文和原时间）。
+- target：${currentName ? `默认就是当前聊天「${currentName}」；用户明确说别的联系人时才改成那个人，` : ""}必须是联系人列表里的名字（照抄）。
+- mode 有三种：
+  append = 追加到该聊天末尾；
+  replace = 清空整个聊天后用 items 整个替换（用户说「重写整个聊天」才用，items 要包含全部记录）；
+  range = 只修改某个时间段：额外写 "from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm"，该时间段内（含两端）的旧消息会被 items 替换，时间段之外的聊天保持不动。用户说「把昨天某一段改成……」「把这几句改掉」就用 range，items 只写这一段修改后的内容，at 必须落在 from 到 to 之间。
 - items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是转文字内容；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds；外语消息可加 translation（中文译文）；每项都要有 at。
 - at 单调递增，不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现；追加时 at 不早于该聊天最后一条的时间。
 - 只有用户明确要求生成/修改聊天内容时才附代码块；普通聊天、咨询不要附。
-- 你能看到被提到的联系人的完整聊天记录，用户可以在任何窗口里让你处理任何联系人。
 当前所有联系人：${contactNames || "（暂无）"}`;
 
 export type Level = 0 | 1 | 2 | 3;
@@ -85,10 +87,13 @@ export const buildSystem = (
 	level: Level,
 	contacts: Contact[],
 	ctxIds: string[],
+	/** 聊天窗口里的 AI：带上导入规则；私人 AI 不带（它不能改聊天） */
+	chatMode?: { currentId: string },
 ) => {
 	const now = dayjs().format("YYYY-MM-DD HH:mm dddd");
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
-	let s = `${base}\n${WXCHAT_RULES(now, names)}`;
+	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
+	let s = chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur)}` : `${base}\n现在的真实时间：${now}`;
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);
@@ -104,11 +109,12 @@ export const parseAction = (raw: string): { text: string; action?: AiChatAction 
 	const text = raw.replace(/```wxchat[\s\S]*?(```|$)/g, "").trim();
 	if (!m) return { text };
 	try {
-		const j = parseJsonLoose<{ target?: string; mode?: string; items?: unknown[] }>(m[1]);
+		const j = parseJsonLoose<{ target?: string; mode?: string; from?: string; to?: string; items?: unknown[] }>(m[1]);
 		if (!Array.isArray(j.items) || j.items.length === 0) return { text };
+		const mode = j.mode === "range" && j.from && j.to ? "range" : j.mode === "replace" ? "replace" : "append";
 		return {
 			text,
-			action: { target: String(j.target ?? ""), mode: j.mode === "replace" ? "replace" : "append", items: j.items },
+			action: { target: String(j.target ?? ""), mode, from: j.from, to: j.to, items: j.items },
 		};
 	} catch {
 		return { text: `${text}\n\n（AI 附上的聊天数据格式有误，没能识别，请让它重新输出一次）` };
@@ -123,5 +129,10 @@ export const resolveTarget = (target: string, contacts: Contact[], fallbackId?: 
 	return fallbackId ? contacts.find((c) => c.id === fallbackId) : undefined;
 };
 
-export const applyAction = (conversationId: string, action: AiChatAction) =>
-	applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true);
+export const applyAction = (conversationId: string, action: AiChatAction) => {
+	const range =
+		action.mode === "range" && action.from && action.to
+			? { from: dayjs(action.from).startOf("minute").valueOf(), to: dayjs(action.to).endOf("minute").valueOf() }
+			: undefined;
+	return applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true, range);
+};

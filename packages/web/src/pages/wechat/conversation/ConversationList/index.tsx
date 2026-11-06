@@ -22,6 +22,8 @@ import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
+import { getGeminiConfig } from "@/stateV2/gemini";
+import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 
@@ -152,6 +154,16 @@ const ConversationList = () => {
 	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const handleTap = (item: TConversationItem) => {
 		if (isEdit) return;
+		if (item.type === EConversationType.voice) {
+			// 点语音消息：用 Gemini 声音读出它的文字（没有文字或没填密钥就不播）
+			const text = item.stt?.trim();
+			if (text && getGeminiConfig().apiKey) {
+				unlockAudio();
+				const v = getGeminiConfig().voices;
+				void geminiSpeak(text, (item.role === "mine" ? v?.mine : v?.friend) || (item.role === "mine" ? "Puck" : "Aoede"));
+			}
+			return;
+		}
 		const isPacket = item.type === EConversationType.redPacket && item.redPacketStatus === "awaiting";
 		const isTransfer = item.type === EConversationType.transfer && item.transferStatus === "awaiting";
 		if (!isPacket && !isTransfer) return;

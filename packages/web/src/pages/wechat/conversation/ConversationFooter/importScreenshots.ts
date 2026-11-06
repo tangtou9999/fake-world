@@ -4,6 +4,7 @@ import {
 	setConversationListValue,
 } from "@/stateV2/conversation";
 import { touchDialogue } from "@/stateV2/fileHelper";
+import { getGeminiConfig } from "@/stateV2/gemini";
 import { type GeminiImage, callGemini, parseJsonLoose } from "@/utils/gemini";
 import { nanoid } from "nanoid";
 import dayjs from "dayjs";
@@ -41,7 +42,7 @@ export const IMPORT_PROMPT = `这些是同一段微信聊天的截图，已按�
 - 只输出 JSON 数组，不要任何解释。`;
 
 export async function parseScreenshots(images: GeminiImage[]) {
-	const raw = await callGemini(IMPORT_PROMPT, { json: true, images });
+	const raw = await callGemini(IMPORT_PROMPT, { json: true, images, model: getGeminiConfig().visionModel || undefined });
 	const list = parseJsonLoose<ParsedItem[]>(raw);
 	if (!Array.isArray(list) || list.length === 0) throw new Error("没有识别出聊天内容，换清晰一点的截图再试");
 	return list;
@@ -55,10 +56,15 @@ export function applyParsedItems(
 	list: ParsedItem[],
 	replace: boolean,
 	timed = false,
+	range?: { from: number; to: number },
 ) {
 	const base = Date.now() - list.length * 60_000;
-	const stamps = timed ? computeStamps(conversationId, list, replace) : [];
-	let prevStamp = replace ? 0 : (getConversationListValueSnapshot(conversationId).at(-1)?.sendTimestamp ?? 0);
+	const existing = getConversationListValueSnapshot(conversationId);
+	const before = range ? existing.filter((v) => v.sendTimestamp < range.from) : [];
+	const after = range ? existing.filter((v) => v.sendTimestamp > range.to) : [];
+	const lastBefore = range ? (before.at(-1)?.sendTimestamp ?? 0) : undefined;
+	const stamps = timed ? computeStamps(conversationId, list, replace, { last: lastBefore, cap: after[0]?.sendTimestamp }) : [];
+	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : (existing.at(-1)?.sendTimestamp ?? 0);
 	let pendingTime: string | undefined;
 	const items: TConversationItem[] = [];
 	let lastPreview = "";
@@ -122,15 +128,26 @@ export function applyParsedItems(
 			}
 		}
 	});
-	setConversationListValue(conversationId, (prev) => (replace ? items : [...prev, ...items]));
-	if (lastPreview) touchDialogue(conversationId, lastPreview);
+	setConversationListValue(conversationId, (prev) => {
+		if (range) {
+			return [...prev.filter((v) => v.sendTimestamp < range.from), ...items, ...prev.filter((v) => v.sendTimestamp > range.to)];
+		}
+		return replace ? items : [...prev, ...items];
+	});
+	if (lastPreview && !(range && after.length)) touchDialogue(conversationId, lastPreview);
 	return items.length;
 }
 
 /** 为剧本里的每条消息算出合法时间：单调递增，且不晚于现在、不早于已有最后一条 */
-function computeStamps(conversationId: string, list: ParsedItem[], replace: boolean) {
+function computeStamps(
+	conversationId: string,
+	list: ParsedItem[],
+	replace: boolean,
+	opt: { last?: number; cap?: number } = {},
+) {
 	const now = Date.now();
-	const last = replace ? 0 : (getConversationListValueSnapshot(conversationId).at(-1)?.sendTimestamp ?? 0);
+	const last = opt.last ?? (replace ? 0 : (getConversationListValueSnapshot(conversationId).at(-1)?.sendTimestamp ?? 0));
+	const top = Math.min(now, opt.cap ? opt.cap - 1000 : now);
 	const out: number[] = [];
 	let prev = last || now - list.length * 60_000;
 	list.forEach((it) => {
@@ -142,7 +159,7 @@ function computeStamps(conversationId: string, list: ParsedItem[], replace: bool
 	});
 	// 不能出现未来的时间：从后往前压到现在以内
 	for (let i = out.length - 1; i >= 0; i--) {
-		const cap = i === out.length - 1 ? now : out[i + 1] - 1000;
+		const cap = i === out.length - 1 ? top : out[i + 1] - 1000;
 		if (out[i] > cap) out[i] = cap;
 	}
 	return out;
