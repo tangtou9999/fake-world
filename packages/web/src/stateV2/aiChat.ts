@@ -21,9 +21,11 @@ export type AiChatMessage = {
 	failed?: boolean;
 	voice?: boolean;
 	action?: AiChatAction;
+	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
+	voiceMake?: { name: string; sample: string; profile: { voice: string; chest: number; air: number; accent: string; persona: string }; saved?: boolean };
 };
 
-export type AiChatSession = { id: string; no: number; messages: AiChatMessage[]; /** 私人 AI 绑定的聊天（联系人 id），只用于让它读取，不会改动聊天 */ boundIds?: string[] };
+export type AiChatSession = { id: string; no: number; /** 用户给窗口起的名字，没有就显示「N号AI」 */ name?: string; messages: AiChatMessage[]; /** 私人 AI 绑定的聊天（联系人 id），只用于让它读取，不会改动聊天 */ boundIds?: string[] };
 export type AiChatsState = { sessions: AiChatSession[]; activeId: string; counter: number; speak: boolean };
 
 const legacy = (() => {
@@ -48,7 +50,7 @@ export const aiChatByConvAtom = atomWithStorage<Record<string, AiChatMessage[]>>
 
 /** 「帮我生成一个××声音」→ 直接给出声音参数，系统自动存进声音库并试听 */
 const VOICE_MAKER_RULES = `
-【调声音】用户让你「生成 / 调一个××声音」（比如「18 岁少女，奶声奶气」「40 岁中年妇女」「低沉大叔」）时，先用一两句话说你选了什么，然后附一个 wxvoice 代码块，系统会自动把它存进用户的声音库并当场播放试听，用户不用再点保存：
+【调声音】用户让你「生成 / 调一个××声音」（比如「18 岁少女，奶声奶气」「40 岁中年妇女」「低沉大叔」）时，先用一两句话说你选了什么，然后附一个 wxvoice 代码块，系统会在对话里给用户一张带「试听」和「保存」按钮的卡片，用户听过、同意后才会存进声音库（你不要说「已经保存」）：
 \`\`\`wxvoice
 {"name":"声音名字","voice":"Laomedeia","fx":0,"air":80,"accent":"默认自然口语","persona":"18岁少女奶声奶气、娃娃音、尾音撒娇上扬","sample":"哥哥，你到哪儿啦？我都等你好久了～"}
 \`\`\`

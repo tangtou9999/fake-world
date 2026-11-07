@@ -1,4 +1,5 @@
 import { type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
+import { type Clip, getClip, putClip } from "./audioStore";
 import { speakText } from "./voice";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -103,6 +104,17 @@ const applyDict = (text: string, dict?: string) => {
 
 const paceOf = (fx: VoiceFx) => VOICE_PACES.find((p) => p.id === (fx.pace ?? "chat")) ?? VOICE_PACES[0];
 
+/** 这句话所处的场景对说话状态的影响（嘈杂就自然大声点，深夜被窝就压低贴耳） */
+const SCENE_STATE: Record<string, string> = {
+	pure: "",
+	bed: "此刻深夜躺在被窝里，自动压低声音，贴耳轻声，带气声",
+	living: "此刻在安静的夜晚房间里，随意放松地说",
+	restaurant: "此刻在嘈杂的餐厅夜宵摊，周围很吵，说话自然稍微大声一点",
+	rain: "此刻在雨夜的车里，声音略微压低，像在密闭车厢里近距离说话",
+	mall: "此刻在热闹的商场里，周围人多嘈杂，说话自然稍微大声一点",
+	street: "此刻在户外马路边，车流声大，说话自然提高一点音量",
+};
+
 /** 黄金拼接：人设 + 口音 + 语速节奏 + 本句口气，再加标点规则与「只读冒号后面」 */
 export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}, toneOverride?: string) => {
 	const parsed = parseLine(raw);
@@ -113,7 +125,7 @@ export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}
 	const air = profile.air ?? 0;
 	const accent = profile.accent && profile.accent !== "默认自然口语" ? `带${profile.accent}` : "";
 	const airPhrase = air >= 35 ? "带着贴耳气声、轻微气泡音与真实呼吸感" : "";
-	const head = [profile.persona?.trim(), accent, paceOf(fx).prompt, expandTone(tone, soften), airPhrase].filter(Boolean).join("，");
+	const head = [profile.persona?.trim(), accent, paceOf(fx).prompt, SCENE_STATE[fx.scene ?? "pure"], expandTone(tone, soften), airPhrase].filter(Boolean).join("，");
 	const punct = "遇到……要留出真实的欲言又止或呼吸停顿；遇到——代表话没说完急促截断；遇到？！要拔高声调质问";
 	return { prompt: `${head}。${punct}。请严格只朗读冒号后面的台词内容（绝不要把前面的提示词和括号读出来）：\n${text}`, head: `${head}。${punct}`, text, tone };
 };
@@ -217,6 +229,30 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 	}
 	const uniq = Array.from(new Set(errors)).slice(-3);
 	throw new Error(uniq.join("；") || "未知错误");
+};
+
+/** 优先用本地已存的语音；没有才联网生成，生成后存到本地 */
+const getBuffer = async (head: string, text: string, profile: VoiceProfile, tone: string | undefined, cacheKey?: string) => {
+	const sig = JSON.stringify([profile.voice, profile.persona ?? "", profile.accent ?? "", text, tone ?? ""]);
+	if (cacheKey) {
+		if (!ctx) unlockAudio();
+		const hit = await getClip(cacheKey);
+		if (hit && hit.sig === sig && ctx) {
+			const buf = ctx.createBuffer(1, Math.max(1, hit.pcm.length), hit.rate);
+			const ch = buf.getChannelData(0);
+			for (let i = 0; i < hit.pcm.length; i++) ch[i] = hit.pcm[i] / 32768;
+			return buf;
+		}
+	}
+	const buf = await synth(head, text, profile.voice);
+	if (cacheKey) {
+		const f = buf.getChannelData(0);
+		const pcm = new Int16Array(f.length);
+		for (let i = 0; i < f.length; i++) pcm[i] = Math.max(-32768, Math.min(32767, Math.round(f[i] * 32768)));
+		const clip: Clip = { sig, rate: buf.sampleRate, pcm };
+		void putClip(cacheKey, clip);
+	}
+	return buf;
 };
 
 /* ---------- 声学后处理：气声 / 胸腔 / 听筒 / 压限 / 声场 ---------- */
@@ -353,7 +389,7 @@ const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: 
 const clean = (v: string | VoiceProfile): VoiceProfile => (typeof v === "string" ? { voice: v || "Kore" } : { ...v, voice: v.voice || "Kore" });
 
 /** 用 Gemini 的声音朗读一句；失败时退回手机自带的朗读，并返回提示文字 */
-export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx, tone?: string): Promise<string | null> => {
+export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx, tone?: string, cacheKey?: string): Promise<string | null> => {
 	const profile = clean(voice);
 	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
 	const { head, text } = buildPrompt(rawText.slice(0, 900), profile, fx, tone);
@@ -361,7 +397,7 @@ export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile,
 	stopSpeaking();
 	const my = gen;
 	try {
-		const buf = await synth(head, text, profile.voice);
+		const buf = await getBuffer(head, text, profile, tone, cacheKey);
 		if (!ctx || my !== gen) return null;
 		await ctx.resume();
 		schedule(ctx, buf, profile, fx, ctx.currentTime + 0.02);
@@ -373,15 +409,15 @@ export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile,
 };
 
 /** 连播多句（双人私聊 / 群聊）：句间停顿 0.15~0.20 秒；上一句以「——」结尾或这句标了抢话/打断/爆笑，就提前 0.25 秒叠音 */
-export const playSequence = async (lines: { text: string; profile: VoiceProfile; fx?: VoiceFx; tone?: string }[], fxOverride?: VoiceFx): Promise<string | null> => {
+export const playSequence = async (lines: { text: string; profile: VoiceProfile; fx?: VoiceFx; tone?: string; cacheKey?: string }[], fxOverride?: VoiceFx): Promise<string | null> => {
 	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
-	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, { ...fx, ...l.fx }, l.tone), profile: l.profile, raw: l.text, lfx: { ...fx, ...l.fx } })).filter((l) => l.text);
+	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, { ...fx, ...l.fx }, l.tone), profile: l.profile, raw: l.text, tone0: l.tone, ck: l.cacheKey, lfx: { ...fx, ...l.fx } })).filter((l) => l.text);
 	if (!prepared.length) return null;
 	stopSpeaking();
 	const my = gen;
 	unlockAudio();
 	try {
-		const bufs = await Promise.all(prepared.map((l) => synth(l.head, l.text, l.profile.voice)));
+		const bufs = await Promise.all(prepared.map((l) => getBuffer(l.head, l.text, l.profile, l.tone0, l.ck)));
 		const c = ctx;
 		if (!c || my !== gen) return null;
 		await c.resume();
@@ -390,7 +426,7 @@ export const playSequence = async (lines: { text: string; profile: VoiceProfile;
 		prepared.forEach((l, i) => {
 			if (i > 0) {
 				const overlap = /——\s*$/.test(prevRaw) || /抢话|打断|爆笑/.test(l.tone);
-				t += overlap ? -0.25 : 0.18;
+				t += overlap ? -0.28 : 0.18;
 			}
 			t = schedule(c, bufs[i], l.profile, l.lfx, Math.max(t, c.currentTime + 0.02));
 			prevRaw = l.raw;

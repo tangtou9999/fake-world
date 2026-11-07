@@ -2,7 +2,7 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
-import { DEFAULT_VOICE, type VoicePreset, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
+import { DEFAULT_VOICE, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { startRecording } from "@/utils/voice";
@@ -31,6 +31,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const busyKey = isChat ? `c:${conversationId}` : `s:${session.id}`;
 	const busy = busyKeys.includes(busyKey);
 	const cancelled = useRef<Set<string>>(new Set());
+	const lastTab = useRef({ id: "", t: 0 });
 	const [voiceMode, setVoiceMode] = useState(false);
 	const [rec, setRec] = useState<"idle" | "recording" | "processing">("idle");
 	const [note, setNote] = useState("");
@@ -58,16 +59,19 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 	const addSession = () =>
 		setState((s) => {
-			const no = s.counter + 1;
+			// 新窗口排在最前面；名字取最小的还没被占用的「N号AI」（1号被改名了或删了，新窗口就叫 1号AI）
+			const used = new Set(s.sessions.map((x) => x.name || `${x.no}号AI`));
+			let no = 1;
+			while (used.has(`${no}号AI`)) no++;
 			const id = nanoid(6);
-			return { ...s, counter: no, activeId: id, sessions: [...s.sessions, { id, no, messages: [], boundIds: [] }] };
+			return { ...s, counter: Math.max(s.counter, no), activeId: id, sessions: [{ id, no, messages: [], boundIds: [] }, ...s.sessions] };
 		});
 
 	const clearSession = () => window.confirm(isChat ? "清空这个聊天的 AI 对话？（不会动聊天内容）" : "清空这个窗口的全部对话？") && updateMessages(() => []);
 
 	const removeSession = () => {
 		if (state.sessions.length <= 1) return clearSession();
-		if (!window.confirm(`删除「${session.no}号AI」窗口和里面的对话？`)) return;
+		if (!window.confirm(`删除「${session.name || `${session.no}号AI`}」窗口和里面的对话？`)) return;
 		setState((s) => {
 			const rest = s.sessions.filter((x) => x.id !== session.id);
 			return { ...s, sessions: rest, activeId: rest[0].id };
@@ -137,14 +141,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			if (cancelled.current.delete(userMsg.id)) return;
 			const vm = parseVoiceMake(reply.trim());
 			const parsed = isChat ? parseAction(vm.text) : { text: vm.text, action: undefined };
-			let saved = "";
-			if (vm.make) {
-				const preset: VoicePreset = { id: nanoid(6), name: vm.make.name, profile: vm.make.profile };
-				setPresets((v) => [...v, preset]);
-				saved = `\n\n✅ 已自动保存到声音库：「${preset.name}」（${preset.profile.voice} · 低音 ${preset.profile.chest}% · 气声 ${preset.profile.air}%），正在试听。可到「设置 → AI 模型与声音」里改名、选用。`;
-				unlockAudio();
-				void geminiSpeak(vm.make.sample, preset.profile).then((n) => n && setNote(n));
-			}
+
 			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
 			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
 			updateMessages((m) => [
@@ -152,7 +149,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				{
 					id: nanoid(8),
 					role: "model",
-					text: parsed.text + saved + extra,
+					text: parsed.text + extra,
+					voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 				},
 			]);
@@ -261,10 +259,20 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						<button
 							key={s.id}
 							type="button"
-							onClick={() => setState((v) => ({ ...v, activeId: s.id }))}
+							onClick={() => {
+								const now = Date.now();
+								if (lastTab.current.id === s.id && now - lastTab.current.t < 400) {
+									lastTab.current = { id: "", t: 0 };
+									const n = window.prompt("给这个窗口起个名字（方便记住聊了什么）", s.name || `${s.no}号AI`)?.trim();
+									if (n) setState((v) => ({ ...v, sessions: v.sessions.map((x) => (x.id === s.id ? { ...x, name: n } : x)) }));
+									return;
+								}
+								lastTab.current = { id: s.id, t: now };
+								setState((v) => ({ ...v, activeId: s.id }));
+							}}
 							className={`h-8 shrink-0 rounded-full px-4 text-[14px] ${s.id === session.id ? "bg-[#07C160] text-white" : "bg-white text-black/70"}`}
 						>
-							{s.no}号AI
+							{s.name || `${s.no}号AI`}
 						</button>
 					))}
 				</div>
@@ -362,6 +370,52 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							<button type="button" className="mt-1 text-[12px] text-black/35" onClick={() => void doSpeak(m.text)}>
 								🔊 朗读
 							</button>
+						)}
+						{m.voiceMake && (
+							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
+								<div className="font-medium text-[14px]">🎙 AI 为你调好了一个声音</div>
+								<input
+									className="mt-2 h-9 w-full rounded-[6px] bg-[#F5F5F5] px-2 text-[14px] outline-none"
+									value={m.voiceMake.name}
+									maxLength={16}
+									disabled={m.voiceMake.saved}
+									onChange={(e) => updateMessages((all) => all.map((x) => (x.id === m.id && x.voiceMake ? { ...x, voiceMake: { ...x.voiceMake, name: e.target.value } } : x)))}
+								/>
+								<div className="mt-2 text-[12px] text-black/50 leading-5">
+									声纹 {m.voiceMake.profile.voice} · 低音共鸣 {m.voiceMake.profile.chest}% · 高频气声 {m.voiceMake.profile.air}%
+									{m.voiceMake.profile.persona ? ` · ${m.voiceMake.profile.persona}` : ""}
+								</div>
+								{m.voiceMake.saved ? (
+									<div className="mt-2 text-[13px] text-[#07C160]">✓ 已保存到声音库，可在聊天的「声音」里选用</div>
+								) : (
+									<div className="mt-2 grid grid-cols-2 gap-2">
+										<button
+											type="button"
+											className="h-10 rounded-[6px] bg-[#07C160]/10 text-[15px] text-[#07C160]"
+											onClick={() => {
+												unlockAudio();
+												const vmk = m.voiceMake;
+												if (vmk) void geminiSpeak(vmk.sample, vmk.profile).then((n) => n && setNote(n));
+											}}
+										>
+											试听
+										</button>
+										<button
+											type="button"
+											className="h-10 rounded-[6px] bg-[#07C160] text-[15px] text-white"
+											onClick={() => {
+												const vmk = m.voiceMake;
+												if (!vmk) return;
+												stopSpeaking();
+												setPresets((v) => [...v, { id: nanoid(6), name: vmk.name.trim() || "新声音", profile: vmk.profile }]);
+												updateMessages((all) => all.map((x) => (x.id === m.id && x.voiceMake ? { ...x, voiceMake: { ...x.voiceMake, saved: true } } : x)));
+											}}
+										>
+											保存
+										</button>
+									</div>
+								)}
+							</div>
 						)}
 						{m.action && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">

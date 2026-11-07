@@ -16,14 +16,14 @@ import { EMetaDataType, type StaticMetaData, allNodesTreeAtom } from "@/stateV2/
 import { SubnodeOutlined } from "@ant-design/icons";
 import { Modal, Tooltip } from "antd";
 import { useAtom, useSetAtom } from "jotai";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Node } from "slate";
 import { translateText } from "../ConversationFooter/importScreenshots";
 import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
-import { getGeminiConfig, hasApiKey, normPace, normScene, resolveProfile } from "@/stateV2/gemini";
+import { getGeminiConfig, normPace, normScene, resolveProfile } from "@/stateV2/gemini";
 
 /** 这条语音自带的环境 / 语速（AI 按剧情给的）；没有就用设置里的默认 */
 const lineFx = (item: object) => {
@@ -35,6 +35,7 @@ const lineFx = (item: object) => {
 	if (pc) fx.pace = pc;
 	return fx;
 };
+import { pruneClips } from "@/utils/audioStore";
 import { mainStore } from "@/stateV2/store";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
@@ -48,6 +49,11 @@ const ConversationList = () => {
 	const [conversationList, setConversationList] = useAtom(conversationListAtom(conversationId));
 	const { isEdit } = useMode();
 	const rebuildTree = useSetAtom(allNodesTreeAtom);
+
+	// 聊天里已经不存在的消息，对应的本地语音一并清掉（只要消息还在，语音就一直保存在手机里）
+	useEffect(() => {
+		void pruneClips(`${conversationId}:`, new Set(conversationList.map((i) => `${conversationId}:${i.id}`)));
+	}, [conversationList, conversationId]);
 
 	const mappedSortableListData = useMemo(() => {
 		return conversationList.map((item) => ({
@@ -187,9 +193,9 @@ const ConversationList = () => {
 				setConversationListValue(conversationId, (prev) => prev.map((v) => (v.id === item.id ? ({ ...v, isRead: true } as TConversationItem) : v)));
 			}
 			const text = item.stt?.trim();
-			if (text && hasApiKey(getGeminiConfig())) {
+			if (text) {
 				unlockAudio();
-				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId), lineFx(item), (item as { tone?: string }).tone).then(async (n) => {
+				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId), lineFx(item), (item as { tone?: string }).tone, `${conversationId}:${item.id}`).then(async (n) => {
 					if (n) {
 						showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
 						finish();
