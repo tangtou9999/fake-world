@@ -12,6 +12,9 @@ import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversationAPI } from "../context";
+import VideoCall from "./VideoCall";
+import { profileAtom } from "@/stateV2/profile";
+import { useAtomValue } from "jotai";
 
 type ActionProps = {
 	label: string;
@@ -45,7 +48,7 @@ const PhotoIcon = () => (
 	<Icon>
 		<path
 			fillRule="evenodd"
-			d="M4 3.8h16a1.7 1.7 0 0 1 1.7 1.7v13A1.7 1.7 0 0 1 20 20.2H4a1.7 1.7 0 0 1-1.7-1.7v-13A1.7 1.7 0 0 1 4 3.8Zm4.3 3.3a1.9 1.9 0 1 0 0 3.8 1.9 1.9 0 0 0 0-3.8ZM4.2 17.8h15.6v-1.4l-4.5-5-3.6 3.8-2.4-2.2-5.1 4.4Z"
+			d="M2.5 3.8h19a.8.8 0 0 1 .8.8v14.8a.8.8 0 0 1-.8.8h-19a.8.8 0 0 1-.8-.8V4.6a.8.8 0 0 1 .8-.8ZM3.9 5.7v7.4l4.2-4.2 4 4.600 3.100-3.400 5 5.200V5.700Z"
 		/>
 	</Icon>
 );
@@ -54,7 +57,7 @@ const CameraIcon = () => (
 	<Icon>
 		<path
 			fillRule="evenodd"
-			d="M8.6 4h6.8l1.4 2.1H20A1.7 1.7 0 0 1 21.7 7.8v10.5A1.7 1.7 0 0 1 20 20H4a1.7 1.7 0 0 1-1.7-1.7V7.8A1.7 1.7 0 0 1 4 6.1h3.2L8.6 4ZM12 8.6a4.2 4.2 0 1 0 0 8.4 4.2 4.2 0 0 0 0-8.4Zm0 2a2.2 2.2 0 1 1 0 4.4 2.2 2.2 0 0 1 0-4.4Z"
+			d="M8.600 3.800h6.800l1.400 2.700h3.500a2 2 0 0 1 2 2v9.700a2 2 0 0 1-2 2H3.700a2 2 0 0 1-2-2V8.500a2 2 0 0 1 2-2h3.500Zm3.400 5.700a3.700 3.700 0 1 0 0 7.400 3.700 3.700 0 0 0 0-7.400Z"
 		/>
 	</Icon>
 );
@@ -63,15 +66,15 @@ const LocationIcon = () => (
 	<Icon>
 		<path
 			fillRule="evenodd"
-			d="M12 2.3a6.7 6.7 0 0 0-6.7 6.7c0 4.8 6.7 12.7 6.7 12.7s6.7-7.9 6.7-12.7A6.7 6.7 0 0 0 12 2.3Zm0 9.1a2.4 2.4 0 1 1 0-4.8 2.4 2.4 0 0 1 0 4.8Z"
+			d="M11.900 1.700a8.100 8.100 0 0 0-8.100 8.100c0 4.300 4.100 9.200 7.200 12.500a1.300 1.300 0 0 0 1.800 0c3.100-3.300 7.200-8.200 7.200-12.500a8.100 8.100 0 0 0-8.100-8.100Zm0 5.400a2.700 2.700 0 1 1 0 5.400 2.700 2.700 0 0 1 0-5.400Z"
 		/>
 	</Icon>
 );
 
 const XiaoweiIcon = () => (
 	<Icon>
-		<ellipse cx="8" cy="11" rx="2.5" ry="3.2" />
-		<ellipse cx="16" cy="11" rx="2.5" ry="3.2" />
+		<ellipse cx="4.800" cy="9.600" rx="3.200" ry="5.300" />
+		<ellipse cx="19.200" cy="9.600" rx="3.200" ry="5.300" />
 	</Icon>
 );
 
@@ -105,31 +108,36 @@ const MusicIcon = () => (
 
 const VideoCallIcon = () => (
 	<Icon>
-		<path d="M3.8 6.2h10.4a1.8 1.8 0 0 1 1.8 1.8v8a1.8 1.8 0 0 1-1.8 1.8H3.8A1.8 1.8 0 0 1 2 16V8a1.8 1.8 0 0 1 1.8-1.8Zm13.2 4 5-3v9.6l-5-3Z" />
+		<path d="M3.700 5.400h11.500a2 2 0 0 1 2 2v9.200a2 2 0 0 1-2 2H3.700a2 2 0 0 1-2-2V7.400a2 2 0 0 1 2-2Z" />
+		<path d="M18.500 10.600l3.700-2.900a.7.700 0 0 1 1.100.6v7.400a.7.700 0 0 1-1.100.6l-3.700-2.900Z" />
 	</Icon>
 );
 
 const RedPacketIcon = () => (
 	<Icon>
-		<path d="M4.4 2.8h15.2a1.4 1.4 0 0 1 1.4 1.4v4.6c-2.4 1.8-5.2 2.8-9 2.8S5.4 10.6 3 8.8V4.2a1.4 1.4 0 0 1 1.4-1.4Z" />
-		<path d="M3 11.4c3.2 2 5.6 2.8 9 2.8s5.8-.8 9-2.8v8.4a1.4 1.4 0 0 1-1.4 1.4H4.4A1.4 1.4 0 0 1 3 19.8Z" />
-		<circle cx="12" cy="11.300" r="1.700" fill="#fff" />
+		<path d="M6.100 2.500h11.800a1.500 1.500 0 0 1 1.800 1.500v16a1.500 1.500 0 0 1-1.500 1.500H6A1.500 1.500 0 0 1 4.300 20V4A1.500 1.500 0 0 1 6.100 2.500Z" />
+		<path d="M4.300 7.300c1.900 2.600 4.400 4 7.700 4s5.800-1.400 7.700-4" fill="none" stroke="#fff" strokeWidth="1" />
+		<circle cx="12" cy="10.600" r="1.400" fill="#fff" />
 	</Icon>
 );
 
 const GiftIcon = () => (
 	<Icon>
-		<path
-			fillRule="evenodd"
-			d="M4.2 4.5h15.6A2.2 2.2 0 0 1 22 6.700v8.6a2.2 2.2 0 0 1-2.2 2.2h-7.6L8 20.8v-3.300H4.2A2.2 2.2 0 0 1 2 15.300V6.700a2.2 2.2 0 0 1 2.2-2.2Zm3.700 3.4a1.5 1.5 0 0 0 0 3h3.100V7.900Zm8.2 0h-3.100v3h3.100a1.5 1.5 0 0 0 0-3ZM9.900 12.5v3.2h2.100v-3.2Zm4.2 0h-2.100v3.2h2.100Z"
-		/>
+		<path d="M3.500 3.800h17a1.800 1.800 0 0 1 1.800 1.800v11.300a1.800 1.800 0 0 1-1.800 1.800h-10.800l-2.800 3.300v-3.300H3.500a1.800 1.800 0 0 1-1.800-1.800V5.600a1.800 1.800 0 0 1 1.800-1.800Z" />
+		<g fill="none" stroke="#fff" strokeWidth="0.950" strokeLinecap="round" strokeLinejoin="round">
+			<path d="M1.700 10.800h7.300M15 10.800h7.300" />
+			<path d="M12 10.800c-2.600-1.300-3.500-3.800-2-4.800 1.600-.9 2.400 2.500 2 4.800Zm0 0c2.600-1.300 3.500-3.800 2-4.800-1.600-.9-2.400 2.500-2 4.800Z" />
+			<path d="M12 10.800l-2.300 3.400M12 10.800l2.300 3.400" />
+		</g>
 	</Icon>
 );
 
 const TransferIcon = () => (
 	<Icon>
-		<path d="M4 7.6h13.4L14.6 4.8l1.2-1.2L21 8.8l-5.2 5.2-1.2-1.2 2.8-2.8H4Z" />
-		<path d="M20 16.4H6.6l2.8 2.8-1.2 1.2L3 15.2l5.2-5.2 1.2 1.2-2.8 2.8H20Z" />
+		<path d="M3.700 9.200h16.500v1.800H3.700Z" />
+		<path d="M3.700 10.100l6.500-5.200a.4.4 0 0 1 .6.300v4.900Z" />
+		<path d="M3.800 12.800h16.500v1.800H3.800Z" />
+		<path d="M20.300 13.900l-6.500 5.200a.4.4 0 0 1-.6-.3v-4.900Z" />
 	</Icon>
 );
 
@@ -142,6 +150,27 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
 	const [page, setPage] = useState(0);
+	const [calling, setCalling] = useState(false);
+	const friend = useAtomValue(profileAtom(conversationId));
+
+	const endCall = (sec: number) => {
+		setCalling(false);
+		const text = sec < 0 ? "已取消" : `通话时长 ${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+		touchDialogue(conversationId, `[视频通话] ${text}`);
+		setConversationListValue(conversationId, (prev) => [
+			...prev,
+			{
+				type: EConversationType.text,
+				role: "mine",
+				id: nanoid(8),
+				sendTimestamp: dayjs().valueOf(),
+				upperText: fromLastGenerateUpperText(prev),
+				textContent: [{ type: "paragraph", children: [{ text: `📹 ${text}` }] }],
+			} as (typeof prev)[number],
+		]);
+		scrollConversationListToBtm();
+		onSent?.();
+	};
 	const pagerRef = useRef<HTMLDivElement>(null);
 
 	const appendFile = async (file: File) => {
@@ -254,7 +283,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 					<Action
 						label={t("wechatPage.chatPlus.videoCall")}
 						icon={<VideoCallIcon />}
-						onClick={() => undefined}
+						onClick={() => setCalling(true)}
 					/>
 					<Action
 						label={t("wechatPage.chatPlus.location")}
@@ -309,6 +338,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 					/>
 				))}
 			</div>
+			{calling && <VideoCall storeKey={`call:${conversationId}`} name={friend?.remark || friend?.nickname || ""} avatar={friend?.avatarInfo ?? ""} onEnd={endCall} />}
 			{busy && <div className="mt-4 text-center text-black/45 text-xs">正在处理…</div>}
 			{error && <div className="mt-4 text-center text-[#FA5151] text-xs">{error}</div>}
 		</div>
