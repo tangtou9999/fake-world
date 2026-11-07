@@ -2,11 +2,10 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
-import { DEFAULT_VOICE, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
+import { geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
-import { startRecording } from "@/utils/voice";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,8 +17,8 @@ type Props = { mode: "private" | "chat"; conversationId?: string };
 const AiChatView = ({ mode, conversationId }: Props) => {
 	useScreenTopBg("#EDEDED");
 	const navigate = useNavigate();
-	const [gemini, setGemini] = useAtom(geminiConfigAtom);
-	const [presets, setPresets] = useAtom(voicePresetsAtom);
+	const [gemini] = useAtom(geminiConfigAtom);
+	const setPresets = useSetAtom(voicePresetsAtom);
 	const [speaking, setSpeaking] = useState(false);
 	const [state, setState] = useAtom(aiChatsAtom);
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
@@ -32,13 +31,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const busy = busyKeys.includes(busyKey);
 	const cancelled = useRef<Set<string>>(new Set());
 	const lastTab = useRef({ id: "", t: 0 });
-	const [voiceMode, setVoiceMode] = useState(false);
-	const [rec, setRec] = useState<"idle" | "recording" | "processing">("idle");
 	const [note, setNote] = useState("");
 	const [picker, setPicker] = useState(false);
 	const bottomRef = useRef<HTMLDivElement>(null);
-	const holdRef = useRef(false);
-	const recRef = useRef<Awaited<ReturnType<typeof startRecording>> | null>(null);
 	const allContacts = listContacts();
 	const current = isChat ? allContacts.find((c) => c.id === conversationId) : undefined;
 	const bound = (!isChat ? (session.boundIds ?? []) : []).map((id) => allContacts.find((c) => c.id === id)).filter((c): c is NonNullable<typeof c> => !!c);
@@ -97,10 +92,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		setSpeaking(false);
 	};
 
-	const send = async (text: string, viaVoice = false) => {
+	const send = async (text: string) => {
 		unlockAudio();
 		setNote("");
-		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text, voice: viaVoice || undefined };
+		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text };
 		const prior = messages.filter((m) => !m.error && !m.failed);
 		updateMessages((m) => [...m, userMsg]);
 		const myKey = busyKey;
@@ -154,7 +149,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 				},
 			]);
-			if (viaVoice && state.speak) void doSpeak(parsed.text);
+			if (state.speak) void doSpeak(parsed.text);
 		} catch (e) {
 			if (cancelled.current.delete(userMsg.id)) return;
 			const msg = e instanceof Error ? e.message : String(e);
@@ -172,57 +167,6 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		if (!t || busy) return;
 		setInput("");
 		void send(t);
-	};
-
-	const onDown = async () => {
-		if (busy || rec !== "idle") return;
-		unlockAudio();
-		holdRef.current = true;
-		setNote("");
-		setRec("recording");
-		try {
-			const r = await startRecording();
-			if (!holdRef.current) {
-				r.cancel();
-				setRec("idle");
-				return;
-			}
-			recRef.current = r;
-			setTimeout(() => {
-				if (recRef.current === r && holdRef.current) void onUp();
-			}, 60000);
-		} catch (e) {
-			holdRef.current = false;
-			setRec("idle");
-			setNote(`无法使用麦克风：${e instanceof Error ? e.message : String(e)}（请在系统设置里允许浏览器使用麦克风）`);
-		}
-	};
-
-	const onUp = async () => {
-		if (!holdRef.current) return;
-		holdRef.current = false;
-		const r = recRef.current;
-		recRef.current = null;
-		if (!r) {
-			setRec("idle");
-			return;
-		}
-		const audio = r.stop();
-		if (!audio) {
-			setRec("idle");
-			setNote("说话时间太短，请按住说话");
-			return;
-		}
-		setRec("processing");
-		try {
-			const t = (await callGemini("请把这段语音逐字转写成文字（语言按说话内容）。只输出转写出的文字本身；如果听不清或没有说话，只输出：空", { audio })).trim();
-			if (!t || t === "空") setNote("没听清，请再说一次");
-			else await send(t, true);
-		} catch (e) {
-			setNote(e instanceof Error ? e.message : String(e));
-		} finally {
-			setRec("idle");
-		}
 	};
 
 	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range") => {
@@ -277,43 +221,29 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					))}
 				</div>
 			)}
-			<div className="flex shrink-0 items-center gap-2 px-4 pb-2 text-[13px] text-black/60">
-				朗读声音
-				<select
-					className="h-7 min-w-0 flex-1 rounded-[6px] bg-white px-2 text-[13px] outline-none"
-					value={gemini.assign?.ai ?? ""}
-					onChange={(e) => setGemini((c) => ({ ...c, assign: { ...c.assign, ai: e.target.value || undefined } }))}
-				>
-					<option value="">默认（{DEFAULT_VOICE.ai}）</option>
-					{presets.map((p) => (
-						<option key={p.id} value={p.id}>
-							{p.name}
-						</option>
-					))}
-				</select>
+			<div className="flex shrink-0 items-center gap-4 px-4 pb-2 text-[13px] text-[#576B95]">
+				<button type="button" onClick={clearSession}>清空对话</button>
+				{!isChat && <button type="button" onClick={removeSession}>删除本窗口</button>}
 				{speaking && (
 					<button
 						type="button"
-						className="shrink-0 text-[#07C160]"
+						className="ml-auto text-[#07C160]"
 						onClick={() => {
 							stopSpeaking();
 							setSpeaking(false);
 						}}
 					>
-						🔊 停止朗读
+						🔊 停止
 					</button>
 				)}
-			</div>
-			<div className="flex shrink-0 items-center gap-4 px-4 pb-2 text-[13px] text-[#576B95]">
-				<button type="button" onClick={clearSession}>清空对话</button>
-				{!isChat && <button type="button" onClick={removeSession}>删除本窗口</button>}
-				<button type="button" className="ml-auto" onClick={() => setState((s) => ({ ...s, speak: !s.speak }))}>
-					语音提问时朗读：{state.speak ? "开" : "关"}
+				<button type="button" className={speaking ? "" : "ml-auto"} onClick={() => setState((s) => ({ ...s, speak: !s.speak }))}>
+					朗读回复：{state.speak ? "开" : "关"}
 				</button>
 			</div>
 			{!isChat && (
 				<div className="flex shrink-0 flex-wrap items-center gap-2 px-4 pb-2 text-[13px]">
 					<span className="text-black/40">绑定的聊天：</span>
+					{bound.length === 0 && <span className="text-black/40">无</span>}
 					{bound.map((c) => (
 						<span key={c.id} className="rounded-full bg-[#07C160]/15 px-3 py-[2px] text-[#07C160]">
 							{c.name}
@@ -366,11 +296,6 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							{m.voice ? "🎤 " : ""}
 							{m.text}
 						</div>
-						{m.role === "model" && !m.error && m.text && (
-							<button type="button" className="mt-1 text-[12px] text-black/35" onClick={() => void doSpeak(m.text)}>
-								🔊 朗读
-							</button>
-						)}
 						{m.voiceMake && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
 								<div className="font-medium text-[14px]">🎙 AI 为你调好了一个声音</div>
@@ -474,6 +399,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setPicker(false)}>
 					<div className="max-h-[70%] overflow-auto rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
 						<div className="border-black/5 border-b px-4 py-3 text-center font-medium text-[16px]">选择要绑定的聊天（最多 4 个）</div>
+						<button type="button" onClick={() => { setState((x) => ({ ...x, sessions: x.sessions.map((y) => (y.id === session.id ? { ...y, boundIds: [] } : y)) })); setPicker(false); }} className="flex w-full items-center justify-between border-black/5 border-b px-4 py-3 text-left text-[16px]">
+							一个都不选（不绑定任何聊天）
+							<span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[12px] ${(session.boundIds ?? []).length === 0 ? "border-[#07C160] bg-[#07C160] text-white" : "border-black/20"}`}>{(session.boundIds ?? []).length === 0 ? "✓" : ""}</span>
+						</button>
 						{allContacts.map((c) => {
 							const on = (session.boundIds ?? []).includes(c.id);
 							return (
@@ -489,23 +418,6 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			)}
 			{note && <div className="max-h-[40vh] overflow-auto whitespace-pre-line bg-[#FBE9E9] px-4 py-2 text-[13px] text-[#C62828]">{note}</div>}
 			<div className="flex items-end gap-2 border-t-[0.5px] border-t-[#D6D6D6] bg-[#F7F7F7] px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
-				<button type="button" aria-label="切换语音/文字" onClick={() => setVoiceMode((v) => !v)} className="h-10 w-10 shrink-0 rounded-full border border-black text-[18px]">
-					{voiceMode ? "⌨" : "🎤"}
-				</button>
-				{voiceMode ? (
-					<button
-						type="button"
-						className={`h-10 flex-1 select-none rounded-[6px] text-[16px] ${rec === "recording" ? "bg-[#07C160] text-white" : "bg-white"}`}
-						style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
-						onContextMenu={(e) => e.preventDefault()}
-						onPointerDown={() => void onDown()}
-						onPointerUp={() => void onUp()}
-						onPointerCancel={() => void onUp()}
-						onPointerLeave={() => void onUp()}
-					>
-						{rec === "recording" ? "松开 发送" : rec === "processing" ? "识别中…" : "按住 说话"}
-					</button>
-				) : (
 					<>
 						<textarea
 							rows={1}
@@ -518,7 +430,6 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							发送
 						</button>
 					</>
-				)}
 			</div>
 		</div>
 	);
