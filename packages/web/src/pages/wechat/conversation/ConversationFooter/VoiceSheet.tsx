@@ -2,13 +2,13 @@ import VoiceProfileEditor from "@/pages/wechat/my/settings/VoiceProfileEditor";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { convVoicesAtom, geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
 import { geminiSpeak, playSequence, stopSpeaking, unlockAudio } from "@/utils/tts";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /** 这个聊天里「对方」和「我」的声音档案（覆盖全局默认），以及一键连播所有语音 */
 const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClose: () => void }) => {
-	const [all, setAll] = useAtom(convVoicesAtom);
+	const setAll = useSetAtom(convVoicesAtom);
 	const gemini = useAtomValue(geminiConfigAtom);
 	const navigate = useNavigate();
 	const [role, setRole] = useState<"friend" | "mine">("friend");
