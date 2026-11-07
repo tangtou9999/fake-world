@@ -87,9 +87,10 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 	if (!apiKey && !apiKey2) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
 	const keys = [apiKey, apiKey2].filter((k): k is string => !!k);
 	let lastErr: unknown;
-	for (const k of keys) {
+	for (const [i, k] of keys.entries()) {
 		try {
-			return await callGeminiWithKey(k, prompt, options);
+			// 还有备用密钥时，主密钥只快速试一次，出错立刻换备用，不干等
+			return await callGeminiWithKey(k, prompt, options, i < keys.length - 1);
 		} catch (e) {
 			if (e instanceof GeminiBlockedError) throw e;
 			lastErr = e;
@@ -98,14 +99,14 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 	throw lastErr;
 }
 
-async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOptions) {
+async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOptions, quick = false) {
 	const { model } = getGeminiConfig();
 	const pick = options.model || model;
 	const chosen = !pick || RETIRED_MODELS.includes(pick) ? DEFAULT_GEMINI_MODEL : pick;
-	const models = Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));
+	const models = quick ? [chosen] : Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));
 	let last: GeminiError = { message: "未知错误" };
 	for (const m of models) {
-		for (let attempt = 0; attempt < 2; attempt++) {
+		for (let attempt = 0; attempt < (quick ? 1 : 2); attempt++) {
 			try {
 				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
@@ -116,13 +117,14 @@ async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOp
 				}
 				if (last.status === 404) break; // 模型不存在 → 换下一个
 				if (!last.status || RETRYABLE.has(last.status)) {
-					await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+					if (!quick) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
 					continue;
 				}
 				throw new Error(last.message);
 			}
 		}
 	}
+	if (quick) throw new Error(`Gemini 暂时不可用（${last.status ?? "网络"}）：${last.message}`);
 	// 预设的模型都不行时：向谷歌查询这个密钥当前可用的模型，挑 flash 系列再试一次
 	try {
 		const available = (await listGeminiModels(apiKey)).filter((n) => /flash/.test(n) && !models.includes(n)).slice(0, 3);
