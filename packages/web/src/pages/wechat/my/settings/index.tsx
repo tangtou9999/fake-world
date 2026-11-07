@@ -103,7 +103,7 @@ const Settings = () => {
 					<List.Item
 						withJump
 						onClick={() => navigate("/wechat/my/settings/ai")}
-						extra={<span className={grey}>{gemini.apiKey ? "已配置" : "未配置"}</span>}
+						extra={<span className={grey}>{(gemini.apiKey || gemini.apiKey2) ? "已配置" : "未配置"}</span>}
 					>
 						AI 助手
 					</List.Item>

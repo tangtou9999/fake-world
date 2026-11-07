@@ -1,23 +1,24 @@
-import VoiceProfileEditor from "@/pages/wechat/my/settings/VoiceProfileEditor";
+import { TRIAL_TEXT } from "@/pages/wechat/my/settings/VoiceLibrary";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
-import { convVoicesAtom, geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
+import { DEFAULT_VOICE, convVoicesAtom, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { geminiSpeak, playSequence, stopSpeaking, unlockAudio } from "@/utils/tts";
-import { useAtomValue, useSetAtom } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/** 这个聊天里「对方」和「我」的声音档案（覆盖全局默认），以及一键连播所有语音 */
+/** 这个聊天里「对方」和「我」各用声音库里的哪个声音，以及一键连播所有语音 */
 const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClose: () => void }) => {
-	const setAll = useSetAtom(convVoicesAtom);
+	const [all, setAll] = useAtom(convVoicesAtom);
+	const presets = useAtomValue(voicePresetsAtom);
 	const gemini = useAtomValue(geminiConfigAtom);
 	const navigate = useNavigate();
-	const [role, setRole] = useState<"friend" | "mine">("friend");
 	const [note, setNote] = useState("");
+	const has = !!(gemini.apiKey || gemini.apiKey2);
 
-	const trial = async () => {
+	const trial = async (role: "friend" | "mine") => {
 		unlockAudio();
 		setNote("正在请求 Gemini 声音…");
-		const n = await geminiSpeak("（笑）喂，你到哪儿了？我这边都准备好了。", resolveProfile(role, conversationId));
+		const n = await geminiSpeak(TRIAL_TEXT, resolveProfile(role, conversationId));
 		setNote(n ?? "播放中。");
 	};
 
@@ -33,11 +34,44 @@ const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClo
 		setNote(n ?? `连播中（${list.length} 条）。`);
 	};
 
+	const row = (role: "friend" | "mine", label: string) => {
+		const cur = all[conversationId]?.[role];
+		return (
+			<div className="border-black/5 border-b px-4 py-3 last:border-b-0">
+				<div className="text-[16px]">{label}</div>
+				<div className="mt-2 flex items-center gap-2">
+					<select
+						className="h-10 min-w-0 flex-1 rounded-[6px] bg-[#F5F5F5] px-2 text-[15px] outline-none"
+						value={typeof cur === "string" ? cur : ""}
+						onChange={(e) =>
+							setAll((v) => {
+								const c = { ...v[conversationId] };
+								if (e.target.value) c[role] = e.target.value;
+								else delete c[role];
+								return { ...v, [conversationId]: c };
+							})
+						}
+					>
+						<option value="">跟随默认（{resolveProfile(role).voice || DEFAULT_VOICE[role]}）</option>
+						{presets.map((p) => (
+							<option key={p.id} value={p.id}>
+								{p.name}
+							</option>
+						))}
+					</select>
+					<button type="button" onClick={() => void trial(role)} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[15px] text-white">
+						试听
+					</button>
+				</div>
+			</div>
+		);
+	};
+
 	return (
 		<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={onClose}>
 			<div className="flex max-h-[85%] flex-col rounded-t-[12px] bg-white pb-[calc(12px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
 				<div className="px-4 pt-4 pb-2 font-medium text-[16px]">这个聊天的声音</div>
-				{!gemini.apiKey ? (
+				{!has ? (
 					<div className="p-4">
 						<div className="mb-4 text-[14px] text-black/60 leading-6">还没有填 Gemini 密钥，请先到「我 → 设置 → AI 助手」填写。</div>
 						<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">
@@ -46,34 +80,13 @@ const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClo
 					</div>
 				) : (
 					<div className="min-h-0 flex-1 overflow-auto">
-						<div className="mx-4 mb-2 flex rounded-[8px] bg-black/5 p-[3px] text-[14px]">
-							{(["friend", "mine"] as const).map((r) => (
-								<button key={r} type="button" onClick={() => setRole(r)} className={`h-8 flex-1 rounded-[6px] ${role === r ? "bg-white font-medium shadow-sm" : "text-black/60"}`}>
-									{r === "friend" ? "对方的声音" : "我的声音"}
-								</button>
-							))}
-						</div>
-						<VoiceProfileEditor
-							key={role}
-							value={resolveProfile(role, conversationId)}
-							onChange={(p) => setAll((v) => ({ ...v, [conversationId]: { ...v[conversationId], [role]: p } }))}
-							onTrial={() => void trial()}
-							hint="只对这个聊天生效，没改的项沿用「设置 → AI 模型与声音」里的默认。"
-						/>
+						<div className="px-4 pb-1 text-[12px] text-black/40 leading-5">从「声音库」里给这个聊天选声音。声音库在「设置 → AI 模型与声音」里新建、试听、命名保存。</div>
+						{row("friend", "对方的声音")}
+						{row("mine", "我的声音")}
+						<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-4 mt-2 text-[14px] text-[#576B95]">
+							去声音库新建 / 修改声音 ›
+						</button>
 						<div className="flex gap-3 px-4 pt-3">
-							<button
-								type="button"
-								onClick={() =>
-									setAll((v) => {
-										const c = { ...v[conversationId] };
-										delete c[role];
-										return { ...v, [conversationId]: c };
-									})
-								}
-								className="h-[42px] flex-1 rounded-[6px] bg-black/5 text-[15px]"
-							>
-								恢复默认
-							</button>
 							<button type="button" onClick={() => void playAll()} className="h-[42px] flex-1 rounded-[6px] bg-[#07C160]/10 text-[15px] text-[#07C160]">
 								连播全部语音
 							</button>

@@ -19,6 +19,8 @@ export type GeminiConfig = {
 	profiles?: { ai?: VoiceProfile; friend?: VoiceProfile; mine?: VoiceProfile };
 	/** 全局语速节奏、声场、防拦截 */
 	fx?: VoiceFx;
+	/** 三种角色默认使用的「声音库」里的声音 id */
+	assign?: { ai?: string; friend?: string; mine?: string };
 };
 
 export type VoiceProfile = {
@@ -102,14 +104,26 @@ export type VoiceRole = "ai" | "friend" | "mine";
 export const DEFAULT_VOICE: Record<VoiceRole, string> = { friend: "Aoede", mine: "Puck", ai: "Kore" };
 
 /** 每个聊天单独的声音档案（覆盖全局默认）：对方 / 我 */
-export const convVoicesAtom = atomWithStorage<Record<string, { friend?: VoiceProfile; mine?: VoiceProfile }>>("conv-voices", {});
+export const convVoicesAtom = atomWithStorage<Record<string, { friend?: string | VoiceProfile; mine?: string | VoiceProfile }>>("conv-voices", {});
+
+/** 声音库：试听满意后保存并命名，保存后就是固定的声音 */
+export type VoicePreset = { id: string; name: string; profile: VoiceProfile };
+export const voicePresetsAtom = atomWithStorage<VoicePreset[]>("voice-presets", []);
+
+/** 有没有可用的密钥（主密钥或备用密钥任意一个） */
+export const hasApiKey = (c: { apiKey?: string; apiKey2?: string }) => !!(c.apiKey || c.apiKey2);
 
 /** 取某个角色当前生效的声音档案：该聊天的单独设置 > 全局默认 > 旧版声音设置 > 内置默认 */
 export const resolveProfile = (role: VoiceRole, conversationId?: string): VoiceProfile => {
 	const cfg = mainStore.get(geminiConfigAtom);
-	const conv = conversationId && role !== "ai" ? mainStore.get(convVoicesAtom)[conversationId]?.[role] : undefined;
+	const presets = mainStore.get(voicePresetsAtom);
+	const byId = (id?: string) => presets.find((x) => x.id === id)?.profile;
+	const entry = conversationId && role !== "ai" ? mainStore.get(convVoicesAtom)[conversationId]?.[role] : undefined;
+	const conv = typeof entry === "string" ? byId(entry) : entry;
+	const picked = conv ?? byId(cfg.assign?.[role]);
+	if (picked) return { ...picked, voice: picked.voice || DEFAULT_VOICE[role] };
 	const base = cfg.profiles?.[role];
-	return { ...base, ...conv, voice: conv?.voice || base?.voice || cfg.voices?.[role] || DEFAULT_VOICE[role] };
+	return { ...base, voice: base?.voice || cfg.voices?.[role] || DEFAULT_VOICE[role] };
 };
 
 export const DEFAULT_TTS_MODEL = "gemini-2.5-flash-preview-tts";

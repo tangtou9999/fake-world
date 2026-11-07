@@ -27,7 +27,9 @@ const Example = ({ scene, result }: { scene: string; result: string[] }) => (
 
 const AiIntro = () => {
 	const navigate = useNavigate();
-	const { apiKey, model } = useAtomValue(geminiConfigAtom);
+	const cfg = useAtomValue(geminiConfigAtom);
+	const apiKey = cfg.apiKey || cfg.apiKey2;
+	const { model } = cfg;
 	useScreenTopBg("#EDEDED");
 
 	return (

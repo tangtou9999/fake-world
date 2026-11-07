@@ -168,7 +168,7 @@ const RoleBar = () => {
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !aiBusy && setAiOpen(false)}>
 					<div className="rounded-t-[12px] bg-white p-4 pb-[calc(16px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
 						<div className="mb-2 font-medium text-[16px]">AI 生成聊天记录</div>
-						{!gemini.apiKey ? (
+						{!(gemini.apiKey || gemini.apiKey2) ? (
 							<>
 								<div className="mb-4 text-[14px] text-black/60 leading-6">还没有填 Gemini 密钥，请先到「我 → 设置 → AI 助手」填写。</div>
 								<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">

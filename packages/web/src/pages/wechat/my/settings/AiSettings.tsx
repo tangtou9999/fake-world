@@ -1,11 +1,11 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
-import { DEFAULT_GEMINI_MODEL, DEFAULT_TTS_MODEL, type VoiceProfile, type VoiceRole, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_TTS_MODEL, type VoiceFx, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, hasApiKey, resolveProfile } from "@/stateV2/gemini";
 import { callGemini, listGeminiModels } from "@/utils/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { useAtom } from "jotai";
 import { type ReactNode, useState } from "react";
 import { NavBar } from "../../addFriend/Shared";
-import VoiceProfileEditor from "./VoiceProfileEditor";
+import VoiceLibrary, { TRIAL_TEXT } from "./VoiceLibrary";
 
 const TEXT_CHOICES = [
 	{ id: "", title: "自动（推荐）", desc: "用快速模型，繁忙或停用时自动换备用，省心" },
@@ -28,12 +28,26 @@ const Section = ({ title, hint, children }: { title: string; hint?: string; chil
 	</>
 );
 
-const Choice = ({ active, title, desc, onClick }: { active: boolean; title: string; desc: string; onClick: () => void }) => (
+const Choice = ({ active, title, desc, onClick, onTrial }: { active: boolean; title: string; desc: string; onClick: () => void; onTrial?: () => void }) => (
 	<button type="button" onClick={onClick} className="flex w-full items-center border-black/5 border-b bg-white px-4 py-3 text-left last:border-b-0">
 		<div className="min-w-0 flex-1">
 			<div className="text-[16px]">{title}</div>
 			<div className="mt-[2px] text-[12px] text-black/40 leading-5">{desc}</div>
 		</div>
+		{onTrial && (
+			<span
+				role="button"
+				tabIndex={0}
+				onClick={(e) => {
+					e.stopPropagation();
+					onTrial();
+				}}
+				onKeyDown={() => undefined}
+				className="ml-2 shrink-0 rounded-[6px] bg-[#07C160] px-3 py-1 text-[13px] text-white"
+			>
+				试听
+			</span>
+		)}
 		<span className={`ml-3 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${active ? "border-[#07C160] bg-[#07C160]" : "border-black/20"}`}>
 			{active && <span className="h-2 w-2 rounded-full bg-white" />}
 		</span>
@@ -55,7 +69,7 @@ const AiSettings = () => {
 	const loadModels = async () => {
 		setListErr("");
 		try {
-			setModels(await listGeminiModels(config.apiKey));
+			setModels(await listGeminiModels(config.apiKey || config.apiKey2));
 		} catch (e) {
 			setListErr(e instanceof Error ? e.message : String(e));
 		}
@@ -74,15 +88,12 @@ const AiSettings = () => {
 		}
 	};
 
-	const trial = async (profile: VoiceProfile) => {
+	const trialFx = async (patch: VoiceFx) => {
 		unlockAudio();
 		setVoiceNote("正在请求 Gemini 声音…");
-		const note = await geminiSpeak("（笑）你好呀，这是我的声音，听起来像真人发的微信语音吗？", profile);
+		const note = await geminiSpeak(TRIAL_TEXT, resolveProfile("friend"), { ...config.fx, ...patch });
 		setVoiceNote(note ?? "播放中。如果没有声音，请检查手机是否静音。");
 	};
-
-	const [role, setRole] = useState<VoiceRole>("friend");
-	const ROLE_LABEL: Record<VoiceRole, string> = { friend: "对方的语音", mine: "我的语音", ai: "AI 朗读" };
 	const fx = config.fx ?? {};
 
 	return (
@@ -94,7 +105,7 @@ const AiSettings = () => {
 						<input
 							type={show ? "text" : "password"}
 							className="min-w-0 flex-1 bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
-							placeholder="粘贴你的 Gemini API Key"
+							placeholder="主密钥：粘贴你的 Gemini API Key"
 							value={config.apiKey}
 							autoComplete="off"
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey: e.target.value.trim() }))}
@@ -113,7 +124,7 @@ const AiSettings = () => {
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey2: e.target.value.trim() }))}
 						/>
 					</div>
-					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
+					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">上面两栏分别是「主密钥」和「备用密钥」，删掉任何一个都不会影响另一个（只要有一个密钥，AI 功能就能用）。填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
 				</Section>
 
 				<Section title="② 文字 AI（聊天、剧本、朋友圈、翻译、AI 对话）" hint="选一个就行。出现“服务器繁忙”或模型停用时，都会自动换备用模型重试。">
@@ -127,7 +138,7 @@ const AiSettings = () => {
 						{config.model && !TEXT_CHOICES.some((c) => c.id === config.model) ? "（自定义）" : ""}
 					</div>
 					<div className="px-4 pt-1">
-						<button type="button" disabled={!config.apiKey} onClick={loadModels} className="text-[14px] text-[#576B95] disabled:opacity-40">
+						<button type="button" disabled={!hasApiKey(config)} onClick={loadModels} className="text-[14px] text-[#576B95] disabled:opacity-40">
 							高级：查看我的密钥能用的全部模型
 						</button>
 						{listErr && <div className="mt-1 text-[12px] text-[#C62828]">{listErr}</div>}
@@ -152,31 +163,17 @@ const AiSettings = () => {
 				</Section>
 
 				<Section title="④ 声音 AI（Gemini 语音合成）" hint="先选角色，再调它的声纹、人设、气声等。每个聊天还可以在「编辑模式 → 声音」里单独设置。试听需要联网，每次会用一点额度。">
-					<div className="mx-4 mb-2 flex rounded-[8px] bg-black/5 p-[3px] text-[14px]">
-						{(["friend", "mine", "ai"] as const).map((r) => (
-							<button key={r} type="button" onClick={() => setRole(r)} className={`h-8 flex-1 rounded-[6px] ${role === r ? "bg-white font-medium shadow-sm" : "text-black/60"}`}>
-								{ROLE_LABEL[r]}
-							</button>
-						))}
-					</div>
-					<VoiceProfileEditor
-						key={role}
-						value={resolveProfile(role)}
-						onChange={(p) => setConfig((v) => ({ ...v, profiles: { ...v.profiles, [role]: p } }))}
-						onTrial={() => void trial(resolveProfile(role))}
-						trialDisabled={!config.apiKey}
-						hint={role === "friend" ? "点聊天里对方发的语音，用这个声音读出它的文字（默认设置，各聊天可单独覆盖）" : role === "mine" ? "点我发的语音时用的声音（默认设置）" : "AI 对话里朗读回复用的声音"}
-					/>
+					<VoiceLibrary />
 					<div className="px-4 pt-4 pb-1 font-medium text-[14px] text-black/70">整体语速与节奏</div>
 					<div>
 						{VOICE_PACES.map((p) => (
-							<Choice key={p.id} active={(fx.pace ?? "chat") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, pace: p.id } }))} />
+							<Choice key={p.id} active={(fx.pace ?? "chat") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, pace: p.id } }))} onTrial={() => void trialFx({ pace: p.id })} />
 						))}
 					</div>
 					<div className="px-4 pt-4 pb-1 font-medium text-[14px] text-black/70">物理声场 / 环境</div>
 					<div>
 						{VOICE_SCENES.map((p) => (
-							<Choice key={p.id} active={(fx.scene ?? "pure") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, scene: p.id } }))} />
+							<Choice key={p.id} active={(fx.scene ?? "pure") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, scene: p.id } }))} onTrial={() => void trialFx({ scene: p.id })} />
 						))}
 					</div>
 					<div className="mt-4 bg-white px-4 py-3">
@@ -222,7 +219,7 @@ const AiSettings = () => {
 					</div>
 					<input type="checkbox" className="h-5 w-5 shrink-0 accent-[#07C160]" checked={config.adultMode !== false} onChange={(e) => setConfig((v) => ({ ...v, adultMode: e.target.checked }))} />
 				</div>
-				<button type="button" disabled={busy || !config.apiKey} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
+				<button type="button" disabled={busy || !hasApiKey(config)} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
 					{busy ? "检测中…" : "检测连接"}
 				</button>
 				{result && <div className={`mx-4 mt-4 rounded-[8px] p-3 text-[14px] leading-6 ${result.ok ? "bg-[#E6F6EC] text-[#0a7a3c]" : "bg-[#FBE9E9] text-[#C62828]"}`}>{result.text}</div>}

@@ -22,7 +22,7 @@ import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
-import { getGeminiConfig, resolveProfile } from "@/stateV2/gemini";
+import { getGeminiConfig, hasApiKey, resolveProfile } from "@/stateV2/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
@@ -157,7 +157,7 @@ const ConversationList = () => {
 		if (item.type === EConversationType.voice) {
 			// 点语音消息：用 Gemini 声音读出它的文字（没有文字或没填密钥就不播）
 			const text = item.stt?.trim();
-			if (text && getGeminiConfig().apiKey) {
+			if (text && hasApiKey(getGeminiConfig())) {
 				unlockAudio();
 				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId));
 			}

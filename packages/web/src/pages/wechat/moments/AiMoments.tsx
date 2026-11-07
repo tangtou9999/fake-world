@@ -114,7 +114,7 @@ const AiMoments = () => {
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !busy && setOpen(false)}>
 					<div className="rounded-t-[12px] bg-white p-4 pb-[calc(16px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
 						<div className="mb-2 font-medium text-[16px]">AI 生成朋友圈</div>
-						{!gemini.apiKey ? (
+						{!(gemini.apiKey || gemini.apiKey2) ? (
 							<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="h-[44px] w-full rounded-[6px] bg-[#07C160] text-[16px] text-white">
 								还没填密钥，去填写
 							</button>

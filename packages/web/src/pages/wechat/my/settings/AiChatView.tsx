@@ -25,7 +25,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const isChat = mode === "chat" && !!conversationId;
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
-	const [busy, setBusy] = useState(false);
+	const [busyKeys, setBusyKeys] = useState<string[]>([]);
+	const busyKey = isChat ? `c:${conversationId}` : `s:${session.id}`;
+	const busy = busyKeys.includes(busyKey);
+	const cancelled = useRef<Set<string>>(new Set());
 	const [voiceMode, setVoiceMode] = useState(false);
 	const [rec, setRec] = useState<"idle" | "recording" | "processing">("idle");
 	const [note, setNote] = useState("");
@@ -91,7 +94,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text, voice: viaVoice || undefined };
 		const prior = messages.filter((m) => !m.error && !m.failed);
 		updateMessages((m) => [...m, userMsg]);
-		setBusy(true);
+		const myKey = busyKey;
+		setBusyKeys((k) => [...k, myKey]);
 		try {
 			const contacts = listContacts();
 			let ids: string[];
@@ -125,6 +129,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				}
 			}
 			if (blocked) throw blocked;
+			if (cancelled.current.delete(userMsg.id)) return;
 			const parsed = isChat ? parseAction(reply.trim()) : { text: reply.trim(), action: undefined };
 			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
 			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
@@ -139,13 +144,14 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			]);
 			if (viaVoice && state.speak) void doSpeak(parsed.text);
 		} catch (e) {
+			if (cancelled.current.delete(userMsg.id)) return;
 			const msg = e instanceof Error ? e.message : String(e);
 			updateMessages((m) => [
 				...m.map((x) => (x.id === userMsg.id ? { ...x, failed: true } : x)),
 				{ id: nanoid(8), role: "model", error: true, text: `${msg}\n（这条已自动跳过，不会影响之后的对话，可以直接继续提问或换个说法。）` },
 			]);
 		} finally {
-			setBusy(false);
+			setBusyKeys((k) => k.filter((x) => x !== myKey));
 		}
 	};
 
@@ -275,12 +281,12 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。对话只保存在这台手机上，每个聊天各有各的 AI。"
 						: "私人 AI：可以绑定聊天让它读取，但不会改动聊天。消息和绑定聊天的记录会通过你的密钥发给 Google Gemini 处理，对话只保存在这台手机上。"}
 				</div>
-				{!gemini.apiKey && (
+				{!(gemini.apiKey || gemini.apiKey2) && (
 					<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-auto mb-3 block h-10 rounded-[6px] bg-[#07C160] px-6 text-[15px] text-white">
 						还没填密钥，去填写
 					</button>
 				)}
-				{messages.length === 0 && gemini.apiKey && (
+				{messages.length === 0 && (gemini.apiKey || gemini.apiKey2) && (
 					<div className="mt-8 text-center text-[14px] text-black/40 leading-7">
 						{isChat ? (
 							<>
@@ -350,7 +356,23 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						)}
 					</div>
 				))}
-				{busy && <div className="mb-3 text-[14px] text-black/40">AI 正在写…</div>}
+				{busy && (
+					<div className="mb-3 flex items-center gap-3 text-[14px] text-black/40">
+						AI 正在写…（最多等 60 秒）
+						<button
+							type="button"
+							className="text-[#576B95]"
+							onClick={() => {
+								const last = [...messages].reverse().find((m) => m.role === "user");
+								if (last) cancelled.current.add(last.id);
+								setBusyKeys((k) => k.filter((x) => x !== busyKey));
+								updateMessages((m) => m.map((x) => (x.id === last?.id ? { ...x, failed: true } : x)));
+							}}
+						>
+							停止
+						</button>
+					</div>
+				)}
 				<div ref={bottomRef} />
 			</div>
 			{picker && (

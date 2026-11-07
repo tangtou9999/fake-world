@@ -18,7 +18,13 @@ export class GeminiBlockedError extends Error {
 
 async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = [], extra: Extra = {}) {
 	const adult = getGeminiConfig().adultMode !== false;
-	const res = await fetch(`${BASE}/${model}:generateContent`, {
+	const ctrl = new AbortController();
+	const timer = setTimeout(() => ctrl.abort(), 60_000);
+	let res: Response;
+	let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]; promptFeedback?: { blockReason?: string } };
+	try {
+	res = await fetch(`${BASE}/${model}:generateContent`, {
+		signal: ctrl.signal,
 		method: "POST",
 		headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
 		body: JSON.stringify({
@@ -59,7 +65,13 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 			},
 		}),
 	});
-	const data = await res.json().catch(() => ({}));
+	data = await res.json().catch(() => ({}));
+	} catch (e) {
+		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 60 秒没有回应，请重试" } as GeminiError;
+		throw e;
+	} finally {
+		clearTimeout(timer);
+	}
 	if (!res.ok) {
 		const err: GeminiError = {
 			status: res.status,
