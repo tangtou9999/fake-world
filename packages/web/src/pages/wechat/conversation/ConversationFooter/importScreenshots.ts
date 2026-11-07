@@ -121,7 +121,7 @@ export function applyParsedItems(
 				lastPreview = "[转账]";
 				return;
 			case "voice":
-				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: !!it.text, stt: it.text, isRead: true, scene: it.scene, pace: it.pace, tone: it.tone, upperText: takeUpper() } as TConversationItem);
+				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: false, stt: it.text, isRead: true, scene: it.scene, pace: it.pace, tone: it.tone, upperText: takeUpper() } as TConversationItem);
 				lastPreview = "[语音]";
 				return;
 			default: {

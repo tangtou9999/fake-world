@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useConversationAPI } from "../context";
 import VideoCall from "./VideoCall";
+import { addCallRecord } from "@/stateV2/videoCall";
 import { profileAtom } from "@/stateV2/profile";
 import { useAtomValue } from "jotai";
 
@@ -155,19 +156,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 
 	const endCall = (sec: number) => {
 		setCalling(false);
-		const text = sec < 0 ? "已取消" : `通话时长 ${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
-		touchDialogue(conversationId, `[视频通话] ${text}`);
-		setConversationListValue(conversationId, (prev) => [
-			...prev,
-			{
-				type: EConversationType.text,
-				role: "mine",
-				id: nanoid(8),
-				sendTimestamp: dayjs().valueOf(),
-				upperText: fromLastGenerateUpperText(prev),
-				textContent: [{ type: "paragraph", children: [{ text: `📹 ${text}` }] }],
-			} as (typeof prev)[number],
-		]);
+		addCallRecord(conversationId, "mine", sec);
 		scrollConversationListToBtm();
 		onSent?.();
 	};
@@ -338,7 +327,7 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 					/>
 				))}
 			</div>
-			{calling && <VideoCall storeKey={`call:${conversationId}`} name={friend?.remark || friend?.nickname || ""} avatar={friend?.avatarInfo ?? ""} onEnd={endCall} />}
+			{calling && <VideoCall conversationId={conversationId} incoming={false} name={friend?.remark || friend?.nickname || ""} avatar={friend?.avatarInfo ?? ""} onEnd={endCall} />}
 			{busy && <div className="mt-4 text-center text-black/45 text-xs">正在处理…</div>}
 			{error && <div className="mt-4 text-center text-[#FA5151] text-xs">{error}</div>}
 		</div>

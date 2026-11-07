@@ -22,6 +22,8 @@ export type AiChatMessage = {
 	voice?: boolean;
 	action?: AiChatAction;
 	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
+	/** AI 提议「N 分钟后对方打视频过来」：用户点「设置」才生效 */
+	callMake?: { minutes: number; done?: boolean };
 	voiceMake?: { name: string; sample: string; profile: { voice: string; chest: number; air: number; accent: string; persona: string }; saved?: boolean };
 };
 
@@ -88,4 +90,5 @@ export const CHAT_AI_SYSTEM = `你是用户在「微信仿真」小工具里，�
 3. 对话要有自然的上下文联系，每个人说话方式不同，口语化；写进聊天的每条气泡像真人发微信：一般一句话、十几个字，偶尔一两条稍长，不要写成小作文；条数按用户要求，不要偷工减料。面向成年人的虚构内容；确实无法写的细节只调整那一小处，其余照旧。
 4. 记住这个窗口里你们聊过的所有设定，不用用户重复。
 5. 默认用简体中文。
-6. 你自己跟用户说话的回复要像朋友在微信聊天：短、口语、直接，一般 1~3 句话、不超过 80 字；不用标题、不列长串要点、不写铺垫和总结。只有用户明确要详细展开时才多写。wxchat 代码块里的聊天内容不受这条限制。${VOICE_MAKER_RULES}`;
+6. 你自己跟用户说话的回复要像朋友在微信聊天：短、口语、直接，一般 1~3 句话、不超过 80 字；不用标题、不列长串要点、不写铺垫和总结。只有用户明确要详细展开时才多写。wxchat 代码块里的聊天内容不受这条限制。
+7. 如果用户要你设定「过几分钟对方打视频过来」，在回复末尾附一个代码块：```wxcall\n{"minutes": 数字}\n```（minutes 可以是小数，0 表示马上）。用户点卡片上的「设置」后才生效，你不要自己声称已经设好了。${VOICE_MAKER_RULES}`;

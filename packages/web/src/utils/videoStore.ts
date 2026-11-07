@@ -34,3 +34,17 @@ export const putCallVideo = async (key: string, blob: Blob): Promise<boolean> =>
 		return false;
 	}
 };
+export const delCallVideo = async (key: string) => {
+	try {
+		const db = await open();
+		await new Promise<void>((res) => {
+			const tx = db.transaction(STORE, "readwrite");
+			tx.objectStore(STORE).delete(key);
+			tx.oncomplete = () => res();
+			tx.onerror = () => res();
+		});
+	} catch {
+		/* ignore */
+	}
+};
+export const callKey = (slot: "me" | "friend", conversationId: string) => `call:${slot}:${conversationId}`;

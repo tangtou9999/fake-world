@@ -1,3 +1,4 @@
+import IncomingCall from "./IncomingCall";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
@@ -117,11 +118,16 @@ const ConversationList = () => {
 	};
 
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
-	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean } | null>(null);
+	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean; voice?: { shown: boolean; has: boolean } } | null>(null);
 	const [busy, setBusy] = useState(false);
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const openTextMenu = (item: TConversationItem) => {
-		if (isEdit || item.type !== EConversationType.text) return;
+		if (isEdit) return;
+		if (item.type === EConversationType.voice) {
+			setMenu({ id: item.id, text: "", translated: false, voice: { shown: !!item.showStt, has: !!item.stt?.trim() } });
+			return;
+		}
+		if (item.type !== EConversationType.text) return;
 		const text = item.textContent.map((n) => Node.string(n)).join("\n");
 		setMenu({ id: item.id, text, translated: !!item.translation });
 	};
@@ -351,7 +357,7 @@ const ConversationList = () => {
 								onTouchEnd={stopPress}
 								onTouchCancel={stopPress}
 								onContextMenu={(e) => {
-									if (item.type === EConversationType.text && !isEdit) {
+									if ((item.type === EConversationType.text || item.type === EConversationType.voice) && !isEdit) {
 										e.preventDefault();
 										openTextMenu(item);
 									}
@@ -410,12 +416,29 @@ const ConversationList = () => {
 					</div>
 				</div>
 			)}
+			<IncomingCall conversationId={conversationId} />
 			{menu && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !busy && setMenu(null)}>
 					<div className="rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
-						<button type="button" disabled={busy} onClick={doTranslate} className="h-[54px] w-full text-[17px] disabled:opacity-50">
-							{busy ? "翻译中…" : menu.translated ? "取消翻译" : "翻译"}
-						</button>
+						{menu.voice ? (
+							<button
+								type="button"
+								disabled={!menu.voice.has && !menu.voice.shown}
+								onClick={() => {
+									const id = menu.id;
+									const next = !menu.voice?.shown;
+									setConversationList((prev) => prev.map((v) => (v.id === id ? ({ ...v, showStt: next } as TConversationItem) : v)));
+									setMenu(null);
+								}}
+								className="h-[54px] w-full text-[17px] disabled:opacity-40"
+							>
+								{menu.voice.shown ? "收起文字" : menu.voice.has ? "转文字" : "转文字（这条没有文字内容）"}
+							</button>
+						) : (
+							<button type="button" disabled={busy} onClick={doTranslate} className="h-[54px] w-full text-[17px] disabled:opacity-50">
+								{busy ? "翻译中…" : menu.translated ? "取消翻译" : "翻译"}
+							</button>
+						)}
 						<div className="h-2 bg-[#F7F7F7]" />
 						<button type="button" disabled={busy} onClick={() => setMenu(null)} className="h-[54px] w-full text-[17px]">取消</button>
 					</div>

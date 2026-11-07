@@ -2,6 +2,7 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
+import { callScheduleAtom } from "@/stateV2/videoCall";
 import { geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
@@ -19,6 +20,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const navigate = useNavigate();
 	const [gemini] = useAtom(geminiConfigAtom);
 	const setPresets = useSetAtom(voicePresetsAtom);
+	const setSched = useSetAtom(callScheduleAtom);
 	const [speaking, setSpeaking] = useState(false);
 	const [state, setState] = useAtom(aiChatsAtom);
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
@@ -135,7 +137,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			if (blocked) throw blocked;
 			if (cancelled.current.delete(userMsg.id)) return;
 			const vm = parseVoiceMake(reply.trim());
-			const parsed = isChat ? parseAction(vm.text) : { text: vm.text, action: undefined };
+			const cm = isChat ? vm.text.match(/```wxcall\s*([\s\S]*?)```/) : null;
+			const callMinutes = cm ? Number((cm[1].match(/-?\d+(\.\d+)?/) ?? [])[0]) : Number.NaN;
+			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
+			const parsed = isChat ? parseAction(vmText) : { text: vm.text, action: undefined };
 
 			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
 			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
@@ -147,6 +152,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					text: parsed.text + extra,
 					voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
+					callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
 				},
 			]);
 			if (state.speak) void doSpeak(parsed.text);
@@ -296,6 +302,27 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							{m.voice ? "🎤 " : ""}
 							{m.text}
 						</div>
+						{m.callMake && (
+							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
+								<div className="font-medium text-[14px]">📹 {m.callMake.minutes <= 0 ? "马上让对方打视频过来" : `${m.callMake.minutes} 分钟后让对方打视频过来`}</div>
+								<div className="mt-1 text-[12px] text-black/40 leading-5">需要先在聊天页「连点三下屏幕 → 视频」里上传两段视频，并停留在这个聊天页面里。</div>
+								{m.callMake.done ? (
+									<div className="mt-2 text-[13px] text-[#07C160]">已设置</div>
+								) : (
+									<button
+										type="button"
+										className="mt-2 h-9 rounded-[6px] bg-[#07C160] px-4 text-[14px] text-white"
+										onClick={() => {
+											const cid = conversationId as string;
+											setSched((v) => ({ ...v, [cid]: Date.now() + (m.callMake?.minutes ?? 0) * 60000 }));
+											updateMessages((all) => all.map((x) => (x.id === m.id && x.callMake ? { ...x, callMake: { ...x.callMake, done: true } } : x)));
+										}}
+									>
+										设置
+									</button>
+								)}
+							</div>
+						)}
 						{m.voiceMake && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
 								<div className="font-medium text-[14px]">🎙 AI 为你调好了一个声音</div>

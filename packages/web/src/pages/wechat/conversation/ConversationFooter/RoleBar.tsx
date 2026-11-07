@@ -19,6 +19,7 @@ import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
+import VideoSheet from "./VideoSheet";
 import VoiceSheet from "./VoiceSheet";
 
 const PREFIX = /^\s*(我|对方|他|她|friend|me)\s*[:：]\s*/i;
@@ -33,6 +34,7 @@ const RoleBar = () => {
 	const gemini = useAtomValue(geminiConfigAtom);
 	const [aiOpen, setAiOpen] = useState(false);
 	const [voiceOpen, setVoiceOpen] = useState(false);
+	const [videoOpen, setVideoOpen] = useState(false);
 	const [scene, setScene] = useState("");
 	const [aiBusy, setAiBusy] = useState(false);
 	const [aiErr, setAiErr] = useState("");
@@ -152,6 +154,9 @@ const RoleBar = () => {
 				>
 					聊天 AI
 				</button>
+				<button type="button" onClick={() => setVideoOpen(true)} className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]">
+					视频
+				</button>
 				<button type="button" onClick={() => setVoiceOpen(true)} className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]">
 					声音
 				</button>
@@ -163,6 +168,7 @@ const RoleBar = () => {
 					批量
 				</button>
 			</div>
+			{videoOpen && <VideoSheet conversationId={conversationId} onClose={() => setVideoOpen(false)} />}
 			{voiceOpen && <VoiceSheet conversationId={conversationId} onClose={() => setVoiceOpen(false)} />}
 			{aiOpen && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !aiBusy && setAiOpen(false)}>
