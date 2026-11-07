@@ -103,7 +103,7 @@ const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClo
 								停止
 							</button>
 						</div>
-						{note && <div className="px-4 pt-2 text-[12px] text-[#576B95] leading-5">{note}</div>}
+						{note && <div className="whitespace-pre-line px-4 pt-2 text-[12px] text-[#576B95] leading-5">{note}</div>}
 					</div>
 				)}
 				<div className="mx-4 mt-3 flex gap-3">

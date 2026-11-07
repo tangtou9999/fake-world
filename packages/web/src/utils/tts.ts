@@ -149,6 +149,23 @@ const trimSilence = (c: AudioContext, buf: AudioBuffer) => {
 	return out;
 };
 
+/** 模型名必须是 gemini-2.5-flash-preview-tts 这种英文小写名字，不是 AI Studio 里显示的「Gemini 2.5 Flash TTS」 */
+export const isModelId = (m?: string): m is string => !!m && /^[a-z][a-z0-9.-]*$/.test(m);
+
+/** 把技术报错翻成大白话，并告诉用户怎么办 */
+export const explainTtsError = (raw: string) => {
+	const tech = raw.replace(/\s+/g, " ").slice(0, 110);
+	let why: string;
+	if (/429|quota|RESOURCE_EXHAUSTED|exceeded/i.test(raw)) why = "Gemini 语音的免费额度用完了（Google 对免费版的语音限制很严，每分钟、每天能生成的次数都很少）。办法：① 在「设置 → AI 模型与声音」填第二个 Google 账号的备用密钥，会自动换它；② 等额度刷新（一般是越南时间下午 3 点左右）；③ 已经生成过的语音存在手机里，不受影响。不用换声音。";
+	else if (/model name format|unexpected model/i.test(raw)) why = "「语音模型」那一栏填错了：要填 gemini-2.5-flash-preview-tts 这种英文名，不是 AI Studio 里显示的名字。清空那一栏就行（留空会自动用对的）。";
+	else if (/API key|API_KEY|401|403|permission|PERMISSION/i.test(raw)) why = "密钥有问题：可能填错了、被停用，或这个密钥没开通语音功能。请到「设置 → AI 模型与声音」检查密钥。";
+	else if (/404|not found|NOT_FOUND/i.test(raw)) why = "Google 现在找不到这个语音模型，可能改名了。把「语音模型」那一栏清空试试。";
+	else if (/Failed to fetch|NetworkError|网络|network|Load failed/i.test(raw)) why = "联网失败了，请检查网络。已经生成过的语音不需要网络，没生成过的需要。";
+	else if (/没有返回声音|SAFETY|PROHIBITED|OTHER/i.test(raw)) why = "Gemini 这次没有返回声音（可能被它的安全规则拦了）。换一句话，或到设置里打开「情绪词智能软化」再试。";
+	else why = "Gemini 语音这次没成功，稍后再试一次。";
+	return `${why}\n（技术信息：${tech}）`;
+};
+
 /** 语音合成固定用官方免费的 Gemini 2.5 Flash TTS（30 款声纹）；设置里填了别的型号才优先试那个 */
 const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
@@ -222,7 +239,7 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 		return null;
 	};
 	for (const key of keys) {
-		for (const m of Array.from(new Set([ttsModel, TTS_MODEL].filter((x): x is string => !!x)))) {
+		for (const m of Array.from(new Set([isModelId(ttsModel) ? ttsModel : "", TTS_MODEL].filter((x): x is string => !!x)))) {
 			const r = await attempt(key, m);
 			if (r) return r;
 		}
@@ -404,7 +421,7 @@ export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile,
 		return null;
 	} catch (e) {
 		speakText(text);
-		return `Gemini 声音不可用，已改用手机自带声音：${e instanceof Error ? e.message : String(e)}`;
+		return `Gemini 声音暂时用不了，刚才播的是手机自带声音（所以听起来像网页，每个声音都一样）。\n${explainTtsError(e instanceof Error ? e.message : String(e))}`;
 	}
 };
 
@@ -433,6 +450,6 @@ export const playSequence = async (lines: { text: string; profile: VoiceProfile;
 		});
 		return null;
 	} catch (e) {
-		return `Gemini 声音不可用：${e instanceof Error ? e.message : String(e)}`;
+		return `Gemini 声音暂时用不了。\n${explainTtsError(e instanceof Error ? e.message : String(e))}`;
 	}
 };

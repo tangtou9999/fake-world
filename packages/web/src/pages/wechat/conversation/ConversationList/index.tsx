@@ -39,7 +39,6 @@ import { pruneClips } from "@/utils/audioStore";
 import { mainStore } from "@/stateV2/store";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
-import { showToast } from "@/wechatComponents/Toast";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 
@@ -197,7 +196,7 @@ const ConversationList = () => {
 				unlockAudio();
 				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId), lineFx(item), (item as { tone?: string }).tone, `${conversationId}:${item.id}`).then(async (n) => {
 					if (n) {
-						showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
+						Modal.info({ title: "声音暂时放不出来", content: <div style={{ whiteSpace: "pre-line" }}>{n}</div>, okText: "知道了" });
 						finish();
 						return;
 					}

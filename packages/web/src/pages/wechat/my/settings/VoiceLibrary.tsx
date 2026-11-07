@@ -94,7 +94,7 @@ const VoiceLibrary = () => {
 					＋ 新建声音
 				</button>
 			)}
-			{note && <div className="px-4 pt-2 text-[12px] text-[#576B95] leading-5">{note}</div>}
+			{note && <div className="whitespace-pre-line px-4 pt-2 text-[12px] text-[#576B95] leading-5">{note}</div>}
 
 			<div className="mt-5 px-4 pb-1 font-medium text-[14px] text-black/70">各用哪个声音</div>
 			{(["friend", "mine", "ai"] as const).map((r) => (

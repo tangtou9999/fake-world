@@ -487,7 +487,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					</div>
 				</div>
 			)}
-			{note && <div className="bg-[#FBE9E9] px-4 py-2 text-[13px] text-[#C62828]">{note}</div>}
+			{note && <div className="max-h-[40vh] overflow-auto whitespace-pre-line bg-[#FBE9E9] px-4 py-2 text-[13px] text-[#C62828]">{note}</div>}
 			<div className="flex items-end gap-2 border-t-[0.5px] border-t-[#D6D6D6] bg-[#F7F7F7] px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
 				<button type="button" aria-label="切换语音/文字" onClick={() => setVoiceMode((v) => !v)} className="h-10 w-10 shrink-0 rounded-full border border-black text-[18px]">
 					{voiceMode ? "⌨" : "🎤"}

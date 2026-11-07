@@ -1,7 +1,7 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { DEFAULT_GEMINI_MODEL, type VoiceFx, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, hasApiKey, resolveProfile } from "@/stateV2/gemini";
 import { callGemini, listGeminiModels } from "@/utils/gemini";
-import { geminiSpeak, unlockAudio } from "@/utils/tts";
+import { geminiSpeak, isModelId, unlockAudio } from "@/utils/tts";
 import { useAtom } from "jotai";
 import { type ReactNode, useState } from "react";
 import { NavBar } from "../../addFriend/Shared";
@@ -200,7 +200,7 @@ const AiSettings = () => {
 						小技巧：语音消息的文字开头写（口气）就是本句专属口气，例如「（撒娇）你怎么才回我」「（冷笑）行啊你」。支持：撒娇、气泡音/耳语、笑/调侃、暴怒、冷笑/嘲讽、委屈/哭腔、无奈/叹气、惊讶、抢话/打断。其他括号备注不会被读出来。
 					</div>
 					<div className="px-4 pt-3 text-[12px] text-black/40 leading-5">
-						语音模型：{config.ttsModel || "自动"}。留空 = 自动挑你的密钥能用的最新语音模型（Google 经常换名字），一般不用填。
+						语音模型：一般不用填，留空就会用 gemini-2.5-flash-preview-tts。要填的话必须是这种英文小写名字，不是 AI Studio 里显示的「Gemini 2.5 Flash TTS」。{config.ttsModel && !isModelId(config.ttsModel) && <span className="text-[#C62828]">（你现在填的格式不对，会被自动忽略，建议清空）</span>}
 					</div>
 					<div className="mx-4 mt-1 rounded-[6px] bg-white px-3">
 						<input
@@ -210,7 +210,7 @@ const AiSettings = () => {
 							onChange={(e) => setConfig((v) => ({ ...v, ttsModel: e.target.value.trim() }))}
 						/>
 					</div>
-					{voiceNote && <div className="px-4 pt-2 text-[12px] text-[#576B95] leading-5">{voiceNote}</div>}
+					{voiceNote && <div className="whitespace-pre-line px-4 pt-2 text-[12px] text-[#576B95] leading-5">{voiceNote}</div>}
 				</Section>
 
 				<div className="mt-5 flex items-center justify-between bg-white px-4 py-3">
