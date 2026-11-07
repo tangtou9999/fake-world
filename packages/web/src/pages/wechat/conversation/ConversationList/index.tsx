@@ -22,7 +22,7 @@ import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
-import { getGeminiConfig } from "@/stateV2/gemini";
+import { getGeminiConfig, resolveProfile } from "@/stateV2/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
@@ -159,8 +159,7 @@ const ConversationList = () => {
 			const text = item.stt?.trim();
 			if (text && getGeminiConfig().apiKey) {
 				unlockAudio();
-				const v = getGeminiConfig().voices;
-				void geminiSpeak(text, (item.role === "mine" ? v?.mine : v?.friend) || (item.role === "mine" ? "Puck" : "Aoede"));
+				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId));
 			}
 			return;
 		}

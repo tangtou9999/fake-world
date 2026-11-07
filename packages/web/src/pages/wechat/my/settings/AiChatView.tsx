@@ -2,7 +2,7 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
-import { geminiConfigAtom } from "@/stateV2/gemini";
+import { geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { startRecording } from "@/utils/voice";
@@ -81,7 +81,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 	const doSpeak = async (t: string) => {
 		unlockAudio();
-		const n = await geminiSpeak(t, gemini.voices?.ai || "Kore");
+		const n = await geminiSpeak(t, resolveProfile("ai"));
 		if (n) setNote(n);
 	};
 

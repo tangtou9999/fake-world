@@ -1,10 +1,11 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
-import { DEFAULT_GEMINI_MODEL, DEFAULT_TTS_MODEL, GEMINI_VOICES, geminiConfigAtom } from "@/stateV2/gemini";
+import { DEFAULT_GEMINI_MODEL, DEFAULT_TTS_MODEL, type VoiceProfile, type VoiceRole, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
 import { callGemini, listGeminiModels } from "@/utils/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
 import { useAtom } from "jotai";
 import { type ReactNode, useState } from "react";
 import { NavBar } from "../../addFriend/Shared";
+import VoiceProfileEditor from "./VoiceProfileEditor";
 
 const TEXT_CHOICES = [
 	{ id: "", title: "自动（推荐）", desc: "用快速模型，繁忙或停用时自动换备用，省心" },
@@ -73,38 +74,16 @@ const AiSettings = () => {
 		}
 	};
 
-	const trial = async (voice: string) => {
+	const trial = async (profile: VoiceProfile) => {
 		unlockAudio();
 		setVoiceNote("正在请求 Gemini 声音…");
-		const note = await geminiSpeak("你好，这是我的声音，听起来怎么样？", voice);
+		const note = await geminiSpeak("（笑）你好呀，这是我的声音，听起来像真人发的微信语音吗？", profile);
 		setVoiceNote(note ?? "播放中。如果没有声音，请检查手机是否静音。");
 	};
 
-	const voiceRow = (key: "ai" | "friend" | "mine", label: string, desc: string, def: string) => {
-		const value = config.voices?.[key] || def;
-		return (
-			<div className="border-black/5 border-b bg-white px-4 py-3 last:border-b-0">
-				<div className="text-[16px]">{label}</div>
-				<div className="mt-[2px] text-[12px] text-black/40">{desc}</div>
-				<div className="mt-2 flex items-center gap-2">
-					<select
-						className="h-10 min-w-0 flex-1 rounded-[6px] bg-[#F5F5F5] px-2 text-[15px] outline-none"
-						value={value}
-						onChange={(e) => setConfig((v) => ({ ...v, voices: { ...v.voices, [key]: e.target.value } }))}
-					>
-						{GEMINI_VOICES.map((o) => (
-							<option key={o.id} value={o.id}>
-								{o.label} · {o.desc}
-							</option>
-						))}
-					</select>
-					<button type="button" disabled={!config.apiKey} onClick={() => void trial(value)} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[15px] text-white disabled:opacity-40">
-						试听
-					</button>
-				</div>
-			</div>
-		);
-	};
+	const [role, setRole] = useState<VoiceRole>("friend");
+	const ROLE_LABEL: Record<VoiceRole, string> = { friend: "对方的语音", mine: "我的语音", ai: "AI 朗读" };
+	const fx = config.fx ?? {};
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-[#EDEDED]">
@@ -124,6 +103,17 @@ const AiSettings = () => {
 							{show ? "隐藏" : "显示"}
 						</button>
 					</div>
+					<div className="mt-px flex items-center bg-white px-4">
+						<input
+							type={show ? "text" : "password"}
+							className="min-w-0 flex-1 bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
+							placeholder="备用密钥（第二个 Google 账号，可不填）"
+							value={config.apiKey2 ?? ""}
+							autoComplete="off"
+							onChange={(e) => setConfig((v) => ({ ...v, apiKey2: e.target.value.trim() }))}
+						/>
+					</div>
+					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
 				</Section>
 
 				<Section title="② 文字 AI（聊天、剧本、朋友圈、翻译、AI 对话）" hint="选一个就行。出现“服务器繁忙”或模型停用时，都会自动换备用模型重试。">
@@ -161,13 +151,55 @@ const AiSettings = () => {
 					</div>
 				</Section>
 
-				<Section title="④ 声音 AI（Gemini 语音合成）" hint="点对方的语音消息、或 AI 朗读回复时，用这里选的声音。试听时需要联网，每次试听会用一点额度。">
-					<div>
-						{voiceRow("friend", "对方的语音消息", "点聊天里对方发的语音，会用这个声音读出它的文字", "Aoede")}
-						{voiceRow("mine", "我的语音消息", "点我发的语音时用的声音", "Puck")}
-						{voiceRow("ai", "AI 朗读回复", "AI 对话里朗读回复用的声音", "Kore")}
+				<Section title="④ 声音 AI（Gemini 语音合成）" hint="先选角色，再调它的声纹、人设、气声等。每个聊天还可以在「编辑模式 → 声音」里单独设置。试听需要联网，每次会用一点额度。">
+					<div className="mx-4 mb-2 flex rounded-[8px] bg-black/5 p-[3px] text-[14px]">
+						{(["friend", "mine", "ai"] as const).map((r) => (
+							<button key={r} type="button" onClick={() => setRole(r)} className={`h-8 flex-1 rounded-[6px] ${role === r ? "bg-white font-medium shadow-sm" : "text-black/60"}`}>
+								{ROLE_LABEL[r]}
+							</button>
+						))}
 					</div>
-					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">
+					<VoiceProfileEditor
+						key={role}
+						value={resolveProfile(role)}
+						onChange={(p) => setConfig((v) => ({ ...v, profiles: { ...v.profiles, [role]: p } }))}
+						onTrial={() => void trial(resolveProfile(role))}
+						trialDisabled={!config.apiKey}
+						hint={role === "friend" ? "点聊天里对方发的语音，用这个声音读出它的文字（默认设置，各聊天可单独覆盖）" : role === "mine" ? "点我发的语音时用的声音（默认设置）" : "AI 对话里朗读回复用的声音"}
+					/>
+					<div className="px-4 pt-4 pb-1 font-medium text-[14px] text-black/70">整体语速与节奏</div>
+					<div>
+						{VOICE_PACES.map((p) => (
+							<Choice key={p.id} active={(fx.pace ?? "chat") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, pace: p.id } }))} />
+						))}
+					</div>
+					<div className="px-4 pt-4 pb-1 font-medium text-[14px] text-black/70">物理声场 / 环境</div>
+					<div>
+						{VOICE_SCENES.map((p) => (
+							<Choice key={p.id} active={(fx.scene ?? "pure") === p.id} title={p.title} desc={p.desc} onClick={() => setConfig((v) => ({ ...v, fx: { ...v.fx, scene: p.id } }))} />
+						))}
+					</div>
+					<div className="mt-4 bg-white px-4 py-3">
+						<label className="flex items-start justify-between gap-3">
+							<span>
+								<span className="text-[16px]">情绪词智能软化</span>
+								<span className="block text-[12px] text-black/40 leading-5">把容易被拦截的极端口气标签，换成声学上等效但安全的指令，避免报错没声音</span>
+							</span>
+							<input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-[#07C160]" checked={fx.soften !== false} onChange={(e) => setConfig((v) => ({ ...v, fx: { ...v.fx, soften: e.target.checked } }))} />
+						</label>
+						<div className="mt-3 text-[16px]">同音字发音词典</div>
+						<div className="text-[12px] text-black/40 leading-5">每行一条「原词=同音安全词」，例如 滚蛋=滚淡。气泡上仍显示原词，只在合成声音时替换。</div>
+						<textarea
+							className="mt-2 h-[88px] w-full resize-none rounded-[6px] bg-[#F5F5F5] p-2 text-[14px] leading-5 outline-none placeholder:text-black/30"
+							placeholder={"滚蛋=滚淡"}
+							value={fx.dict ?? ""}
+							onChange={(e) => setConfig((v) => ({ ...v, fx: { ...v.fx, dict: e.target.value } }))}
+						/>
+					</div>
+					<div className="px-4 pt-3 text-[12px] text-black/40 leading-5">
+						小技巧：语音消息的文字开头写（口气）就是本句专属口气，例如「（撒娇）你怎么才回我」「（冷笑）行啊你」。支持：撒娇、气泡音/耳语、笑/调侃、暴怒、冷笑/嘲讽、委屈/哭腔、无奈/叹气、惊讶、抢话/打断。其他括号备注不会被读出来。
+					</div>
+					<div className="px-4 pt-3 text-[12px] text-black/40 leading-5">
 						语音模型：{config.ttsModel || DEFAULT_TTS_MODEL}。如果你的账号用的是别的名字，可在下面改。
 					</div>
 					<div className="mx-4 mt-1 rounded-[6px] bg-white px-3">

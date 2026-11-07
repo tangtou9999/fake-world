@@ -1,10 +1,10 @@
-import { DEFAULT_TTS_MODEL, getGeminiConfig } from "@/stateV2/gemini";
+import { DEFAULT_TTS_MODEL, type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
 import { speakText } from "./voice";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
 let ctx: AudioContext | null = null;
-let current: AudioBufferSourceNode | null = null;
+const active = new Set<AudioScheduledSourceNode>();
 const cache = new Map<string, AudioBuffer>();
 
 /** iOS 要求在点击等用户手势里「解锁」音频，之后异步播放才不会被拦 */
@@ -19,12 +19,14 @@ export const unlockAudio = () => {
 };
 
 export const stopSpeaking = () => {
-	try {
-		current?.stop();
-	} catch {
-		// ignore
+	for (const s of active) {
+		try {
+			s.stop();
+		} catch {
+			// ignore
+		}
 	}
-	current = null;
+	active.clear();
 	if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
 };
 
@@ -35,76 +37,325 @@ const b64ToBytes = (b64: string) => {
 	return out;
 };
 
-/** 调用 Gemini 语音合成，返回可播放的音频；失败会抛错 */
-const synth = async (text: string, voice: string): Promise<AudioBuffer> => {
-	const key = `${voice}|${text}`;
-	const hit = cache.get(key);
+/* ---------- 台词解析：本句口气、括号备注、同音字、软化 ---------- */
+
+const EMOTIONS: [RegExp, string][] = [
+	[/抢话|打断|秒回/, "不等对方说完直接插话！起音极快、干脆利落、话赶话"],
+	[/撒娇|甜糯|发嗲/, "用甜美软糯撒娇的语气说话，声音轻柔粘人，句尾自然上扬拉长"],
+	[/气泡音|贴耳|耳语|刚睡醒/, "压低嗓音贴在麦克风边轻声低语，带着明显的慵懒气泡音、温热气声与轻微呼吸声"],
+	[/笑|调侃|坏笑|噗嗤/, "开口前先带一声自然的轻笑或噗嗤声，嘴角带笑，用熟人开玩笑调侃的松弛口气说出"],
+	[/暴怒|急眼|破音|吼/, "情绪瞬间激动失控，语速极快、声调拔高、带着强烈的不满与压迫感吼出来"],
+	[/冷笑|嘲讽|毒舌|阴阳怪气/, "开口先带一声轻微冷哼，语速干脆利落，充满冷幽默与嘲讽感"],
+	[/委屈|哭腔|心虚|发抖/, "声音微微发颤，带着明显的鼻音、委屈哭腔与断断续续的抽泣换气感"],
+	[/无奈|叹气|心累/, "开口前先轻轻叹一口气，用疲惫、慵懒、哭笑不得的生活化口气说话"],
+	[/惊讶|反问|吃瓜/, "语速加快，声调明显拔高，带着强烈的惊讶与好奇八卦感"],
+];
+
+const SOFT_TAGS = /娇喘|呻吟|情色/;
+const SOFT_TEXT = "贴耳急促呼吸声、微弱气声与断续停顿";
+
+export const expandTone = (tag: string, soften: boolean) => {
+	if (!tag) return "";
+	if (soften && SOFT_TAGS.test(tag)) return SOFT_TEXT;
+	const hit = EMOTIONS.find(([re]) => re.test(tag));
+	if (hit) return hit[1];
+	return `用「${tag}」的口气说`;
+};
+
+/** 台词开头的（口气）当作本句专属口气；其余括号备注不朗读 */
+export const parseLine = (raw: string) => {
+	let text = raw.replace(/```[\s\S]*?```/g, "").replace(/[*#>`_~]/g, "").trim();
+	let tone = "";
+	const m = text.match(/^\s*(?:[^（(：:\n]{0,12})?[（(]([^）)]{1,12})[）)]\s*[:：]?\s*/);
+	if (m) {
+		tone = m[1];
+		text = text.slice(m[0].length);
+	}
+	text = text.replace(/（[^）]*）|\([^)]*\)/g, "").trim();
+	return { tone, text };
+};
+
+const applyDict = (text: string, dict?: string) => {
+	let out = text;
+	for (const line of (dict ?? "").split("\n")) {
+		const i = line.indexOf("=");
+		if (i <= 0) continue;
+		const from = line.slice(0, i).trim();
+		const to = line.slice(i + 1).trim();
+		if (from) out = out.split(from).join(to);
+	}
+	return out;
+};
+
+const paceOf = (fx: VoiceFx) => VOICE_PACES.find((p) => p.id === (fx.pace ?? "chat")) ?? VOICE_PACES[0];
+
+/** 黄金拼接：人设 + 口音 + 语速节奏 + 本句口气，再加标点规则与「只读冒号后面」 */
+export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}) => {
+	const { tone, text: clean } = parseLine(raw);
+	const text = applyDict(clean, fx.dict);
+	const soften = fx.soften !== false;
+	const air = profile.air ?? 0;
+	const accent = profile.accent && profile.accent !== "默认自然口语" ? `带${profile.accent}` : "";
+	const airPhrase = air >= 35 ? "带着贴耳气声、轻微气泡音与真实呼吸感" : "";
+	const head = [profile.persona?.trim(), accent, paceOf(fx).prompt, expandTone(tone, soften), airPhrase].filter(Boolean).join("，");
+	const punct = "遇到……要留出真实的欲言又止或呼吸停顿；遇到——代表话没说完急促截断；遇到？！要拔高声调质问";
+	return { prompt: `${head}。${punct}。请严格只朗读冒号后面的台词内容（绝不要把前面的提示词和括号读出来）：\n${text}`, text, tone };
+};
+
+/* ---------- 合成（主密钥 → 备用密钥，多个模型依次尝试） ---------- */
+
+/** 去掉首尾的静音，只留 25ms 缓冲，点开语音条才能「0 延迟开口」 */
+const trimSilence = (c: AudioContext, buf: AudioBuffer) => {
+	const ch = buf.getChannelData(0);
+	const th = 200 / 32768;
+	let a = 0;
+	let b = ch.length - 1;
+	while (a < b && Math.abs(ch[a]) < th) a++;
+	while (b > a && Math.abs(ch[b]) < th) b--;
+	const pad = Math.floor(buf.sampleRate * 0.025);
+	a = Math.max(0, a - pad);
+	b = Math.min(ch.length - 1, b + pad);
+	if (b - a < buf.sampleRate * 0.1) return buf;
+	const out = c.createBuffer(1, b - a + 1, buf.sampleRate);
+	out.getChannelData(0).set(ch.subarray(a, b + 1));
+	return out;
+};
+
+const synth = async (prompt: string, voice: string): Promise<AudioBuffer> => {
+	const ck = `${voice}|${prompt}`;
+	const hit = cache.get(ck);
 	if (hit) return hit;
-	const { apiKey, ttsModel } = getGeminiConfig();
-	if (!apiKey) throw new Error("还没有填 API 密钥");
+	const { apiKey, apiKey2, ttsModel } = getGeminiConfig();
+	const keys = [apiKey, apiKey2].filter((k): k is string => !!k);
+	if (!keys.length) throw new Error("还没有填 API 密钥");
 	if (!ctx) unlockAudio();
-	if (!ctx) throw new Error("这个浏览器不支持音频播放");
+	const c = ctx;
+	if (!c) throw new Error("这个浏览器不支持音频播放");
 	const models = Array.from(new Set([ttsModel || DEFAULT_TTS_MODEL, DEFAULT_TTS_MODEL, "gemini-2.5-pro-preview-tts"]));
 	let lastErr = "未知错误";
-	for (const m of models) {
-		const res = await fetch(`${BASE}/${m}:generateContent`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-			body: JSON.stringify({
-				contents: [{ parts: [{ text: `用自然、口语化的语气朗读（保持原文语言）：${text}` }] }],
-				generationConfig: {
-					responseModalities: ["AUDIO"],
-					speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-				},
-			}),
-		});
-		const data = await res.json().catch(() => ({}));
-		if (!res.ok) {
-			lastErr = data?.error?.message || `HTTP ${res.status}`;
-			if (res.status === 404 || res.status === 429 || res.status >= 500) continue;
-			throw new Error(lastErr);
+	for (const key of keys) {
+		for (const m of models) {
+			let res: Response;
+			try {
+				res = await fetch(`${BASE}/${m}:generateContent`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+					body: JSON.stringify({
+						contents: [{ parts: [{ text: prompt }] }],
+						generationConfig: {
+							responseModalities: ["AUDIO"],
+							speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
+						},
+					}),
+				});
+			} catch (e) {
+				lastErr = e instanceof Error ? e.message : String(e);
+				continue;
+			}
+			const data = await res.json().catch(() => ({}));
+			if (!res.ok) {
+				lastErr = data?.error?.message || `HTTP ${res.status}`;
+				continue;
+			}
+			const part = data?.candidates?.[0]?.content?.parts?.find((p: { inlineData?: unknown; inline_data?: unknown }) => p.inlineData || p.inline_data);
+			const inline = part?.inlineData ?? part?.inline_data;
+			if (!inline?.data) {
+				lastErr = data?.candidates?.[0]?.finishReason ? `Gemini 没有返回声音（${data.candidates[0].finishReason}）` : "Gemini 没有返回声音";
+				continue;
+			}
+			const mime: string = inline.mimeType ?? inline.mime_type ?? "";
+			const bytes = b64ToBytes(inline.data);
+			let buf: AudioBuffer;
+			if (/L16|pcm/i.test(mime) || !mime) {
+				const rate = Number(mime.match(/rate=(\d+)/)?.[1] ?? 24000);
+				const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+				buf = c.createBuffer(1, Math.max(1, samples.length), rate);
+				const ch = buf.getChannelData(0);
+				for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
+			} else {
+				buf = await c.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+			}
+			buf = trimSilence(c, buf);
+			cache.set(ck, buf);
+			return buf;
 		}
-		const part = data?.candidates?.[0]?.content?.parts?.find((p: { inlineData?: unknown; inline_data?: unknown }) => p.inlineData || p.inline_data);
-		const inline = part?.inlineData ?? part?.inline_data;
-		if (!inline?.data) {
-			lastErr = "Gemini 没有返回声音";
-			continue;
-		}
-		const mime: string = inline.mimeType ?? inline.mime_type ?? "";
-		const bytes = b64ToBytes(inline.data);
-		let buf: AudioBuffer;
-		if (/L16|pcm/i.test(mime) || !mime) {
-			const rate = Number(mime.match(/rate=(\d+)/)?.[1] ?? 24000);
-			const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
-			buf = ctx.createBuffer(1, samples.length, rate);
-			const ch = buf.getChannelData(0);
-			for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
-		} else {
-			buf = await ctx.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
-		}
-		cache.set(key, buf);
-		return buf;
-	};
+	}
 	throw new Error(lastErr);
 };
 
-/** 用 Gemini 的声音朗读；失败时退回手机自带的朗读，并返回提示文字 */
-export const geminiSpeak = async (rawText: string, voice: string): Promise<string | null> => {
-	const text = rawText.replace(/```[\s\S]*?```/g, "").replace(/[*#>`_~]/g, "").trim().slice(0, 900);
+/* ---------- 声学后处理：气声 / 胸腔 / 听筒 / 压限 / 声场 ---------- */
+
+const impulse = (c: AudioContext, seconds: number) => {
+	const len = Math.max(1, Math.floor(c.sampleRate * seconds));
+	const buf = c.createBuffer(2, len, c.sampleRate);
+	for (let k = 0; k < 2; k++) {
+		const d = buf.getChannelData(k);
+		for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len) ** 2.6;
+	}
+	return buf;
+};
+
+const noiseSource = (c: AudioContext) => {
+	const buf = c.createBuffer(1, c.sampleRate * 2, c.sampleRate);
+	const d = buf.getChannelData(0);
+	for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+	const src = c.createBufferSource();
+	src.buffer = buf;
+	src.loop = true;
+	return src;
+};
+
+/** 在 when（音频时钟）开始播放，返回结束时间 */
+const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: VoiceFx, when: number) => {
+	const rate = paceOf(fx).rate;
+	const src = c.createBufferSource();
+	src.buffer = buf;
+	src.playbackRate.value = rate;
+	let node: AudioNode = src;
+	const chain = (n: AudioNode) => {
+		node.connect(n);
+		node = n;
+	};
+	const air = Math.max(0, Math.min(100, profile.air ?? 0));
+	const chest = Math.max(0, Math.min(100, profile.chest ?? 0));
+	if (air > 0) {
+		const f = c.createBiquadFilter();
+		f.type = "highshelf";
+		f.frequency.value = 3200;
+		f.gain.value = (air / 100) * 3.8;
+		chain(f);
+	}
+	if (chest > 0) {
+		const f = c.createBiquadFilter();
+		f.type = "lowshelf";
+		f.frequency.value = 115;
+		f.gain.value = (chest / 100) * 5.0;
+		chain(f);
+	}
+	if (profile.phone) {
+		const hp = c.createBiquadFilter();
+		hp.type = "highpass";
+		hp.frequency.value = 320;
+		chain(hp);
+		const lp = c.createBiquadFilter();
+		lp.type = "lowpass";
+		lp.frequency.value = 3600;
+		chain(lp);
+		const pk = c.createBiquadFilter();
+		pk.type = "peaking";
+		pk.frequency.value = 1200;
+		pk.gain.value = 3;
+		chain(pk);
+	}
+	const comp = c.createDynamicsCompressor();
+	comp.threshold.value = -22;
+	comp.ratio.value = 3;
+	comp.attack.value = 0.005;
+	comp.release.value = 0.15;
+	chain(comp);
+	const dur = buf.duration / rate;
+	const out = c.createGain();
+	out.gain.value = 1.15;
+	node.connect(out);
+	out.connect(c.destination);
+	const scene = fx.scene ?? "pure";
+	const verb = { bed: 0.24, living: 0.48, rain: 0.4, restaurant: 0.3, pure: 0 }[scene];
+	let tail = 0.05;
+	if (verb > 0) {
+		const conv = c.createConvolver();
+		conv.buffer = impulse(c, verb);
+		const wet = c.createGain();
+		wet.gain.value = scene === "bed" ? 0.22 : 0.3;
+		node.connect(conv);
+		conv.connect(wet);
+		wet.connect(c.destination);
+		tail = verb;
+	}
+	const amb: Record<string, { type: BiquadFilterType; f: number; g: number }> = {
+		living: { type: "lowpass", f: 400, g: 0.004 },
+		restaurant: { type: "bandpass", f: 900, g: 0.035 },
+		rain: { type: "highpass", f: 1500, g: 0.02 },
+	};
+	const a = amb[scene];
+	let ns: AudioBufferSourceNode | null = null;
+	if (a) {
+		ns = noiseSource(c);
+		const f = c.createBiquadFilter();
+		f.type = a.type;
+		f.frequency.value = a.f;
+		const g = c.createGain();
+		g.gain.value = a.g;
+		if (scene === "restaurant") {
+			const lfo = c.createOscillator();
+			lfo.frequency.value = 0.7;
+			const depth = c.createGain();
+			depth.gain.value = a.g * 0.5;
+			lfo.connect(depth);
+			depth.connect(g.gain);
+			lfo.start(when);
+			lfo.stop(when + dur + tail + 0.3);
+		}
+		ns.connect(f);
+		f.connect(g);
+		g.connect(c.destination);
+		ns.start(when);
+		ns.stop(when + dur + tail + 0.3);
+		active.add(ns);
+	}
+	src.start(when);
+	active.add(src);
+	src.onended = () => {
+		active.delete(src);
+		if (ns) active.delete(ns);
+	};
+	return when + dur;
+};
+
+const clean = (v: string | VoiceProfile): VoiceProfile => (typeof v === "string" ? { voice: v || "Kore" } : { ...v, voice: v.voice || "Kore" });
+
+/** 用 Gemini 的声音朗读一句；失败时退回手机自带的朗读，并返回提示文字 */
+export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx): Promise<string | null> => {
+	const profile = clean(voice);
+	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
+	const { prompt, text } = buildPrompt(rawText.slice(0, 900), profile, fx);
 	if (!text) return null;
 	stopSpeaking();
 	try {
-		const buf = await synth(text, voice || "Kore");
+		const buf = await synth(prompt, profile.voice);
 		if (!ctx) return null;
 		await ctx.resume();
-		const src = ctx.createBufferSource();
-		src.buffer = buf;
-		src.connect(ctx.destination);
-		src.start();
-		current = src;
+		schedule(ctx, buf, profile, fx, ctx.currentTime + 0.02);
 		return null;
 	} catch (e) {
 		speakText(text);
 		return `Gemini 声音不可用，已改用手机自带声音：${e instanceof Error ? e.message : String(e)}`;
+	}
+};
+
+/** 连播多句（双人私聊 / 群聊）：句间停顿 0.15~0.20 秒；上一句以「——」结尾或这句标了抢话/打断/爆笑，就提前 0.25 秒叠音 */
+export const playSequence = async (lines: { text: string; profile: VoiceProfile }[], fxOverride?: VoiceFx): Promise<string | null> => {
+	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
+	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, fx), profile: l.profile, raw: l.text })).filter((l) => l.text);
+	if (!prepared.length) return null;
+	stopSpeaking();
+	unlockAudio();
+	try {
+		const bufs = await Promise.all(prepared.map((l) => synth(l.prompt, l.profile.voice)));
+		const c = ctx;
+		if (!c) return null;
+		await c.resume();
+		let t = c.currentTime + 0.05;
+		let prevRaw = "";
+		prepared.forEach((l, i) => {
+			if (i > 0) {
+				const overlap = /——\s*$/.test(prevRaw) || /抢话|打断|爆笑/.test(l.tone);
+				t += overlap ? -0.25 : 0.18;
+			}
+			t = schedule(c, bufs[i], l.profile, fx, Math.max(t, c.currentTime + 0.02));
+			prevRaw = l.raw;
+		});
+		return null;
+	} catch (e) {
+		return `Gemini 声音不可用：${e instanceof Error ? e.message : String(e)}`;
 	}
 };

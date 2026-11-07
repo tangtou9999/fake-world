@@ -79,9 +79,27 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-export async function callGemini(prompt: string, options: { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string } = {}) {
-	const { apiKey, model } = getGeminiConfig();
-	if (!apiKey) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
+type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string };
+
+/** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
+export async function callGemini(prompt: string, options: CallOptions = {}) {
+	const { apiKey, apiKey2 } = getGeminiConfig();
+	if (!apiKey && !apiKey2) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
+	const keys = [apiKey, apiKey2].filter((k): k is string => !!k);
+	let lastErr: unknown;
+	for (const k of keys) {
+		try {
+			return await callGeminiWithKey(k, prompt, options);
+		} catch (e) {
+			if (e instanceof GeminiBlockedError) throw e;
+			lastErr = e;
+		}
+	}
+	throw lastErr;
+}
+
+async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOptions) {
+	const { model } = getGeminiConfig();
 	const pick = options.model || model;
 	const chosen = !pick || RETIRED_MODELS.includes(pick) ? DEFAULT_GEMINI_MODEL : pick;
 	const models = Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));

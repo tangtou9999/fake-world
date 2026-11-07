@@ -13,25 +13,104 @@ export type GeminiConfig = {
 	ttsModel?: string;
 	/** 三种场景的声音：私人 AI 朗读 / 对方的语音消息 / 我的语音消息 */
 	voices?: { ai?: string; friend?: string; mine?: string };
+	/** 备用密钥（第二个 Google 账号）：主密钥额度用完 / 繁忙 / 出错时自动改用它 */
+	apiKey2?: string;
+	/** 三种角色的默认声音档案（音色、人设、口音、气声、胸腔共鸣、听筒滤波） */
+	profiles?: { ai?: VoiceProfile; friend?: VoiceProfile; mine?: VoiceProfile };
+	/** 全局语速节奏、声场、防拦截 */
+	fx?: VoiceFx;
 };
 
-export type VoiceOption = { id: string; label: string; desc: string };
+export type VoiceProfile = {
+	voice: string;
+	/** 角色基底人设与说话习惯 */
+	persona?: string;
+	accent?: string;
+	/** 气泡音 / 贴耳呼吸感 0~100 */
+	air?: number;
+	/** 胸腔共鸣 / 磁性厚度 0~100 */
+	chest?: number;
+	/** 电话听筒 / 微信劣质麦滤波 */
+	phone?: boolean;
+};
 
-/** Gemini 语音合成自带的声音（名字是官方声音名，说明是它们的大致听感） */
-export const GEMINI_VOICES: VoiceOption[] = [
-	{ id: "Kore", label: "Kore", desc: "女声·干练坚定" },
-	{ id: "Aoede", label: "Aoede", desc: "女声·轻松明快" },
-	{ id: "Leda", label: "Leda", desc: "女声·年轻清亮" },
-	{ id: "Zephyr", label: "Zephyr", desc: "女声·明亮活泼" },
-	{ id: "Achernar", label: "Achernar", desc: "女声·温柔柔和" },
-	{ id: "Sulafat", label: "Sulafat", desc: "女声·温暖亲切" },
-	{ id: "Puck", label: "Puck", desc: "男声·欢快有活力" },
-	{ id: "Charon", label: "Charon", desc: "男声·沉稳知性" },
-	{ id: "Fenrir", label: "Fenrir", desc: "男声·兴奋热情" },
-	{ id: "Orus", label: "Orus", desc: "男声·坚定有力" },
-	{ id: "Algenib", label: "Algenib", desc: "男声·低沉沙哑" },
-	{ id: "Iapetus", label: "Iapetus", desc: "男声·清晰随和" },
+export type VoiceFx = {
+	pace?: "chat" | "fast" | "night";
+	scene?: "pure" | "bed" | "living" | "restaurant" | "rain";
+	/** 情绪词智能软化 */
+	soften?: boolean;
+	/** 每行「原词=同音安全词」 */
+	dict?: string;
+};
+
+export const VOICE_ACCENTS = ["默认自然口语", "台湾甜妹腔", "川渝火辣味", "东北老铁味", "京津贫嘴味", "粤普大佬味"];
+
+export const VOICE_PACES: { id: NonNullable<VoiceFx["pace"]>; title: string; desc: string; rate: number; prompt: string }[] = [
+	{ id: "chat", title: "⚡ 自然熟人微信闲聊", desc: "默认，语速约 1.15 倍，松弛连读，不像播音", rate: 1.15, prompt: "请用真人发微信语音的自然快节奏口语连读，带真实呼吸感，绝不要像播音员朗读" },
+	{ id: "fast", title: "🔥 快节奏互怼 / 群聊轰炸", desc: "语速约 1.25 倍，起音极快，话赶话", rate: 1.25, prompt: "请用真人发微信语音的快节奏口语，起音极快、话赶话、连读，带真实呼吸感，绝不要像播音员朗读" },
+	{ id: "night", title: "🌙 深夜被窝走心私聊", desc: "语速放慢，呼吸感加重，留白明显", rate: 0.95, prompt: "请用真人深夜躺在被窝里发微信语音的慢节奏，呼吸感加重，句间留白明显，绝不要像播音员朗读" },
 ];
+
+export const VOICE_SCENES: { id: NonNullable<VoiceFx["scene"]>; title: string; desc: string }[] = [
+	{ id: "pure", title: "💬 纯净微信语音条", desc: "干声 + 近讲压限，最适合气泡里点播" },
+	{ id: "bed", title: "🛏️ 家里被窝私密夜话", desc: "极短贴耳早期反射 0.24 秒" },
+	{ id: "living", title: "🛋️ 夜晚客厅 / 房间", desc: "小房间混响 0.48 秒 + 极轻室内底噪" },
+	{ id: "restaurant", title: "🍻 嘈杂餐厅 / 夜宵摊", desc: "叠加低音量人群喧哗底噪" },
+	{ id: "rain", title: "🌧️ 雨夜车内", desc: "叠加窗外微雨底噪 + 车厢混响" },
+];
+
+export type VoiceOption = { id: string; label: string; desc: string; gender: "男" | "女" };
+
+/** Gemini 语音合成的 30 款官方声音（名字是官方声音名，说明是大致听感） */
+const M = (id: string, desc: string): VoiceOption => ({ id, label: id, desc, gender: "男" });
+const F = (id: string, desc: string): VoiceOption => ({ id, label: id, desc, gender: "女" });
+export const GEMINI_VOICES: VoiceOption[] = [
+	M("Charon", "深沉磁性成熟男低音 / 霸总 / 夜间电台"),
+	M("Fenrir", "浑厚爆发力男声 / 情绪张力极强"),
+	M("Puck", "阳光松弛暖男 / 自然熟人日常闲聊"),
+	M("Enceladus", "极近贴耳气声 / 气泡音男低音 / 私密耳语"),
+	M("Orus", "冷峻干脆青年男声 / 精英感"),
+	M("Algenib", "粗犷沙哑颗粒感男声 / 沧桑感"),
+	M("Sadachbia", "高亢激昂高张力男声 / 爱起哄"),
+	M("Algieba", "温润儒雅绅士男声"),
+	M("Achird", "清爽干净少年感男声"),
+	M("Sadaltager", "温和治愈男声"),
+	M("Iapetus", "冷静悬疑男声"),
+	M("Rasalgethi", "理性学者男声"),
+	M("Alnilam", "端庄播音男声"),
+	M("Schedar", "冷酷深沉男声"),
+	M("Umbriel", "暗夜低语男声"),
+	M("Zubenelgenubi", "豪爽大哥男声"),
+	F("Zephyr", "清澈自然年轻女生 / 日常恋爱女友"),
+	F("Aoede", "温柔知性女声 / 细腻呼吸感"),
+	F("Achernar", "轻柔贴耳睡眠气声 / 气泡音软妹"),
+	F("Despina", "情绪饱满高表现力女声 / 委屈哭腔或毒舌吐槽"),
+	F("Kore", "清冷尖锐强势御姐 / 干练反驳"),
+	F("Laomedeia", "甜糯撒娇台湾腔软妹"),
+	F("Callirrhoe", "慵懒微醺熟女 / 勾人语调"),
+	F("Autonoe", "活泼灵动元气少女"),
+	F("Leda", "端庄温柔姐姐"),
+	F("Gacrux", "醇厚大女主女中音"),
+	F("Pulcherrima", "明艳娇俏大小姐"),
+	F("Sulafat", "温暖长姐女声"),
+	F("Erinome", "沉静知性女声"),
+	F("Vindemiatrix", "冷艳神秘女声"),
+];
+
+export type VoiceRole = "ai" | "friend" | "mine";
+
+export const DEFAULT_VOICE: Record<VoiceRole, string> = { friend: "Aoede", mine: "Puck", ai: "Kore" };
+
+/** 每个聊天单独的声音档案（覆盖全局默认）：对方 / 我 */
+export const convVoicesAtom = atomWithStorage<Record<string, { friend?: VoiceProfile; mine?: VoiceProfile }>>("conv-voices", {});
+
+/** 取某个角色当前生效的声音档案：该聊天的单独设置 > 全局默认 > 旧版声音设置 > 内置默认 */
+export const resolveProfile = (role: VoiceRole, conversationId?: string): VoiceProfile => {
+	const cfg = mainStore.get(geminiConfigAtom);
+	const conv = conversationId && role !== "ai" ? mainStore.get(convVoicesAtom)[conversationId]?.[role] : undefined;
+	const base = cfg.profiles?.[role];
+	return { ...base, ...conv, voice: conv?.voice || base?.voice || cfg.voices?.[role] || DEFAULT_VOICE[role] };
+};
 
 export const DEFAULT_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 

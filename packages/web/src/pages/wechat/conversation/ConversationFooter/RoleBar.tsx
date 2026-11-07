@@ -19,6 +19,7 @@ import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
+import VoiceSheet from "./VoiceSheet";
 
 const PREFIX = /^\s*(我|对方|他|她|friend|me)\s*[:：]\s*/i;
 
@@ -31,6 +32,7 @@ const RoleBar = () => {
 	const navigate = useNavigate();
 	const gemini = useAtomValue(geminiConfigAtom);
 	const [aiOpen, setAiOpen] = useState(false);
+	const [voiceOpen, setVoiceOpen] = useState(false);
 	const [scene, setScene] = useState("");
 	const [aiBusy, setAiBusy] = useState(false);
 	const [aiErr, setAiErr] = useState("");
@@ -132,7 +134,7 @@ const RoleBar = () => {
 
 	return (
 		<>
-			<div className="flex items-center gap-1.5 whitespace-nowrap bg-[#F7F7F7] px-3 pt-2 [&>*]:shrink-0">
+			<div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap bg-[#F7F7F7] px-3 pt-2 [&>*]:shrink-0 [scrollbar-width:none]">
 				<span className="text-[13px] text-black/40">发送人</span>
 				{roleBtn("mine", "我")}
 				{roleBtn("friend", "对方")}
@@ -150,6 +152,9 @@ const RoleBar = () => {
 				>
 					聊天 AI
 				</button>
+				<button type="button" onClick={() => setVoiceOpen(true)} className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]">
+					声音
+				</button>
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
@@ -158,6 +163,7 @@ const RoleBar = () => {
 					批量输入
 				</button>
 			</div>
+			{voiceOpen && <VoiceSheet conversationId={conversationId} onClose={() => setVoiceOpen(false)} />}
 			{aiOpen && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !aiBusy && setAiOpen(false)}>
 					<div className="rounded-t-[12px] bg-white p-4 pb-[calc(16px+env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
