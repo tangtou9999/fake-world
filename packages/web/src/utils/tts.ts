@@ -1,5 +1,4 @@
 import { type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
-import { listGeminiModels } from "./gemini";
 import { speakText } from "./voice";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -105,8 +104,10 @@ const applyDict = (text: string, dict?: string) => {
 const paceOf = (fx: VoiceFx) => VOICE_PACES.find((p) => p.id === (fx.pace ?? "chat")) ?? VOICE_PACES[0];
 
 /** 黄金拼接：人设 + 口音 + 语速节奏 + 本句口气，再加标点规则与「只读冒号后面」 */
-export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}) => {
-	const { tone, text: clean } = parseLine(raw);
+export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}, toneOverride?: string) => {
+	const parsed = parseLine(raw);
+	const tone = toneOverride?.trim() || parsed.tone;
+	const clean = parsed.text;
 	const text = applyDict(clean, fx.dict);
 	const soften = fx.soften !== false;
 	const air = profile.air ?? 0;
@@ -136,23 +137,8 @@ const trimSilence = (c: AudioContext, buf: AudioBuffer) => {
 	return out;
 };
 
-/** Google 的语音模型更新很快：优先用你设置里填的，其次上次成功的，再依次试已知的新旧型号，都不行就向 Google 查这个密钥能用的语音模型 */
-const MODEL_PREF = ["gemini-3.8-flash-tts", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-3.8-flash-lite-tts", "gemini-2.5-pro-preview-tts"];
-const WORK_KEY = "tts-working-model";
-const getWorking = () => {
-	try {
-		return localStorage.getItem(WORK_KEY) || "";
-	} catch {
-		return "";
-	}
-};
-const setWorking = (m: string) => {
-	try {
-		localStorage.setItem(WORK_KEY, m);
-	} catch {
-		// ignore
-	}
-};
+/** 语音合成固定用官方免费的 Gemini 2.5 Flash TTS（30 款声纹）；设置里填了别的型号才优先试那个 */
+const TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
 type Req = { model: string; key: string; head: string; text: string; voice: string };
 
@@ -196,7 +182,6 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 	const c = ctx;
 	if (!c) throw new Error("这个浏览器不支持音频播放");
 	const errors: string[] = [];
-	const tried = new Set<string>();
 	const attempt = async (key: string, model: string) => {
 		for (const body of bodies({ model, key, head, text, voice })) {
 			let res: Response;
@@ -220,30 +205,14 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 			}
 			const buf = await decodeInline(c, inline);
 			cache.set(ck, buf);
-			setWorking(model);
 			return buf;
 		}
 		return null;
 	};
-	const first = Array.from(new Set([ttsModel, getWorking(), ...MODEL_PREF].filter((m): m is string => !!m)));
 	for (const key of keys) {
-		for (const m of first) {
-			tried.add(`${key}|${m}`);
+		for (const m of Array.from(new Set([ttsModel, TTS_MODEL].filter((x): x is string => !!x)))) {
 			const r = await attempt(key, m);
 			if (r) return r;
-		}
-	}
-	// 都不行：向 Google 查这个密钥实际能用的语音模型再试
-	for (const key of keys) {
-		try {
-			const listed = await listGeminiModels(key, true);
-			for (const m of listed) {
-				if (tried.has(`${key}|${m}`)) continue;
-				const r = await attempt(key, m);
-				if (r) return r;
-			}
-		} catch (e) {
-			errors.push(`查询模型列表失败：${e instanceof Error ? e.message : String(e)}`);
 		}
 	}
 	const uniq = Array.from(new Set(errors)).slice(-3);
@@ -326,7 +295,7 @@ const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: 
 	node.connect(out);
 	out.connect(c.destination);
 	const scene = fx.scene ?? "pure";
-	const verb = { bed: 0.24, living: 0.48, rain: 0.4, restaurant: 0.3, pure: 0 }[scene];
+	const verb = { bed: 0.24, living: 0.48, rain: 0.4, restaurant: 0.3, mall: 0.8, street: 0, pure: 0 }[scene];
 	let tail = 0.05;
 	if (verb > 0) {
 		const conv = c.createConvolver();
@@ -342,6 +311,8 @@ const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: 
 		living: { type: "lowpass", f: 400, g: 0.004 },
 		restaurant: { type: "bandpass", f: 900, g: 0.035 },
 		rain: { type: "highpass", f: 1500, g: 0.02 },
+		mall: { type: "bandpass", f: 700, g: 0.022 },
+		street: { type: "lowpass", f: 260, g: 0.05 },
 	};
 	const a = amb[scene];
 	let ns: AudioBufferSourceNode | null = null;
@@ -352,9 +323,10 @@ const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: 
 		f.frequency.value = a.f;
 		const g = c.createGain();
 		g.gain.value = a.g;
-		if (scene === "restaurant") {
+		if (scene === "restaurant" || scene === "mall" || scene === "street") {
+			// 人声 / 脚步 / 车流的起伏：用慢速抖动的音量模拟
 			const lfo = c.createOscillator();
-			lfo.frequency.value = 0.7;
+			lfo.frequency.value = scene === "mall" ? 1.8 : scene === "street" ? 0.25 : 0.7;
 			const depth = c.createGain();
 			depth.gain.value = a.g * 0.5;
 			lfo.connect(depth);
@@ -381,10 +353,10 @@ const schedule = (c: AudioContext, buf: AudioBuffer, profile: VoiceProfile, fx: 
 const clean = (v: string | VoiceProfile): VoiceProfile => (typeof v === "string" ? { voice: v || "Kore" } : { ...v, voice: v.voice || "Kore" });
 
 /** 用 Gemini 的声音朗读一句；失败时退回手机自带的朗读，并返回提示文字 */
-export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx): Promise<string | null> => {
+export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx, tone?: string): Promise<string | null> => {
 	const profile = clean(voice);
 	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
-	const { head, text } = buildPrompt(rawText.slice(0, 900), profile, fx);
+	const { head, text } = buildPrompt(rawText.slice(0, 900), profile, fx, tone);
 	if (!text) return null;
 	stopSpeaking();
 	const my = gen;
@@ -401,9 +373,9 @@ export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile,
 };
 
 /** 连播多句（双人私聊 / 群聊）：句间停顿 0.15~0.20 秒；上一句以「——」结尾或这句标了抢话/打断/爆笑，就提前 0.25 秒叠音 */
-export const playSequence = async (lines: { text: string; profile: VoiceProfile }[], fxOverride?: VoiceFx): Promise<string | null> => {
+export const playSequence = async (lines: { text: string; profile: VoiceProfile; fx?: VoiceFx; tone?: string }[], fxOverride?: VoiceFx): Promise<string | null> => {
 	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
-	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, fx), profile: l.profile, raw: l.text })).filter((l) => l.text);
+	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, { ...fx, ...l.fx }, l.tone), profile: l.profile, raw: l.text, lfx: { ...fx, ...l.fx } })).filter((l) => l.text);
 	if (!prepared.length) return null;
 	stopSpeaking();
 	const my = gen;
@@ -420,7 +392,7 @@ export const playSequence = async (lines: { text: string; profile: VoiceProfile 
 				const overlap = /——\s*$/.test(prevRaw) || /抢话|打断|爆笑/.test(l.tone);
 				t += overlap ? -0.25 : 0.18;
 			}
-			t = schedule(c, bufs[i], l.profile, fx, Math.max(t, c.currentTime + 0.02));
+			t = schedule(c, bufs[i], l.profile, l.lfx, Math.max(t, c.currentTime + 0.02));
 			prevRaw = l.raw;
 		});
 		return null;

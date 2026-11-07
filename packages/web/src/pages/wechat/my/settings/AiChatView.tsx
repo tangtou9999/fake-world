@@ -2,16 +2,16 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
-import { DEFAULT_VOICE, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
+import { DEFAULT_VOICE, type VoicePreset, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { startRecording } from "@/utils/voice";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
-import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, resolveTarget } from "./aiChatTools";
+import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
 
@@ -19,7 +19,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	useScreenTopBg("#EDEDED");
 	const navigate = useNavigate();
 	const [gemini, setGemini] = useAtom(geminiConfigAtom);
-	const presets = useAtomValue(voicePresetsAtom);
+	const [presets, setPresets] = useAtom(voicePresetsAtom);
 	const [speaking, setSpeaking] = useState(false);
 	const [state, setState] = useAtom(aiChatsAtom);
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
@@ -135,7 +135,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			}
 			if (blocked) throw blocked;
 			if (cancelled.current.delete(userMsg.id)) return;
-			const parsed = isChat ? parseAction(reply.trim()) : { text: reply.trim(), action: undefined };
+			const vm = parseVoiceMake(reply.trim());
+			const parsed = isChat ? parseAction(vm.text) : { text: vm.text, action: undefined };
+			let saved = "";
+			if (vm.make) {
+				const preset: VoicePreset = { id: nanoid(6), name: vm.make.name, profile: vm.make.profile };
+				setPresets((v) => [...v, preset]);
+				saved = `\n\n✅ 已自动保存到声音库：「${preset.name}」（${preset.profile.voice} · 低音 ${preset.profile.chest}% · 气声 ${preset.profile.air}%），正在试听。可到「设置 → AI 模型与声音」里改名、选用。`;
+				unlockAudio();
+				void geminiSpeak(vm.make.sample, preset.profile).then((n) => n && setNote(n));
+			}
 			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
 			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
 			updateMessages((m) => [
@@ -143,7 +152,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				{
 					id: nanoid(8),
 					role: "model",
-					text: parsed.text + extra,
+					text: parsed.text + saved + extra,
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 				},
 			]);

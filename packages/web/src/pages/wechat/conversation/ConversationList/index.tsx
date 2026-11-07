@@ -23,7 +23,18 @@ import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
-import { getGeminiConfig, hasApiKey, resolveProfile } from "@/stateV2/gemini";
+import { getGeminiConfig, hasApiKey, normPace, normScene, resolveProfile } from "@/stateV2/gemini";
+
+/** 这条语音自带的环境 / 语速（AI 按剧情给的）；没有就用设置里的默认 */
+const lineFx = (item: object) => {
+	const { scene, pace } = item as { scene?: string; pace?: string };
+	const fx = { ...getGeminiConfig().fx };
+	const sc = normScene(scene);
+	const pc = normPace(pace);
+	if (sc) fx.scene = sc;
+	if (pc) fx.pace = pc;
+	return fx;
+};
 import { mainStore } from "@/stateV2/store";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
@@ -178,7 +189,7 @@ const ConversationList = () => {
 			const text = item.stt?.trim();
 			if (text && hasApiKey(getGeminiConfig())) {
 				unlockAudio();
-				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId)).then(async (n) => {
+				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId), lineFx(item), (item as { tone?: string }).tone).then(async (n) => {
 					if (n) {
 						showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
 						finish();

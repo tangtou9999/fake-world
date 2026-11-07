@@ -1,6 +1,6 @@
 import { TRIAL_TEXT } from "@/pages/wechat/my/settings/VoiceLibrary";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
-import { DEFAULT_VOICE, convVoicesAtom, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
+import { DEFAULT_VOICE, convVoicesAtom, geminiConfigAtom, normPace, normScene, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { geminiSpeak, playSequence, stopSpeaking, unlockAudio } from "@/utils/tts";
 import { useAtom, useAtomValue } from "jotai";
 import { useState } from "react";
@@ -24,13 +24,13 @@ const VoiceSheet = ({ conversationId, onClose }: { conversationId: string; onClo
 
 	const playAll = async () => {
 		unlockAudio();
-		const list = (getConversationListValueSnapshot(conversationId) as unknown as { type: unknown; role: string; stt?: string }[]).filter((v) => v.type === EConversationType.voice && v.stt?.trim());
+		const list = (getConversationListValueSnapshot(conversationId) as unknown as { type: unknown; role: string; stt?: string; scene?: string; pace?: string; tone?: string }[]).filter((v) => v.type === EConversationType.voice && v.stt?.trim());
 		if (!list.length) {
 			setNote("这个聊天里还没有带文字的语音消息。");
 			return;
 		}
 		setNote(`正在合成 ${list.length} 条语音…`);
-		const n = await playSequence(list.map((v) => ({ text: v.stt as string, profile: resolveProfile(v.role === "mine" ? "mine" : "friend", conversationId) })));
+		const n = await playSequence(list.map((v) => ({ text: v.stt as string, profile: resolveProfile(v.role === "mine" ? "mine" : "friend", conversationId), tone: v.tone, fx: { ...(normScene(v.scene) ? { scene: normScene(v.scene) } : {}), ...(normPace(v.pace) ? { pace: normPace(v.pace) } : {}) } })));
 		setNote(n ?? `连播中（${list.length} 条）。`);
 	};
 

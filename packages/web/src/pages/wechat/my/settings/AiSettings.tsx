@@ -9,9 +9,10 @@ import VoiceLibrary, { TRIAL_TEXT } from "./VoiceLibrary";
 
 const TEXT_CHOICES = [
 	{ id: "", title: "自动（推荐）", desc: "用快速模型，繁忙或停用时自动换备用，省心" },
-	{ id: "gemini-flash-lite-latest", title: "快速 · 省额度", desc: "回复最快，适合短对话；长剧本偏简短" },
-	{ id: "gemini-flash-latest", title: "均衡 · 更聪明", desc: "写得更细、更有人味，速度适中" },
-	{ id: "gemini-pro-latest", title: "最强 · 较慢", desc: "最会写长剧情和复杂指令，慢一些、更耗额度" },
+	{ id: "gemini-2.5-flash", title: "均衡 · 推荐", desc: "免费额度高，最懂情绪，写得细、有人味" },
+	{ id: "gemini-3-flash-preview", title: "新一代（预览）", desc: "更新的模型，可能偶尔不稳定" },
+	{ id: "gemini-flash-latest", title: "自动最新", desc: "跟随 Google 当前最新的 Flash" },
+	{ id: "gemini-2.5-flash-lite", title: "快速 · 省额度", desc: "回复最快，适合短对话；长剧本偏简短" },
 ];
 
 const VISION_CHOICES = [

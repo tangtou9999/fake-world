@@ -1,4 +1,4 @@
-import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, getGeminiConfig } from "@/stateV2/gemini";
+import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, TEXT_MODEL_CHAIN, getGeminiConfig } from "@/stateV2/gemini";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -115,7 +115,7 @@ async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOp
 	const { model } = getGeminiConfig();
 	const pick = options.model || model;
 	const chosen = !pick || RETIRED_MODELS.includes(pick) ? DEFAULT_GEMINI_MODEL : pick;
-	const models = quick ? [chosen] : Array.from(new Set([chosen, DEFAULT_GEMINI_MODEL, "gemini-flash-latest", "gemini-3-flash-preview"]));
+	const models = quick ? [chosen] : Array.from(new Set([chosen, ...TEXT_MODEL_CHAIN]));
 	let last: GeminiError = { message: "未知错误" };
 	for (const m of models) {
 		for (let attempt = 0; attempt < (quick ? 1 : 2); attempt++) {

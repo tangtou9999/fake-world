@@ -79,6 +79,10 @@ export interface IConversationTypeVoice extends IConversationItemBase {
 	showStt?: boolean;
 	/** 语音转文字内容 */
 	stt?: string;
+	/** 这条语音发生时的环境 / 语速 / 口气（AI 按剧情给的，播放时用） */
+	scene?: string;
+	pace?: string;
+	tone?: string;
 }
 
 export interface IConversationTypePersonalCard extends IConversationItemBase {

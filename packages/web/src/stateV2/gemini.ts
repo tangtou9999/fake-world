@@ -38,7 +38,7 @@ export type VoiceProfile = {
 
 export type VoiceFx = {
 	pace?: "chat" | "fast" | "night";
-	scene?: "pure" | "bed" | "living" | "restaurant" | "rain";
+	scene?: "pure" | "bed" | "living" | "restaurant" | "rain" | "mall" | "street";
 	/** 情绪词智能软化 */
 	soften?: boolean;
 	/** 每行「原词=同音安全词」 */
@@ -59,7 +59,15 @@ export const VOICE_SCENES: { id: NonNullable<VoiceFx["scene"]>; title: string; d
 	{ id: "living", title: "🛋️ 夜晚客厅 / 房间", desc: "小房间混响 0.48 秒 + 极轻室内底噪" },
 	{ id: "restaurant", title: "🍻 嘈杂餐厅 / 夜宵摊", desc: "叠加低音量人群喧哗底噪" },
 	{ id: "rain", title: "🌧️ 雨夜车内", desc: "叠加窗外微雨底噪 + 车厢混响" },
+	{ id: "mall", title: "🛍️ 热闹商场 / 超市", desc: "中等空间混响 0.8 秒 + 轻柔背景人声与脚步底噪" },
+	{ id: "street", title: "🚗 户外马路 / 街头", desc: "低频车流环境底噪 + 开阔无室内混响" },
 ];
+
+const SCENE_ALIAS: Record<string, NonNullable<VoiceFx["scene"]>> = { clean: "pure", pure: "pure", bed: "bed", room: "living", living: "living", crowd: "restaurant", restaurant: "restaurant", rain: "rain", mall: "mall", street: "street" };
+const PACE_ALIAS: Record<string, NonNullable<VoiceFx["pace"]>> = { normal: "chat", chat: "chat", fast: "fast", slow: "night", night: "night" };
+/** AI 写的 scene / pace 标签（clean/bed/room/crowd/rain/mall/street，normal/fast/slow）转成内部名字；认不出就返回 undefined */
+export const normScene = (v?: string) => (v ? SCENE_ALIAS[v.trim().toLowerCase()] : undefined);
+export const normPace = (v?: string) => (v ? PACE_ALIAS[v.trim().toLowerCase()] : undefined);
 
 export type VoiceOption = { id: string; label: string; desc: string; gender: "男" | "女" };
 
@@ -128,10 +136,12 @@ export const resolveProfile = (role: VoiceRole, conversationId?: string): VoiceP
 
 export const DEFAULT_TTS_MODEL = "gemini-2.5-flash-preview-tts";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-flash-lite-latest";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 /** 谷歌已对新用户停用的旧模型，遇到时自动改用默认模型 */
-export const RETIRED_MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro"];
+export const RETIRED_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-pro", "gemini-flash-lite-latest"];
+/** 文字 AI 依次尝试的模型（前一个报「不存在」就换下一个） */
+export const TEXT_MODEL_CHAIN = ["gemini-2.5-flash", "gemini-3-flash-preview", "gemini-flash-latest", "gemini-2.5-flash-lite"];
 
 export const geminiConfigAtom = atomWithStorage<GeminiConfig>("gemini-config", {
 	apiKey: "",

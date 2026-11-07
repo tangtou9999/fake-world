@@ -2,6 +2,7 @@ import { MYSELF_ID } from "@/faker/wechat/user";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { applyParsedItems } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import type { AiChatAction } from "@/stateV2/aiChat";
+import { GEMINI_VOICES, VOICE_ACCENTS, type VoiceProfile } from "@/stateV2/gemini";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
 import { parseJsonLoose } from "@/utils/gemini";
@@ -74,7 +75,7 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
   append = 追加到该聊天末尾；
   replace = 清空整个聊天后用 items 整个替换（用户说「重写整个聊天」才用，items 要包含全部记录）；
   range = 只修改某个时间段：额外写 "from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm"，该时间段内（含两端）的旧消息会被 items 替换，时间段之外的聊天保持不动。用户说「把昨天某一段改成……」「把这几句改掉」就用 range，items 只写这一段修改后的内容，at 必须落在 from 到 to 之间。
-- items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是转文字内容；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds；外语消息可加 translation（中文译文）；每项都要有 at。
+- items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是转文字内容；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds，并且要按这一句话「当时所处的真实场景」带上 scene、pace，可选 tone：scene 只能是 clean（安静/普通）、bed（家里被窝）、room（夜晚客厅房间）、crowd（嘈杂餐厅夜宵摊）、rain（雨夜车内）、mall（商场超市）、street（户外马路街头）之一；pace 只能是 normal（自然闲聊）、fast（快节奏互怼）、slow（深夜走心）之一；tone 是这一句的口气，如「奶声奶气撒娇，稍微提高音量」。同一个人今天在车里、明天在家里，scene 就要不同，别全用一个；外语消息可加 translation（中文译文）；每项都要有 at。
 - at 单调递增，不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现；追加时 at 不早于该聊天最后一条的时间。
 - 只有用户明确要求生成/修改聊天内容时才附代码块；普通聊天、咨询不要附。
 当前所有联系人：${contactNames || "（暂无）"}`;
@@ -102,6 +103,31 @@ export const buildSystem = (
 		s += `\n\n【与「${c.name}」的${level === 2 ? "最近" : "完整"}聊天记录（共 ${log.count} 条，格式：[时间] 说话人：内容）】\n${log.text || "（还没有消息）"}`;
 	}
 	return s;
+};
+
+/** AI 按用户一句话描述「生成声音」时附的 ```wxvoice 代码块 → 清洗后的声音档案（只含声纹、胸腔、气声、口音、人设，绝不含环境） */
+export type VoiceMake = { name: string; sample: string; profile: VoiceProfile };
+
+export const parseVoiceMake = (raw: string): { text: string; make?: VoiceMake } => {
+	const m = raw.match(/```wxvoice\s*([\s\S]*?)```/);
+	const text = raw.replace(/```wxvoice[\s\S]*?(```|$)/g, "").trim();
+	if (!m) return { text };
+	try {
+		const j = parseJsonLoose<{ name?: string; voice?: string; fx?: number; chest?: number; air?: number; accent?: string; persona?: string; sample?: string }>(m[1]);
+		const clamp = (n: unknown) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
+		const voice = GEMINI_VOICES.find((v) => v.id.toLowerCase() === String(j.voice ?? "").toLowerCase())?.id ?? "Aoede";
+		const accent = VOICE_ACCENTS.includes(String(j.accent)) ? String(j.accent) : "默认自然口语";
+		return {
+			text,
+			make: {
+				name: String(j.name ?? "").trim().slice(0, 16) || "新声音",
+				sample: String(j.sample ?? "").trim() || "你好呀，这是我给你调的新声音，你听听喜不喜欢？",
+				profile: { voice, chest: clamp(j.fx ?? j.chest), air: clamp(j.air), accent, persona: String(j.persona ?? "").trim() },
+			},
+		};
+	} catch {
+		return { text: `${text}\n\n（AI 附上的声音参数格式有误，没能识别，请让它重新生成一次）` };
+	}
 };
 
 export const parseAction = (raw: string): { text: string; action?: AiChatAction } => {

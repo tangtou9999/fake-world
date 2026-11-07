@@ -24,6 +24,10 @@ export type ParsedItem = {
 	at?: string;
 	/** 剧本模式：文字消息的译文（越南语等外语消息） */
 	translation?: string;
+	/** 语音：这一句所处的环境(scene)、语速(pace)、口气(tone) */
+	scene?: string;
+	pace?: string;
+	tone?: string;
 };
 
 export const IMPORT_PROMPT = `这些是同一段微信聊天的截图，已按时间顺序给出（第 1 张最早）。请把聊天内容 1:1 转录成 JSON 数组，按出现顺序，不要遗漏、不要改写、不要翻译、不要总结。
@@ -117,7 +121,7 @@ export function applyParsedItems(
 				lastPreview = "[转账]";
 				return;
 			case "voice":
-				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: !!it.text, stt: it.text, isRead: true, upperText: takeUpper() } as TConversationItem);
+				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: !!it.text, stt: it.text, isRead: true, scene: it.scene, pace: it.pace, tone: it.tone, upperText: takeUpper() } as TConversationItem);
 				lastPreview = "[语音]";
 				return;
 			default: {
