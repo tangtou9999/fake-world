@@ -160,7 +160,7 @@ const RoleBar = () => {
 					onClick={() => setOpen(true)}
 					className="h-7 rounded-full bg-black/5 px-3 text-[14px] text-black/70"
 				>
-					批量输入
+					批量
 				</button>
 			</div>
 			{voiceOpen && <VoiceSheet conversationId={conversationId} onClose={() => setVoiceOpen(false)} />}
