@@ -85,6 +85,7 @@ const ConversationItem = ({ data }: Props) => {
 		case EConversationType.voice:
 			return (
 				<Voice
+					id={data.id}
 					senderId={senderId}
 					upperText={upperText}
 					duration={data.duration}

@@ -19,7 +19,21 @@ export const unlockAudio = () => {
 	}
 };
 
+let gen = 0;
+
+/** 等所有正在播的声音播完 */
+export const waitIdle = () =>
+	new Promise<void>((res) => {
+		const t = setInterval(() => {
+			if (active.size === 0) {
+				clearInterval(t);
+				res();
+			}
+		}, 120);
+	});
+
 export const stopSpeaking = () => {
+	gen++;
 	for (const s of active) {
 		try {
 			s.stop();
@@ -373,9 +387,10 @@ export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile,
 	const { head, text } = buildPrompt(rawText.slice(0, 900), profile, fx);
 	if (!text) return null;
 	stopSpeaking();
+	const my = gen;
 	try {
 		const buf = await synth(head, text, profile.voice);
-		if (!ctx) return null;
+		if (!ctx || my !== gen) return null;
 		await ctx.resume();
 		schedule(ctx, buf, profile, fx, ctx.currentTime + 0.02);
 		return null;
@@ -391,11 +406,12 @@ export const playSequence = async (lines: { text: string; profile: VoiceProfile 
 	const prepared = lines.map((l) => ({ ...buildPrompt(l.text.slice(0, 900), l.profile, fx), profile: l.profile, raw: l.text })).filter((l) => l.text);
 	if (!prepared.length) return null;
 	stopSpeaking();
+	const my = gen;
 	unlockAudio();
 	try {
 		const bufs = await Promise.all(prepared.map((l) => synth(l.head, l.text, l.profile.voice)));
 		const c = ctx;
-		if (!c) return null;
+		if (!c || my !== gen) return null;
 		await c.resume();
 		let t = c.currentTime + 0.05;
 		let prevRaw = "";

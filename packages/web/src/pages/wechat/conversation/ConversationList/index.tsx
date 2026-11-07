@@ -24,7 +24,9 @@ import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
 import { getGeminiConfig, hasApiKey, resolveProfile } from "@/stateV2/gemini";
-import { geminiSpeak, unlockAudio } from "@/utils/tts";
+import { mainStore } from "@/stateV2/store";
+import { playingVoiceAtom } from "@/stateV2/playingVoice";
+import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { showToast } from "@/wechatComponents/Toast";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
@@ -154,19 +156,39 @@ const ConversationList = () => {
 	const friend = getProfileValueSnapshot(conversationId);
 	const friendName = friend?.remark || friend?.nickname || "好友";
 	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
+	const voiceTok = useRef(0);
 	const handleTap = (item: TConversationItem) => {
 		if (isEdit) return;
 		if (item.type === EConversationType.voice) {
-			// 点语音消息：红点消失；有文字就用 Gemini 声音读出来
+			// 点一次播放（出现播放动画），再点一次取消；红点消失；有文字用 Gemini 声音读出来，没有文字就只播放动画
+			const tok = ++voiceTok.current;
+			if (mainStore.get(playingVoiceAtom) === item.id) {
+				stopSpeaking();
+				mainStore.set(playingVoiceAtom, null);
+				return;
+			}
+			stopSpeaking();
+			mainStore.set(playingVoiceAtom, item.id);
+			const finish = () => {
+				if (voiceTok.current === tok && mainStore.get(playingVoiceAtom) === item.id) mainStore.set(playingVoiceAtom, null);
+			};
 			if (item.role === "friend" && !(item as { isRead?: boolean }).isRead) {
 				setConversationListValue(conversationId, (prev) => prev.map((v) => (v.id === item.id ? ({ ...v, isRead: true } as TConversationItem) : v)));
 			}
 			const text = item.stt?.trim();
 			if (text && hasApiKey(getGeminiConfig())) {
 				unlockAudio();
-				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId)).then((n) => {
-					if (n) showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
+				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId)).then(async (n) => {
+					if (n) {
+						showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
+						finish();
+						return;
+					}
+					await waitIdle();
+					finish();
 				});
+			} else {
+				setTimeout(finish, Math.max(1, (item as { duration?: number }).duration ?? 3) * 1000);
 			}
 			return;
 		}

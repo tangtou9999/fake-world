@@ -2,9 +2,9 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
-import { geminiConfigAtom, resolveProfile } from "@/stateV2/gemini";
+import { DEFAULT_VOICE, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
-import { geminiSpeak, unlockAudio } from "@/utils/tts";
+import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { startRecording } from "@/utils/voice";
 import { useAtom, useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
@@ -18,7 +18,9 @@ type Props = { mode: "private" | "chat"; conversationId?: string };
 const AiChatView = ({ mode, conversationId }: Props) => {
 	useScreenTopBg("#EDEDED");
 	const navigate = useNavigate();
-	const gemini = useAtomValue(geminiConfigAtom);
+	const [gemini, setGemini] = useAtom(geminiConfigAtom);
+	const presets = useAtomValue(voicePresetsAtom);
+	const [speaking, setSpeaking] = useState(false);
 	const [state, setState] = useAtom(aiChatsAtom);
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
 	const session = state.sessions.find((s) => s.id === state.activeId) ?? state.sessions[0];
@@ -84,8 +86,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 	const doSpeak = async (t: string) => {
 		unlockAudio();
+		setSpeaking(true);
 		const n = await geminiSpeak(t, resolveProfile("ai"));
 		if (n) setNote(n);
+		else await waitIdle();
+		setSpeaking(false);
 	};
 
 	const send = async (text: string, viaVoice = false) => {
@@ -255,6 +260,33 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					))}
 				</div>
 			)}
+			<div className="flex shrink-0 items-center gap-2 px-4 pb-2 text-[13px] text-black/60">
+				朗读声音
+				<select
+					className="h-7 min-w-0 flex-1 rounded-[6px] bg-white px-2 text-[13px] outline-none"
+					value={gemini.assign?.ai ?? ""}
+					onChange={(e) => setGemini((c) => ({ ...c, assign: { ...c.assign, ai: e.target.value || undefined } }))}
+				>
+					<option value="">默认（{DEFAULT_VOICE.ai}）</option>
+					{presets.map((p) => (
+						<option key={p.id} value={p.id}>
+							{p.name}
+						</option>
+					))}
+				</select>
+				{speaking && (
+					<button
+						type="button"
+						className="shrink-0 text-[#07C160]"
+						onClick={() => {
+							stopSpeaking();
+							setSpeaking(false);
+						}}
+					>
+						🔊 停止朗读
+					</button>
+				)}
+			</div>
 			<div className="flex shrink-0 items-center gap-4 px-4 pb-2 text-[13px] text-[#576B95]">
 				<button type="button" onClick={clearSession}>清空对话</button>
 				{!isChat && <button type="button" onClick={removeSession}>删除本窗口</button>}
