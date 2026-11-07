@@ -67,7 +67,7 @@ const Voice = ({ id, senderId, upperText, duration, role, isRead, showStt, stt }
 					innerBlockClassName="bg-white"
 					blockClassName="!mt-1"
 				>
-					{stt}
+					{stt.replace(/^\s*[（(][^）)]{1,12}[）)]\s*/, "")}
 				</CommonBlock>
 			)}
 		</>
