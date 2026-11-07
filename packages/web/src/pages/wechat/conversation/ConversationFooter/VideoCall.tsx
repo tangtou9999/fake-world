@@ -83,7 +83,7 @@ const VideoCall = ({ conversationId, name, avatar, incoming, onEnd }: Props) => 
 
 	return (
 		<div
-			className="fixed inset-0 z-[60] select-none overflow-hidden bg-[#1F1F1F] text-white"
+			className="fixed inset-0 z-[9999] select-none overflow-hidden bg-[#1F1F1F] text-white"
 			onClick={() => {
 				if (needTap && frRef.current) {
 					frRef.current.muted = false;
