@@ -1,4 +1,5 @@
-import { DEFAULT_TTS_MODEL, type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
+import { type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
+import { listGeminiModels } from "./gemini";
 import { speakText } from "./voice";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -99,7 +100,7 @@ export const buildPrompt = (raw: string, profile: VoiceProfile, fx: VoiceFx = {}
 	const airPhrase = air >= 35 ? "带着贴耳气声、轻微气泡音与真实呼吸感" : "";
 	const head = [profile.persona?.trim(), accent, paceOf(fx).prompt, expandTone(tone, soften), airPhrase].filter(Boolean).join("，");
 	const punct = "遇到……要留出真实的欲言又止或呼吸停顿；遇到——代表话没说完急促截断；遇到？！要拔高声调质问";
-	return { prompt: `${head}。${punct}。请严格只朗读冒号后面的台词内容（绝不要把前面的提示词和括号读出来）：\n${text}`, text, tone };
+	return { prompt: `${head}。${punct}。请严格只朗读冒号后面的台词内容（绝不要把前面的提示词和括号读出来）：\n${text}`, head: `${head}。${punct}`, text, tone };
 };
 
 /* ---------- 合成（主密钥 → 备用密钥，多个模型依次尝试） ---------- */
@@ -121,8 +122,57 @@ const trimSilence = (c: AudioContext, buf: AudioBuffer) => {
 	return out;
 };
 
-const synth = async (prompt: string, voice: string): Promise<AudioBuffer> => {
-	const ck = `${voice}|${prompt}`;
+/** Google 的语音模型更新很快：优先用你设置里填的，其次上次成功的，再依次试已知的新旧型号，都不行就向 Google 查这个密钥能用的语音模型 */
+const MODEL_PREF = ["gemini-3.8-flash-tts", "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-3.8-flash-lite-tts", "gemini-2.5-pro-preview-tts"];
+const WORK_KEY = "tts-working-model";
+const getWorking = () => {
+	try {
+		return localStorage.getItem(WORK_KEY) || "";
+	} catch {
+		return "";
+	}
+};
+const setWorking = (m: string) => {
+	try {
+		localStorage.setItem(WORK_KEY, m);
+	} catch {
+		// ignore
+	}
+};
+
+type Req = { model: string; key: string; head: string; text: string; voice: string };
+
+/** 新型号把「语气」放在 speech_metadata.style、台词只放纯文字；旧的 2.5 型号则把说明和台词写在同一段文字里。每个型号依次试几种写法。 */
+const bodies = (r: Req) => {
+	const cfg = (voiceConfig: unknown) => ({ responseModalities: ["AUDIO"], speechConfig: { voiceConfig } });
+	const prebuilt = { prebuiltVoiceConfig: { voiceName: r.voice } };
+	const inline = { contents: [{ parts: [{ text: `${r.head}。请严格只朗读冒号后面的台词内容（绝不要把前面的提示词和括号读出来）：\n${r.text}` }] }], generationConfig: cfg(prebuilt) };
+	if (/2\.5/.test(r.model)) return [inline];
+	return [
+		{ contents: [{ role: "user", parts: [{ text: r.text, speech_metadata: { style: r.head } }] }], generationConfig: cfg(prebuilt) },
+		{ contents: [{ role: "user", parts: [{ text: r.text, speech_metadata: { style: r.head } }] }], generationConfig: cfg({ voice: r.voice }) },
+		inline,
+	];
+};
+
+const decodeInline = async (c: AudioContext, inline: { data: string; mimeType?: string; mime_type?: string }) => {
+	const mime = inline.mimeType ?? inline.mime_type ?? "";
+	const bytes = b64ToBytes(inline.data);
+	let buf: AudioBuffer;
+	if (/L16|pcm/i.test(mime) || !mime) {
+		const rate = Number(mime.match(/rate=(\d+)/)?.[1] ?? 24000);
+		const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
+		buf = c.createBuffer(1, Math.max(1, samples.length), rate);
+		const ch = buf.getChannelData(0);
+		for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
+	} else {
+		buf = await c.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+	}
+	return trimSilence(c, buf);
+};
+
+const synth = async (head: string, text: string, voice: string): Promise<AudioBuffer> => {
+	const ck = `${voice}|${head}|${text}`;
 	const hit = cache.get(ck);
 	if (hit) return hit;
 	const { apiKey, apiKey2, ttsModel } = getGeminiConfig();
@@ -131,56 +181,59 @@ const synth = async (prompt: string, voice: string): Promise<AudioBuffer> => {
 	if (!ctx) unlockAudio();
 	const c = ctx;
 	if (!c) throw new Error("这个浏览器不支持音频播放");
-	const models = Array.from(new Set([ttsModel || DEFAULT_TTS_MODEL, DEFAULT_TTS_MODEL, "gemini-2.5-pro-preview-tts"]));
-	let lastErr = "未知错误";
-	for (const key of keys) {
-		for (const m of models) {
+	const errors: string[] = [];
+	const tried = new Set<string>();
+	const attempt = async (key: string, model: string) => {
+		for (const body of bodies({ model, key, head, text, voice })) {
 			let res: Response;
 			try {
-				res = await fetch(`${BASE}/${m}:generateContent`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-					body: JSON.stringify({
-						contents: [{ parts: [{ text: prompt }] }],
-						generationConfig: {
-							responseModalities: ["AUDIO"],
-							speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
-						},
-					}),
-				});
+				res = await fetch(`${BASE}/${model}:generateContent`, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body) });
 			} catch (e) {
-				lastErr = e instanceof Error ? e.message : String(e);
-				continue;
+				errors.push(`${model}：${e instanceof Error ? e.message : String(e)}`);
+				return null;
 			}
 			const data = await res.json().catch(() => ({}));
 			if (!res.ok) {
-				lastErr = data?.error?.message || `HTTP ${res.status}`;
-				continue;
+				errors.push(`${model}（${res.status}）：${String(data?.error?.message ?? "").slice(0, 120)}`);
+				if (res.status === 400) continue; // 换一种写法再试
+				return null;
 			}
 			const part = data?.candidates?.[0]?.content?.parts?.find((p: { inlineData?: unknown; inline_data?: unknown }) => p.inlineData || p.inline_data);
 			const inline = part?.inlineData ?? part?.inline_data;
 			if (!inline?.data) {
-				lastErr = data?.candidates?.[0]?.finishReason ? `Gemini 没有返回声音（${data.candidates[0].finishReason}）` : "Gemini 没有返回声音";
-				continue;
+				errors.push(`${model}：没有返回声音${data?.candidates?.[0]?.finishReason ? `（${data.candidates[0].finishReason}）` : ""}`);
+				return null;
 			}
-			const mime: string = inline.mimeType ?? inline.mime_type ?? "";
-			const bytes = b64ToBytes(inline.data);
-			let buf: AudioBuffer;
-			if (/L16|pcm/i.test(mime) || !mime) {
-				const rate = Number(mime.match(/rate=(\d+)/)?.[1] ?? 24000);
-				const samples = new Int16Array(bytes.buffer, bytes.byteOffset, Math.floor(bytes.byteLength / 2));
-				buf = c.createBuffer(1, Math.max(1, samples.length), rate);
-				const ch = buf.getChannelData(0);
-				for (let i = 0; i < samples.length; i++) ch[i] = samples[i] / 32768;
-			} else {
-				buf = await c.decodeAudioData(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
-			}
-			buf = trimSilence(c, buf);
+			const buf = await decodeInline(c, inline);
 			cache.set(ck, buf);
+			setWorking(model);
 			return buf;
 		}
+		return null;
+	};
+	const first = Array.from(new Set([ttsModel, getWorking(), ...MODEL_PREF].filter((m): m is string => !!m)));
+	for (const key of keys) {
+		for (const m of first) {
+			tried.add(`${key}|${m}`);
+			const r = await attempt(key, m);
+			if (r) return r;
+		}
 	}
-	throw new Error(lastErr);
+	// 都不行：向 Google 查这个密钥实际能用的语音模型再试
+	for (const key of keys) {
+		try {
+			const listed = await listGeminiModels(key, true);
+			for (const m of listed) {
+				if (tried.has(`${key}|${m}`)) continue;
+				const r = await attempt(key, m);
+				if (r) return r;
+			}
+		} catch (e) {
+			errors.push(`查询模型列表失败：${e instanceof Error ? e.message : String(e)}`);
+		}
+	}
+	const uniq = Array.from(new Set(errors)).slice(-3);
+	throw new Error(uniq.join("；") || "未知错误");
 };
 
 /* ---------- 声学后处理：气声 / 胸腔 / 听筒 / 压限 / 声场 ---------- */
@@ -317,11 +370,11 @@ const clean = (v: string | VoiceProfile): VoiceProfile => (typeof v === "string"
 export const geminiSpeak = async (rawText: string, voice: string | VoiceProfile, fxOverride?: VoiceFx): Promise<string | null> => {
 	const profile = clean(voice);
 	const fx = fxOverride ?? getGeminiConfig().fx ?? {};
-	const { prompt, text } = buildPrompt(rawText.slice(0, 900), profile, fx);
+	const { head, text } = buildPrompt(rawText.slice(0, 900), profile, fx);
 	if (!text) return null;
 	stopSpeaking();
 	try {
-		const buf = await synth(prompt, profile.voice);
+		const buf = await synth(head, text, profile.voice);
 		if (!ctx) return null;
 		await ctx.resume();
 		schedule(ctx, buf, profile, fx, ctx.currentTime + 0.02);
@@ -340,7 +393,7 @@ export const playSequence = async (lines: { text: string; profile: VoiceProfile 
 	stopSpeaking();
 	unlockAudio();
 	try {
-		const bufs = await Promise.all(prepared.map((l) => synth(l.prompt, l.profile.voice)));
+		const bufs = await Promise.all(prepared.map((l) => synth(l.head, l.text, l.profile.voice)));
 		const c = ctx;
 		if (!c) return null;
 		await c.resume();

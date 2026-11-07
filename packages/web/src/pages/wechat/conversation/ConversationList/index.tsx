@@ -10,6 +10,7 @@ import {
 	type TConversationItem,
 	conversationListAtom,
 	getConversationListValueSnapshot,
+	setConversationListValue,
 } from "@/stateV2/conversation";
 import { EMetaDataType, type StaticMetaData, allNodesTreeAtom } from "@/stateV2/detectedNode";
 import { SubnodeOutlined } from "@ant-design/icons";
@@ -24,6 +25,7 @@ import { useConversationAPI } from "../context";
 import ConversationItem from "./ConversationItem";
 import { getGeminiConfig, hasApiKey, resolveProfile } from "@/stateV2/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
+import { showToast } from "@/wechatComponents/Toast";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 
@@ -155,11 +157,16 @@ const ConversationList = () => {
 	const handleTap = (item: TConversationItem) => {
 		if (isEdit) return;
 		if (item.type === EConversationType.voice) {
-			// 点语音消息：用 Gemini 声音读出它的文字（没有文字或没填密钥就不播）
+			// 点语音消息：红点消失；有文字就用 Gemini 声音读出来
+			if (item.role === "friend" && !(item as { isRead?: boolean }).isRead) {
+				setConversationListValue(conversationId, (prev) => prev.map((v) => (v.id === item.id ? ({ ...v, isRead: true } as TConversationItem) : v)));
+			}
 			const text = item.stt?.trim();
 			if (text && hasApiKey(getGeminiConfig())) {
 				unlockAudio();
-				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId));
+				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId)).then((n) => {
+					if (n) showToast({ content: n.length > 90 ? `${n.slice(0, 90)}…` : n });
+				});
 			}
 			return;
 		}

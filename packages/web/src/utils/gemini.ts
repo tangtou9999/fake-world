@@ -156,14 +156,14 @@ async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOp
 }
 
 /** 列出这个密钥可用于聊天的模型（只要名字） */
-export async function listGeminiModels(apiKey = getGeminiConfig().apiKey): Promise<string[]> {
+export async function listGeminiModels(apiKey = getGeminiConfig().apiKey, onlyTts = false): Promise<string[]> {
 	const res = await fetch(`${BASE}?pageSize=200`, { headers: { "x-goog-api-key": apiKey } });
 	const data = await res.json().catch(() => ({}));
 	if (!res.ok) throw new Error(data?.error?.message || `HTTP ${res.status}`);
-	return (data.models ?? [])
+	const all: string[] = (data.models ?? [])
 		.filter((m: { supportedGenerationMethods?: string[]; name: string }) => m.supportedGenerationMethods?.includes("generateContent"))
-		.map((m: { name: string }) => m.name.replace(/^models\//, ""))
-		.filter((n: string) => !/tts|image|embedding|live|audio|robotics|computer/.test(n));
+		.map((m: { name: string }) => m.name.replace(/^models\//, ""));
+	return onlyTts ? all.filter((n) => /tts/i.test(n)) : all.filter((n) => !/tts|image|embedding|live|audio|robotics|computer/.test(n));
 }
 
 /** 从模型返回里取出 JSON（容忍 ```json 包裹） */
