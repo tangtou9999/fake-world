@@ -1,6 +1,6 @@
 import { DEFAULT_VOICE, GEMINI_VOICES, type GeminiConfig, type VoiceFx, type VoicePreset, type VoiceProfile, type VoiceRole, geminiConfigAtom, hasApiKey, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { geminiSpeak, unlockAudio } from "@/utils/tts";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useState } from "react";
 import VoiceProfileEditor from "./VoiceProfileEditor";
