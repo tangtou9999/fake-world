@@ -1,4 +1,5 @@
-import { type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig } from "@/stateV2/gemini";
+import { type VoiceFx, type VoiceProfile, VOICE_PACES, getGeminiConfig, getKeys } from "@/stateV2/gemini";
+import { recordKeyUse } from "@/stateV2/keyStatus";
 import { type Clip, getClip, putClip } from "./audioStore";
 import { speakText } from "./voice";
 
@@ -204,9 +205,9 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 	const ck = `${voice}|${head}|${text}`;
 	const hit = cache.get(ck);
 	if (hit) return hit;
-	const { apiKey, apiKey2, ttsModel } = getGeminiConfig();
-	const keys = [apiKey, apiKey2].filter((k): k is string => !!k);
-	if (!keys.length) throw new Error("还没有填 API 密钥");
+	const { ttsModel } = getGeminiConfig();
+	const keys = getKeys();
+	if (!keys.length) throw new Error("还没有填 API 密钥（或「使用方式」选的那个密钥没填）");
 	if (!ctx) unlockAudio();
 	const c = ctx;
 	if (!c) throw new Error("这个浏览器不支持音频播放");
@@ -238,11 +239,16 @@ const synth = async (head: string, text: string, voice: string): Promise<AudioBu
 		}
 		return null;
 	};
-	for (const key of keys) {
+	for (const k of keys) {
+		const before = errors.length;
 		for (const m of Array.from(new Set([isModelId(ttsModel) ? ttsModel : "", TTS_MODEL].filter((x): x is string => !!x)))) {
-			const r = await attempt(key, m);
-			if (r) return r;
+			const r = await attempt(k.key, m);
+			if (r) {
+				recordKeyUse("tts", k.id, true, before > 0 || errors.length > 0 ? `前一个密钥出错：${errors[errors.length - 1]?.slice(0, 50) ?? ""}` : undefined);
+				return r;
+			}
 		}
+		recordKeyUse("tts", k.id, false, errors.slice(before).join("；").slice(0, 80));
 	}
 	const uniq = Array.from(new Set(errors)).slice(-3);
 	throw new Error(uniq.join("；") || "未知错误");

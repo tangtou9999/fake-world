@@ -67,10 +67,10 @@ const VoiceLibrary = () => {
 					<button type="button" disabled={!ok} onClick={() => void trial(p.profile)} className="h-8 shrink-0 rounded-[6px] bg-[#07C160] px-3 text-[14px] text-white disabled:opacity-40">
 						试听
 					</button>
-					<button type="button" onClick={() => rename(p.id)} className="shrink-0 text-[13px] text-[#576B95]">
-						改名
+					<button type="button" onClick={() => rename(p.id)} className="h-8 shrink-0 rounded-[6px] border border-[#576B95] px-3 text-[14px] text-[#576B95]">
+						改备注名
 					</button>
-					<button type="button" onClick={() => remove(p.id)} className="shrink-0 text-[13px] text-[#C62828]">
+					<button type="button" onClick={() => remove(p.id)} className="h-8 shrink-0 rounded-[6px] border border-[#FA5151] px-3 text-[14px] text-[#FA5151]">
 						删除
 					</button>
 				</div>

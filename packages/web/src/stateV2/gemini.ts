@@ -21,6 +21,8 @@ export type GeminiConfig = {
 	fx?: VoiceFx;
 	/** 三种角色默认使用的「声音库」里的声音 id */
 	assign?: { ai?: string; friend?: string; mine?: string };
+	/** 两个密钥怎么用：自动（主密钥优先，出错换备用）/ 备用优先 / 只用主 / 只用备用 */
+	keyMode?: "auto" | "backupFirst" | "main" | "backup";
 };
 
 export type VoiceProfile = {
@@ -117,6 +119,16 @@ export const convVoicesAtom = atomWithStorage<Record<string, { friend?: string |
 /** 声音库：试听满意后保存并命名，保存后就是固定的声音 */
 export type VoicePreset = { id: string; name: string; profile: VoiceProfile };
 export const voicePresetsAtom = atomWithStorage<VoicePreset[]>("voice-presets", []);
+
+/** 按「使用方式」排好顺序的可用密钥 */
+export const getKeys = (c: { apiKey?: string; apiKey2?: string; keyMode?: string } = mainStore.get(geminiConfigAtom)): { id: "main" | "backup"; key: string }[] => {
+	const m = c.apiKey ? [{ id: "main" as const, key: c.apiKey }] : [];
+	const b = c.apiKey2 ? [{ id: "backup" as const, key: c.apiKey2 }] : [];
+	if (c.keyMode === "backupFirst") return [...b, ...m];
+	if (c.keyMode === "main") return m;
+	if (c.keyMode === "backup") return b;
+	return [...m, ...b];
+};
 
 /** 有没有可用的密钥（主密钥或备用密钥任意一个） */
 export const hasApiKey = (c: { apiKey?: string; apiKey2?: string }) => !!(c.apiKey || c.apiKey2);

@@ -1,4 +1,5 @@
-import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, TEXT_MODEL_CHAIN, getGeminiConfig } from "@/stateV2/gemini";
+import { recordKeyUse } from "@/stateV2/keyStatus";
+import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, TEXT_MODEL_CHAIN, getGeminiConfig, getKeys } from "@/stateV2/gemini";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -95,17 +96,24 @@ type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTur
 
 /** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
 export async function callGemini(prompt: string, options: CallOptions = {}) {
-	const { apiKey, apiKey2 } = getGeminiConfig();
-	if (!apiKey && !apiKey2) throw new Error("还没有填 API 密钥：我 → 设置 → AI 助手");
-	const keys = [apiKey, apiKey2].filter((k): k is string => !!k);
+	const keys = getKeys();
+	if (!keys.length) throw new Error(getGeminiConfig().keyMode === "main" ? "「使用方式」选了只用主密钥，但主密钥没填" : getGeminiConfig().keyMode === "backup" ? "「使用方式」选了只用备用密钥，但备用密钥没填" : "还没有填 API 密钥：我 → 设置 → AI 模型与声音");
 	let lastErr: unknown;
+	let failed = "";
 	for (const [i, k] of keys.entries()) {
 		try {
-			// 还有备用密钥时，主密钥只快速试一次，出错立刻换备用，不干等
-			return await callGeminiWithKey(k, prompt, options, i < keys.length - 1);
+			// 还有另一个密钥时，这个只快速试一次，出错立刻换，不干等
+			const r = await callGeminiWithKey(k.key, prompt, options, i < keys.length - 1);
+			recordKeyUse("text", k.id, true, failed || undefined);
+			return r;
 		} catch (e) {
-			if (e instanceof GeminiBlockedError) throw e;
+			if (e instanceof GeminiBlockedError) {
+				recordKeyUse("text", k.id, true, "内容被拦截（不换密钥）");
+				throw e;
+			}
 			lastErr = e;
+			failed = `${k.id === "main" ? "主密钥" : "备用密钥"}出错：${e instanceof Error ? e.message.slice(0, 60) : ""}`;
+			recordKeyUse("text", k.id, false, failed);
 		}
 	}
 	throw lastErr;

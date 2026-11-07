@@ -1,4 +1,5 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
+import KeyPanel from "./KeyPanel";
 import { DEFAULT_GEMINI_MODEL, type VoiceFx, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, hasApiKey, resolveProfile } from "@/stateV2/gemini";
 import { callGemini, listGeminiModels } from "@/utils/gemini";
 import { geminiSpeak, isModelId, unlockAudio } from "@/utils/tts";
@@ -127,7 +128,7 @@ const AiSettings = () => {
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey2: e.target.value.trim() }))}
 						/>
 					</div>
-					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">上面两栏分别是「主密钥」和「备用密钥」，删掉任何一个都不会影响另一个（只要有一个密钥，AI 功能就能用）。现在：主密钥{config.apiKey ? "已填" : "未填"}，备用密钥{config.apiKey2 ? "已填" : "未填"}。填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
+					<KeyPanel />
 				</Section>
 
 				<Section title="② 文字 AI（聊天、剧本、朋友圈、翻译、AI 对话）" hint="选一个就行。出现“服务器繁忙”或模型停用时，都会自动换备用模型重试。">

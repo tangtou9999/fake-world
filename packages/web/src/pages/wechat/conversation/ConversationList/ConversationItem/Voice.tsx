@@ -41,11 +41,10 @@ const Voice = ({ id, senderId, upperText, duration, role, isRead, showStt, stt }
 			>
 				<div className={twJoin("flex h-6", role === "mine" ? "flex-row-reverse" : "flex-row")}>
 					<VoiceSVG
-						width={28}
-						height={28}
-						className={twJoin("self-center", role === "mine" && "rotate-180", playing && "wx-voice-playing")}
+						width={31}
+						height={31}
+						className={twJoin("wx-voice self-center", role === "mine" && "rotate-180", playing && "wx-voice-playing")}
 					/>
-					{playing && <style>{"@keyframes wxvp{0%{clip-path:inset(0 58% 0 0)}25%{clip-path:inset(0 52% 0 0)}50%{clip-path:inset(0 46% 0 0)}75%,100%{clip-path:inset(0 34% 0 0)}}.wx-voice-playing{animation:wxvp 1s steps(1,end) infinite}"}</style>}
 					<span className="self-center text-sm">{duration}&quot;</span>
 				</div>
 			</CommonBlock>

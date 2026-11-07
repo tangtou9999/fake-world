@@ -196,7 +196,7 @@ const ConversationList = () => {
 				unlockAudio();
 				void geminiSpeak(text, resolveProfile(item.role === "mine" ? "mine" : "friend", conversationId), lineFx(item), (item as { tone?: string }).tone, `${conversationId}:${item.id}`).then(async (n) => {
 					if (n) {
-						Modal.info({ title: "声音暂时放不出来", content: <div style={{ whiteSpace: "pre-line" }}>{n}</div>, okText: "知道了" });
+						Modal.info({ title: "声音暂时放不出来", content: <div style={{ whiteSpace: "pre-line" }}>{n}</div>, okText: "知道了", okButtonProps: { style: { background: "#07C160", color: "#fff", border: "none", boxShadow: "none" } } });
 						finish();
 						return;
 					}
