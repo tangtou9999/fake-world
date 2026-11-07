@@ -5,7 +5,7 @@ type Props = { storeKey: string; name: string; avatar: string; onEnd: (seconds: 
 
 const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
-/** 微信风格的视频通话页：先「等待对方接受」，随后接通并循环播放你选的视频。连点三下屏幕可更换视频。 */
+/** 微信风格的视频通话页：先「等待对方接受」，随后接通并循环播放你选的视频。右上角「换视频」可更换。 */
 const VideoCall = ({ storeKey, name, avatar, onEnd }: Props) => {
 	const [phase, setPhase] = useState<"wait" | "on">("wait");
 	const [sec, setSec] = useState(0);
@@ -14,7 +14,6 @@ const VideoCall = ({ storeKey, name, avatar, onEnd }: Props) => {
 	const [needTap, setNeedTap] = useState(false);
 	const fileRef = useRef<HTMLInputElement>(null);
 	const vidRef = useRef<HTMLVideoElement>(null);
-	const taps = useRef<number[]>([]);
 	const secRef = useRef(0);
 	const urlRef = useRef("");
 
@@ -62,13 +61,8 @@ const VideoCall = ({ storeKey, name, avatar, onEnd }: Props) => {
 			vidRef.current.muted = false;
 			setNeedTap(false);
 		}
-		const now = Date.now();
-		taps.current = [...taps.current.filter((x) => now - x < 700), now];
-		if (taps.current.length >= 3) {
-			taps.current = [];
-			fileRef.current?.click();
-		}
 	};
+	const pick = () => fileRef.current?.click();
 
 	const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
 		const f = e.target.files?.item(0);
@@ -104,11 +98,21 @@ const VideoCall = ({ storeKey, name, avatar, onEnd }: Props) => {
 						<div className="flex h-full flex-col items-center justify-center text-center text-white/60">
 							<img src={avatar} alt="" className="mb-4 h-[96px] w-[96px] rounded-[10px] object-cover" />
 							<div className="text-[14px]">还没有选视频</div>
-							<div className="mt-1 text-[13px]">连点三下屏幕，选择一段视频</div>
+							<div className="mt-1 text-[13px]">点右上角「换视频」，选择一段视频</div>
 						</div>
 					)}
 				</>
 			)}
+			<button
+				type="button"
+				onClick={(e) => {
+					e.stopPropagation();
+					pick();
+				}}
+				className="absolute top-[calc(env(safe-area-inset-top)+10px)] right-3 z-10 rounded-full bg-white/15 px-3 py-1 text-[13px] text-white/80"
+			>
+				换视频
+			</button>
 			{hint && <div className="absolute top-[18%] right-0 left-0 text-center text-[13px] text-white/80">{hint}</div>}
 			<div className="absolute right-0 bottom-0 left-0 flex justify-center pb-[calc(env(safe-area-inset-bottom)+36px)]">
 				<button
