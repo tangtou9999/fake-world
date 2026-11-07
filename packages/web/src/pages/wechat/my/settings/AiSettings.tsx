@@ -102,10 +102,11 @@ const AiSettings = () => {
 			<div className="min-h-0 flex-1 overflow-auto pb-10">
 				<Section title="① 密钥" hint="密钥只保存在这台手机的浏览器里，不会上传，也不会写进网站代码。">
 					<div className="flex items-center bg-white px-4">
+						<span className="w-[72px] shrink-0 text-[15px]">主密钥</span>
 						<input
 							type={show ? "text" : "password"}
 							className="min-w-0 flex-1 bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
-							placeholder="主密钥：粘贴你的 Gemini API Key"
+							placeholder="粘贴你的 Gemini API Key"
 							value={config.apiKey}
 							autoComplete="off"
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey: e.target.value.trim() }))}
@@ -115,16 +116,17 @@ const AiSettings = () => {
 						</button>
 					</div>
 					<div className="mt-px flex items-center bg-white px-4">
+						<span className="w-[72px] shrink-0 text-[15px]">备用密钥</span>
 						<input
 							type={show ? "text" : "password"}
 							className="min-w-0 flex-1 bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
-							placeholder="备用密钥（第二个 Google 账号，可不填）"
+							placeholder="第二个 Google 账号的密钥（可不填）"
 							value={config.apiKey2 ?? ""}
 							autoComplete="off"
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey2: e.target.value.trim() }))}
 						/>
 					</div>
-					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">上面两栏分别是「主密钥」和「备用密钥」，删掉任何一个都不会影响另一个（只要有一个密钥，AI 功能就能用）。填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
+					<div className="px-4 pt-2 text-[12px] text-black/40 leading-5">上面两栏分别是「主密钥」和「备用密钥」，删掉任何一个都不会影响另一个（只要有一个密钥，AI 功能就能用）。现在：主密钥{config.apiKey ? "已填" : "未填"}，备用密钥{config.apiKey2 ? "已填" : "未填"}。填了备用密钥后：主密钥额度用完、繁忙或出错时，文字和声音都会自动改用备用密钥，不用你手动切换。</div>
 				</Section>
 
 				<Section title="② 文字 AI（聊天、剧本、朋友圈、翻译、AI 对话）" hint="选一个就行。出现“服务器繁忙”或模型停用时，都会自动换备用模型重试。">
