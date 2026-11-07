@@ -64,7 +64,7 @@ const CommonBlock = <P extends AnyObject>({
 
 	return (
 		<>
-			{upperText && <div className="m-auto mt-[10px] mb-[19px] text-black/50 text-xs">{upperText}</div>}
+			{upperText && <div className="m-auto mt-2 mb-[17px] text-[14px] leading-5 text-black/50">{upperText}</div>}
 			<div
 				className={twMerge(
 					"relative flex max-w-[85%] space-x-3 group-[.mine]:ml-auto group-[.mine]:flex-row-reverse group-[.mine]:space-x-reverse",

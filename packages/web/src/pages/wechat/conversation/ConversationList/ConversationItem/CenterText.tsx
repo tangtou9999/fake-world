@@ -14,7 +14,7 @@ const LINK_RE = new RegExp(`(${CENTER_LINK}|${IMAGE_NOTE_LINK})`);
 const CenterText = ({ extraClassName, upperText, simpleContent }: Props) => {
 	return (
 		<>
-			{upperText && <div className={"m-auto mt-[10px] mb-[19px] text-black/50 text-xs"}>{upperText}</div>}
+			{upperText && <div className={"m-auto mt-2 mb-[17px] text-[14px] leading-5 text-black/50"}>{upperText}</div>}
 			<div
 				className={twMerge(
 					"m-auto text-black/50 text-xs",
