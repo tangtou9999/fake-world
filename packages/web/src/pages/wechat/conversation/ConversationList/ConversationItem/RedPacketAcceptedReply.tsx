@@ -33,7 +33,7 @@ const RedPacketAcceptedReply = ({ redPacketId, upperText, id }: Props) => {
 
 	return (
 		<>
-			{upperText && <div className={"m-auto text-black/50 text-xs"}>{upperText}</div>}
+			{upperText && <div className={"m-auto mt-3 mb-5 text-black/50 text-xs"}>{upperText}</div>}
 			<div className="m-auto flex items-center text-black/50 text-xs">
 				<img src={RedPacketCloseIMG} className="w-4" />
 				<div className="ml-2">
