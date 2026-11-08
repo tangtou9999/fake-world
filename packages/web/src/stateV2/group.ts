@@ -86,3 +86,35 @@ export const groupDefaultSender = (conversationId: string): string | undefined =
 	const g = getGroup(conversationId);
 	return g?.memberIds.find((m) => m !== MYSELF_ID);
 };
+
+/** 群成员（不含我）的 id 和显示名 */
+export const groupMembers = (conversationId: string): { id: string; name: string }[] => {
+	const g = getGroup(conversationId);
+	if (!g) return [];
+	const all = getAllProfilesValueSnapshot();
+	return g.memberIds
+		.filter((m) => m !== MYSELF_ID)
+		.map((m) => {
+			const p = all.find((x) => x.id === m);
+			return { id: m, name: p?.remark || p?.nickname || m };
+		});
+};
+
+/** AI 写的成员名 → 成员 id（先精确，再模糊；对不上就用当前选的发言人） */
+export const memberIdByName = (conversationId: string, name?: string): string | undefined => {
+	const ms = groupMembers(conversationId);
+	const n = (name ?? "").trim();
+	if (n) {
+		const hit = ms.find((m) => m.name === n) ?? ms.find((m) => m.name.includes(n) || n.includes(m.name));
+		if (hit) return hit.id;
+	}
+	return currentSenderId(conversationId) ?? ms[0]?.id;
+};
+
+/** 一条消息是谁发的（显示名）；单聊返回 undefined */
+export const senderNameOf = (conversationId: string, item: { role?: string; senderId?: string }): string | undefined => {
+	if (!getGroup(conversationId)) return undefined;
+	if (item.role === "mine") return "我";
+	const ms = groupMembers(conversationId);
+	return ms.find((m) => m.id === (item.senderId ?? ms[0]?.id))?.name;
+};

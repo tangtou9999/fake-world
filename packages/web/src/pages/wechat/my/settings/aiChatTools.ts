@@ -1,4 +1,6 @@
 import { MYSELF_ID } from "@/faker/wechat/user";
+import { getGroup, groupMembers, groupsAtom, senderNameOf } from "@/stateV2/group";
+import { mainStore } from "@/stateV2/store";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { applyParsedItems } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import type { AiChatAction } from "@/stateV2/aiChat";
@@ -11,8 +13,9 @@ import { Node } from "slate";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
-export const listContacts = (): Contact[] =>
-	getAllProfilesValueSnapshot()
+export const listContacts = (): Contact[] => [
+	...mainStore.get(groupsAtom).map((g) => ({ id: g.id, name: `${g.name}（群聊）`, tokens: [g.name].filter((t) => t.length >= 2) })),
+	...getAllProfilesValueSnapshot()
 		.filter((p) => p.id !== MYSELF_ID)
 		.map((p) => {
 			const name = p.remark || p.nickname || p.id;
@@ -20,13 +23,14 @@ export const listContacts = (): Contact[] =>
 				new Set([p.remark, p.nickname, ...(p.remark ?? "").split(/[-—_（(\s]/)].filter((t): t is string => !!t && t.length >= 2)),
 			);
 			return { id: p.id, name, tokens };
-		});
+		}),
+];
 
 export const findMentioned = (text: string, contacts: Contact[]) =>
 	contacts.filter((c) => c.tokens.some((t) => text.includes(t)));
 
-const describe = (v: Record<string, any>, name: string) => {
-	const who = v.role === "mine" ? "我" : name;
+const describe = (v: Record<string, any>, name: string, convId?: string) => {
+	const who = v.role === "mine" ? "我" : ((convId ? senderNameOf(convId, v) : undefined) ?? name);
 	let body: string;
 	switch (v.type) {
 		case EConversationType.text:
@@ -59,7 +63,7 @@ const describe = (v: Record<string, any>, name: string) => {
 export const chatLog = (id: string, name: string, maxLines?: number) => {
 	const all = getConversationListValueSnapshot(id) as unknown as Record<string, any>[];
 	const list = maxLines ? all.slice(-maxLines) : all;
-	let text = list.map((v) => describe(v, name)).join("\n");
+	let text = list.map((v) => describe(v, name, id)).join("\n");
 	if (text.length > 200_000) text = `（更早的记录因太长已省略）\n${text.slice(-200_000)}`;
 	return { count: all.length, text };
 };
@@ -95,6 +99,10 @@ export const buildSystem = (
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
 	let s = chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur)}` : `${base}\n现在的真实时间：${now}`;
+	const grp = chatMode ? getGroup(chatMode.currentId) : undefined;
+	if (grp) {
+		s += `\n\n【当前聊天是群聊「${grp.name}」】群成员（不含我）：${groupMembers(grp.id).map((m) => m.name).join("、")}。为这个群生成聊天内容时：items 里 who 为 friend 的每一条都必须加 "member" 字段，值只能是上面名单里的成员名（照抄）；who 为 me 是「我」本人，不带 member。让多个成员轮流说话，每个人说话风格不同，可以互相接话、插话、@人，不要只让一个人说话。`;
+	}
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);

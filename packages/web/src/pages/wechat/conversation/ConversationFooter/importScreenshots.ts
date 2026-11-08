@@ -11,10 +11,13 @@ import dayjs from "dayjs";
 import { Node } from "slate";
 import { formatWechatTime, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
+import { getGroup, groupMembers, isGroupId, memberIdByName, senderNameOf } from "@/stateV2/group";
 
 export type ParsedItem = {
 	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "other";
 	who?: "friend" | "me";
+	/** 群聊：这条是哪位成员说的（成员名） */
+	member?: string;
 	text?: string;
 	amount?: string;
 	note?: string;
@@ -75,7 +78,7 @@ export function applyParsedItems(
 	list.forEach((it, i) => {
 		const role = it.who === "me" ? "mine" : "friend";
 		const ts = timed ? stamps[i] : base + i * 60_000;
-		const common = { id: nanoid(8), sendTimestamp: ts } as const;
+		const common = { id: nanoid(8), sendTimestamp: ts, ...(role === "friend" && isGroupId(conversationId) ? { senderId: memberIdByName(conversationId, it.member) } : {}) };
 		let upper = pendingTime;
 		if (timed) {
 			pendingTime = undefined;
@@ -170,6 +173,7 @@ function computeStamps(
 }
 
 const SCRIPT_PROMPT = (ctx: {
+	group?: string;
 	friend: string;
 	me: string;
 	history: string;
@@ -177,8 +181,7 @@ const SCRIPT_PROMPT = (ctx: {
 	lastAt: string;
 	script: string;
 }) => `你是微信聊天剧本的执行器。用户用自然语言写了一段剧本，你要严格按剧本生成聊天消息 JSON，而不是自由发挥。
-对方：${ctx.friend}
-我：${ctx.me}
+${ctx.group ? `这是一个微信群聊。${ctx.group}\n群里「我」是：${ctx.me}\n群聊规则：who 为 friend 的每一条消息必须额外带 "member" 字段，值只能是上面名单里的某个成员名（照抄）；多个成员轮流说话，各有各的说话风格，可以互相接话、插话、@人，不要只让一个人说；「我」的消息 who 为 me，不要带 member。` : `对方：${ctx.friend}\n我：${ctx.me}`}
 现在的真实时间：${ctx.now}
 聊天里最后一条消息的时间：${ctx.lastAt}
 已有的最近聊天（请自然衔接，不要重复）：
@@ -202,6 +205,7 @@ ${ctx.script}
 
 export async function generateScript(conversationId: string, script: string) {
 	const friend = getProfileValueSnapshot(conversationId);
+	const grp = getGroup(conversationId);
 	const me = getMyProfileValueSnapshot();
 	const existing = getConversationListValueSnapshot(conversationId);
 	const history = existing
@@ -211,11 +215,12 @@ export async function generateScript(conversationId: string, script: string) {
 			const t = (v as unknown as { textContent: Parameters<typeof Node.string>[0][] }).textContent
 				.map((n) => Node.string(n))
 				.join("");
-			return `${v.role === "mine" ? "我" : "对方"}：${t}`;
+			return `${senderNameOf(conversationId, v as { role?: string; senderId?: string }) ?? (v.role === "mine" ? "我" : "对方")}：${t}`;
 		})
 		.join("\n");
 	const lastTs = existing.at(-1)?.sendTimestamp;
 	const prompt = SCRIPT_PROMPT({
+		group: grp ? `群名「${grp.name}」，群成员（不含我）：${groupMembers(conversationId).map((m) => m.name).join("、")}。` : undefined,
 		friend: `${friend?.remark || friend?.nickname || "朋友"}${friend?.description ? `（${friend.description}）` : ""}`,
 		me: me?.nickname || "我",
 		history,
@@ -238,7 +243,7 @@ export async function translateText(text: string) {
 }
 
 export const previewLine = (it: ParsedItem) => {
-	const who = it.who === "me" ? "我" : "对方";
+	const who = it.who === "me" ? "我" : it.member || "对方";
 	const tm = it.at ? dayjs(it.at).format("M/D HH:mm") : "";
 	switch (it.kind) {
 		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}`;
