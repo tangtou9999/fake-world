@@ -94,11 +94,29 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
 type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string };
 
+/** DeepSeek API Key 只保留原始 token：去掉首尾/内部空白及误粘贴的 Bearer 前缀。 */
+export const normalizeDeepSeekApiKey = (value?: string) =>
+	(value ?? "").trim().replace(/^(?:Bearer\\s+)+/i, "").replace(/\\s+/g, "");
+
+export async function testDeepSeekConnection(apiKey = getGeminiConfig().deepseekApiKey ?? "") {
+	const key = normalizeDeepSeekApiKey(apiKey);
+	if (!key) throw new Error("请先填写 DeepSeek API Key");
+	try {
+		const reply = await callDeepSeek(key, "只回复两个字：成功", {});
+		recordKeyUse("text", "deepseek", true);
+		return reply;
+	} catch (e) {
+		const message = e instanceof Error ? e.message : String(e);
+		recordKeyUse("text", "deepseek", false, message.slice(0, 120));
+		throw e;
+	}
+}
+
 /** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
 export async function callGemini(prompt: string, options: CallOptions = {}) {
 	const config = getGeminiConfig();
 	const autoMode = (config.keyMode ?? "auto") === "auto";
-	const deepseekKey = autoMode ? config.deepseekApiKey?.trim() : "";
+	const deepseekKey = autoMode ? normalizeDeepSeekApiKey(config.deepseekApiKey) : "";
 	const keys = getKeys();
 	if (!keys.length && !deepseekKey) throw new Error(config.keyMode === "main" ? "「使用方式」选了只用主密钥，但主密钥没填" : config.keyMode === "backup" ? "「使用方式」选了只用备用密钥，但备用密钥没填" : "还没有填 API 密钥：我 → 设置 → AI 模型与声音");
 	let lastErr: unknown;
@@ -151,7 +169,7 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 		res = await fetch("https://api.deepseek.com/chat/completions", {
 			method: "POST",
 			signal: ctrl.signal,
-			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${normalizeDeepSeekApiKey(apiKey)}` },
 			body: JSON.stringify({
 				model: "deepseek-flash",
 				messages,
