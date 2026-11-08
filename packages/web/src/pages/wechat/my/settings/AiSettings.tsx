@@ -128,6 +128,17 @@ const AiSettings = () => {
 							onChange={(e) => setConfig((v) => ({ ...v, apiKey2: e.target.value.trim() }))}
 						/>
 					</div>
+					<div className="mt-px flex items-center bg-white px-4">
+						<span className="w-[92px] shrink-0 text-[15px]">DeepSeek 密钥</span>
+						<input
+							type={show ? "text" : "password"}
+							className="min-w-0 flex-1 bg-transparent py-4 text-[16px] outline-none placeholder:text-black/30"
+							placeholder="DeepSeek API Key（可不填）"
+							value={config.deepseekApiKey ?? ""}
+							autoComplete="off"
+							onChange={(e) => setConfig((v) => ({ ...v, deepseekApiKey: e.target.value.trim() }))}
+						/>
+					</div>
 					<KeyPanel />
 				</Section>
 
@@ -223,7 +234,7 @@ const AiSettings = () => {
 					</div>
 					<input type="checkbox" className="h-5 w-5 shrink-0 accent-[#07C160]" checked={config.adultMode !== false} onChange={(e) => setConfig((v) => ({ ...v, adultMode: e.target.checked }))} />
 				</div>
-				<button type="button" disabled={busy || !hasApiKey(config)} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
+				<button type="button" disabled={busy || (!hasApiKey(config) && !((config.keyMode ?? "auto") === "auto" && config.deepseekApiKey))} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
 					{busy ? "检测中…" : "检测连接"}
 				</button>
 				{result && <div className={`mx-4 mt-4 rounded-[8px] p-3 text-[14px] leading-6 ${result.ok ? "bg-[#E6F6EC] text-[#0a7a3c]" : "bg-[#FBE9E9] text-[#C62828]"}`}>{result.text}</div>}

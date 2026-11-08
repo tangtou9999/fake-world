@@ -11,7 +11,7 @@ const MODES = [
 	{ id: "backup", title: "只用备用密钥", desc: "不会碰主密钥" },
 ] as const;
 
-const name = (w: "main" | "backup") => (w === "main" ? "主密钥" : "备用密钥");
+const name = (w: "main" | "backup" | "deepseek") => (w === "main" ? "主密钥" : w === "backup" ? "备用密钥" : "DeepSeek");
 const ago = (t: number) => {
 	const s = Math.max(0, Math.round((Date.now() - t) / 1000));
 	return s < 60 ? `${s} 秒前` : `${Math.round(s / 60)} 分钟前`;
@@ -29,7 +29,9 @@ const KeyPanel = () => {
 	const [probe, setProbe] = useState<Record<string, string>>({});
 	const [busy, setBusy] = useState("");
 	const mode = config.keyMode ?? "auto";
-	const order = getKeys(config).map((k) => name(k.id)).join(" → ") || "（没有可用密钥）";
+	const orderKeys = getKeys(config).map((k) => name(k.id));
+	if ((config.keyMode ?? "auto") === "auto" && config.deepseekApiKey) orderKeys.push("DeepSeek");
+	const order = orderKeys.join(" → ") || "（没有可用密钥）";
 	const same = !!config.apiKey && config.apiKey === config.apiKey2;
 
 	const run = async (which: "main" | "backup") => {

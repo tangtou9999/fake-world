@@ -15,6 +15,8 @@ export type GeminiConfig = {
 	voices?: { ai?: string; friend?: string; mine?: string };
 	/** 备用密钥（第二个 Google 账号）：主密钥额度用完 / 繁忙 / 出错时自动改用它 */
 	apiKey2?: string;
+	/** DeepSeek 文字模型密钥：仅保存在本机 localStorage，自动模式下作为最后备用线路 */
+	deepseekApiKey?: string;
 	/** 三种角色的默认声音档案（音色、人设、口音、气声、胸腔共鸣、听筒滤波） */
 	profiles?: { ai?: VoiceProfile; friend?: VoiceProfile; mine?: VoiceProfile };
 	/** 全局语速节奏、声场、防拦截 */

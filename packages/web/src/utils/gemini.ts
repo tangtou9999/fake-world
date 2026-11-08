@@ -20,7 +20,7 @@ export class GeminiBlockedError extends Error {
 async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = [], extra: Extra = {}) {
 	const adult = getGeminiConfig().adultMode !== false;
 	const ctrl = new AbortController();
-	const timer = setTimeout(() => ctrl.abort(), 60_000);
+	const timer = setTimeout(() => ctrl.abort(), 40_000);
 	let res: Response;
 	let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]; promptFeedback?: { blockReason?: string } };
 	try {
@@ -68,7 +68,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	});
 	data = await res.json().catch(() => ({}));
 	} catch (e) {
-		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 60 秒没有回应，请重试" } as GeminiError;
+		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 40 秒没有回应，请重试" } as GeminiError;
 		throw e;
 	} finally {
 		clearTimeout(timer);
@@ -96,14 +96,17 @@ type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTur
 
 /** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
 export async function callGemini(prompt: string, options: CallOptions = {}) {
+	const config = getGeminiConfig();
+	const autoMode = (config.keyMode ?? "auto") === "auto";
+	const deepseekKey = autoMode ? config.deepseekApiKey?.trim() : "";
 	const keys = getKeys();
-	if (!keys.length) throw new Error(getGeminiConfig().keyMode === "main" ? "「使用方式」选了只用主密钥，但主密钥没填" : getGeminiConfig().keyMode === "backup" ? "「使用方式」选了只用备用密钥，但备用密钥没填" : "还没有填 API 密钥：我 → 设置 → AI 模型与声音");
+	if (!keys.length && !deepseekKey) throw new Error(config.keyMode === "main" ? "「使用方式」选了只用主密钥，但主密钥没填" : config.keyMode === "backup" ? "「使用方式」选了只用备用密钥，但备用密钥没填" : "还没有填 API 密钥：我 → 设置 → AI 模型与声音");
 	let lastErr: unknown;
 	let failed = "";
 	for (const [i, k] of keys.entries()) {
 		try {
-			// 还有另一个密钥时，这个只快速试一次，出错立刻换，不干等
-			const r = await callGeminiWithKey(k.key, prompt, options, i < keys.length - 1);
+			// 自动模式配置了 DeepSeek 时，每把 Gemini 密钥最多请求 20 秒，失败后进入下一条线路
+			const r = await callGeminiWithKey(k.key, prompt, options, i < keys.length - 1 || !!deepseekKey);
 			recordKeyUse("text", k.id, true, failed || undefined);
 			return r;
 		} catch (e) {
@@ -112,11 +115,62 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 				throw e;
 			}
 			lastErr = e;
-			failed = `${k.id === "main" ? "主密钥" : "备用密钥"}出错：${e instanceof Error ? e.message.slice(0, 60) : ""}`;
+			failed = `${k.id === "main" ? "主密钥" : "备用密钥"}出错：${e instanceof Error ? e.message.slice(0, 60) : String(e).slice(0, 60)}`;
 			recordKeyUse("text", k.id, false, failed);
 		}
 	}
-	throw lastErr;
+	// DeepSeek 仅接管自动模式下的纯文字请求；图片/音频请求仍只走 Gemini。
+	if (deepseekKey && !options.images?.length && !options.audio) {
+		try {
+			const reply = await callDeepSeek(deepseekKey, prompt, options);
+			recordKeyUse("text", "deepseek", true, failed || undefined);
+			return reply;
+		} catch (e) {
+			const message = e instanceof Error ? e.message : String(e);
+			recordKeyUse("text", "deepseek", false, message.slice(0, 120));
+			throw e;
+		}
+	}
+	if (lastErr) throw lastErr;
+	throw new Error("当前使用方式下没有可用的 Gemini 密钥");
+}
+
+async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions): Promise<string> {
+	const config = getGeminiConfig();
+	const system = [config.adultMode !== false ? ADULT_MODE_PROMPT : "", options.system ?? ""].filter(Boolean).join("\n\n");
+	const messages = [
+		...(system ? [{ role: "system", content: system }] : []),
+		...(options.history ?? []).map((turn) => ({ role: turn.role === "model" ? "assistant" : "user", content: turn.text })),
+		{ role: "user", content: prompt },
+	];
+	const ctrl = new AbortController();
+	const timer = setTimeout(() => ctrl.abort(), 20_000);
+	let res: Response;
+	let data: { error?: { message?: string }; choices?: { message?: { content?: string | null } }[] };
+	try {
+		res = await fetch("https://api.deepseek.com/chat/completions", {
+			method: "POST",
+			signal: ctrl.signal,
+			headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+			body: JSON.stringify({
+				model: "deepseek-flash",
+				messages,
+				thinking: { type: "disabled" },
+				temperature: 1,
+				...(options.json ? { response_format: { type: "json_object" } } : {}),
+			}),
+		});
+		data = await res.json().catch(() => ({}));
+	} catch (e) {
+		if (ctrl.signal.aborted) throw new Error("DeepSeek 请求超时：20 秒没有回应");
+		throw e;
+	} finally {
+		clearTimeout(timer);
+	}
+	if (!res.ok) throw new Error(data?.error?.message || `DeepSeek HTTP ${res.status}`);
+	const content = data?.choices?.[0]?.message?.content;
+	if (typeof content !== "string" || !content.trim()) throw new Error("DeepSeek 没有返回文字内容");
+	return content;
 }
 
 async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOptions, quick = false) {
