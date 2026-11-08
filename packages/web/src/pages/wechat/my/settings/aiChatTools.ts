@@ -5,11 +5,11 @@ import type { AiChatAction } from "@/stateV2/aiChat";
 import { GEMINI_VOICES, VOICE_ACCENTS, type VoiceProfile } from "@/stateV2/gemini";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { EMOJI_NAME_LIST, slateToPlain } from "@/wechatComponents/SlateText/emojiNames";
 import { getGroup, groupDefaultSender, groupsAtom, isGroupId } from "@/stateV2/group";
 import { mainStore } from "@/stateV2/store";
 import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
-import { Node } from "slate";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
@@ -53,7 +53,7 @@ const describe = (v: Record<string, any>, name: string, groupId?: string) => {
 	let body: string;
 	switch (v.type) {
 		case EConversationType.text:
-			body = (v.textContent ?? []).map((n: never) => Node.string(n)).join("\n");
+			body = (v.textContent ?? []).map((n: never) => slateToPlain(n)).join("\n");
 			break;
 		case EConversationType.image:
 			body = "[图片]";
@@ -107,6 +107,7 @@ ${groupMembers}
 - 群里 who 为 friend 的每一项都必须加 "sender":"成员名"（照抄上面名字，不要写「对方」）；who 为 me 是「我」，不需要 sender。
 - 生成群聊要像真实群：多个成员轮流发言、插话、接梗、互相回应，每人风格不同（参考他们的人设和已有记录里的说话方式），不要让一个人连着说太多条；红包、转账也要标明是哪个成员发的（sender）；用户没点名谁说时由你合理安排。
 - 群里的 target 照抄「当前聊天」的名字。` : ""}
+微信表情：文字里可以写 [名字] 表示表情，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；不要用其他方括号表情或 Unicode 小黄脸，数量像真人聊天一样适度。读取聊天记录时表情也显示成 [名字]。
 当前所有联系人：${contactNames || "（暂无）"}`;
 
 export type Level = 0 | 1 | 2 | 3;

@@ -11,6 +11,7 @@ import dayjs from "dayjs";
 import { Node } from "slate";
 import { formatWechatTime, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { EMOJI_NAME_LIST, slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
 
@@ -85,7 +86,7 @@ const groupRotate = (conversationId: string, n: number) => {
 	return others.length ? others[(n - 1) % others.length] : groupDefaultSender(conversationId);
 };
 
-const paragraph = (text: string) => [{ type: "paragraph", children: [{ text }] }] as never;
+const paragraph = (text: string) => [{ type: "paragraph", children: textToSlateChildren(text) }] as never;
 
 /** 把识别结果写入聊天；replace=true 时先清空原有记录 */
 export function applyParsedItems(
@@ -236,7 +237,7 @@ ${ctx.script}
    system（text，居中的灰色系统提示）
 4. 「发红包/转账」由谁发就用谁的 who；金额没说就按场景给合理金额。
 5. 口语化、简短，符合各自身份，不要旁白、编号。不要输出 time 类元素。
-6. 只输出 JSON 数组，如 [{"kind":"text","who":"friend",${ctx.group ? '"sender":"成员名",' : ""}"text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
+6. 文字里可以用微信表情，写成 [名字]，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；真人聊天表情不要太多，不要用其他方括号表情，也不要用 Unicode 小黄脸。只输出 JSON 数组，如 [{"kind":"text","who":"friend",${ctx.group ? '"sender":"成员名",' : ""}"text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
 
 export async function generateScript(conversationId: string, script: string) {
 	const group = getGroup(conversationId);
@@ -253,7 +254,7 @@ export async function generateScript(conversationId: string, script: string) {
 		.slice(group ? -30 : -12)
 		.map((v) => {
 			const t = (v as unknown as { textContent: Parameters<typeof Node.string>[0][] }).textContent
-				.map((n) => Node.string(n))
+				.map((n) => slateToPlain(n as never))
 				.join("");
 			return `${senderLabel(v as { role?: string; senderId?: string })}：${t}`;
 		})
