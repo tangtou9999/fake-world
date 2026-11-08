@@ -123,7 +123,7 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 	let failed = "";
 	for (const [i, k] of keys.entries()) {
 		try {
-			// 自动模式配置了 DeepSeek 时，每把 Gemini 密钥最多请求 20 秒，失败后进入下一条线路
+			// 自动模式配置了 DeepSeek 时，每把 Gemini 密钥最多请求 40 秒，失败后进入下一条线路
 			const r = await callGeminiWithKey(k.key, prompt, options, i < keys.length - 1 || !!deepseekKey);
 			recordKeyUse("text", k.id, true, failed || undefined);
 			return r;
