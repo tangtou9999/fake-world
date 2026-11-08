@@ -10,7 +10,9 @@ import { nanoid } from "nanoid";
 import dayjs from "dayjs";
 import { Node } from "slate";
 import { formatWechatTime, getConversationListValueSnapshot } from "@/stateV2/conversation";
-import { getMyProfileValueSnapshot, getProfileValueSnapshot } from "@/stateV2/profile";
+import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { MYSELF_ID } from "@/faker/wechat/user";
+import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
 
 export type ParsedItem = {
 	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "other";
@@ -28,6 +30,31 @@ export type ParsedItem = {
 	scene?: string;
 	pace?: string;
 	tone?: string;
+	/** 群聊：这条消息是哪位群成员发的（成员名字，照抄群成员列表） */
+	sender?: string;
+};
+
+/** 群成员的显示名（备注优先） */
+export const memberName = (id: string) => {
+	const p = getAllProfilesValueSnapshot().find((x) => x.id === id);
+	return p?.remark || p?.nickname || id;
+};
+
+/** 群里按名字找成员 id：精确 → 包含；找不到返回 undefined */
+export const resolveMember = (conversationId: string, name?: string) => {
+	const g = getGroup(conversationId);
+	if (!g || !name) return undefined;
+	const others = g.memberIds.filter((m) => m !== MYSELF_ID);
+	const n = name.trim();
+	const all = getAllProfilesValueSnapshot();
+	const names = (id: string) => {
+		const p = all.find((x) => x.id === id);
+		return [p?.remark, p?.nickname, id].filter((t): t is string => !!t);
+	};
+	return (
+		others.find((m) => names(m).includes(n)) ??
+		others.find((m) => names(m).some((t) => t.length >= 2 && (n.includes(t) || t.includes(n))))
+	);
 };
 
 export const IMPORT_PROMPT = `这些是同一段微信聊天的截图，已按时间顺序给出（第 1 张最早）。请把聊天内容 1:1 转录成 JSON 数组，按出现顺序，不要遗漏、不要改写、不要翻译、不要总结。
@@ -52,6 +79,12 @@ export async function parseScreenshots(images: GeminiImage[]) {
 	return list;
 }
 
+/** AI 没写清是谁说的时：在群成员里轮流分配，避免全算在同一个人头上 */
+const groupRotate = (conversationId: string, n: number) => {
+	const others = (getGroup(conversationId)?.memberIds ?? []).filter((m) => m !== MYSELF_ID);
+	return others.length ? others[(n - 1) % others.length] : groupDefaultSender(conversationId);
+};
+
 const paragraph = (text: string) => [{ type: "paragraph", children: [{ text }] }] as never;
 
 /** 把识别结果写入聊天；replace=true 时先清空原有记录 */
@@ -72,10 +105,13 @@ export function applyParsedItems(
 	let pendingTime: string | undefined;
 	const items: TConversationItem[] = [];
 	let lastPreview = "";
+	let rotate = 0;
 	list.forEach((it, i) => {
 		const role = it.who === "me" ? "mine" : "friend";
 		const ts = timed ? stamps[i] : base + i * 60_000;
-		const common = { id: nanoid(8), sendTimestamp: ts } as const;
+		const inGroup = isGroupId(conversationId) && role === "friend" && it.kind !== "system";
+		const sid = inGroup ? (resolveMember(conversationId, it.sender) ?? groupRotate(conversationId, ++rotate)) : undefined;
+		const common = { id: nanoid(8), sendTimestamp: ts, ...(sid ? { senderId: sid } : {}) } as const;
 		let upper = pendingTime;
 		if (timed) {
 			pendingTime = undefined;
@@ -176,8 +212,10 @@ const SCRIPT_PROMPT = (ctx: {
 	now: string;
 	lastAt: string;
 	script: string;
+	/** 群聊：成员列表说明（非群聊为空） */
+	group?: string;
 }) => `你是微信聊天剧本的执行器。用户用自然语言写了一段剧本，你要严格按剧本生成聊天消息 JSON，而不是自由发挥。
-对方：${ctx.friend}
+${ctx.group ? `这是一个微信群聊。群名与成员：\n${ctx.group}\n群聊规则：who 为 friend 的每一条都必须再加 "sender"：群成员名字（照抄上面列表，不要写别的名字，不要写「对方」）；多个成员要像真实群聊那样轮流、插话、接梗、互相 @ 或回应，每人说话风格不同，不要一个人连说很多条；剧本没点名时由你从成员里合理安排谁说；「我」的消息 who 为 me，不需要 sender。` : `对方：${ctx.friend}`}
 我：${ctx.me}
 现在的真实时间：${ctx.now}
 聊天里最后一条消息的时间：${ctx.lastAt}
@@ -198,24 +236,39 @@ ${ctx.script}
    system（text，居中的灰色系统提示）
 4. 「发红包/转账」由谁发就用谁的 who；金额没说就按场景给合理金额。
 5. 口语化、简短，符合各自身份，不要旁白、编号。不要输出 time 类元素。
-6. 只输出 JSON 数组，如 [{"kind":"text","who":"friend","text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
+6. 只输出 JSON 数组，如 [{"kind":"text","who":"friend",${ctx.group ? '"sender":"成员名",' : ""}"text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
 
 export async function generateScript(conversationId: string, script: string) {
+	const group = getGroup(conversationId);
 	const friend = getProfileValueSnapshot(conversationId);
 	const me = getMyProfileValueSnapshot();
 	const existing = getConversationListValueSnapshot(conversationId);
+	const senderLabel = (v: { role?: string; senderId?: string }) => {
+		if (v.role === "mine") return "我";
+		if (!group) return "对方";
+		return memberName(v.senderId ?? groupDefaultSender(conversationId) ?? "");
+	};
 	const history = existing
 		.filter((v) => v.type === EConversationType.text)
-		.slice(-12)
+		.slice(group ? -30 : -12)
 		.map((v) => {
 			const t = (v as unknown as { textContent: Parameters<typeof Node.string>[0][] }).textContent
 				.map((n) => Node.string(n))
 				.join("");
-			return `${v.role === "mine" ? "我" : "对方"}：${t}`;
+			return `${senderLabel(v as { role?: string; senderId?: string })}：${t}`;
 		})
 		.join("\n");
 	const lastTs = existing.at(-1)?.sendTimestamp;
 	const prompt = SCRIPT_PROMPT({
+		group: group
+			? `「${group.name}」\n${group.memberIds
+					.filter((m) => m !== MYSELF_ID)
+					.map((m) => {
+						const p = getAllProfilesValueSnapshot().find((x) => x.id === m);
+						return `- ${memberName(m)}${p?.description ? `（${p.description}）` : ""}`;
+					})
+					.join("\n")}`
+			: undefined,
 		friend: `${friend?.remark || friend?.nickname || "朋友"}${friend?.description ? `（${friend.description}）` : ""}`,
 		me: me?.nickname || "我",
 		history,
@@ -238,7 +291,7 @@ export async function translateText(text: string) {
 }
 
 export const previewLine = (it: ParsedItem) => {
-	const who = it.who === "me" ? "我" : "对方";
+	const who = it.who === "me" ? "我" : it.sender || "对方";
 	const tm = it.at ? dayjs(it.at).format("M/D HH:mm") : "";
 	switch (it.kind) {
 		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}`;

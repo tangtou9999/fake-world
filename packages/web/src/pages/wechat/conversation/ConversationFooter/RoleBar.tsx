@@ -262,7 +262,7 @@ const RoleBar = () => {
 								) : (
 								<>
 								<div className="mb-2 text-[12px] text-black/50 leading-5">
-									像写剧本一样描述：谁说几句、停顿多久、新的时间点、谁发红包/转账、外语消息都行。AI 会按剧本执行，时间不会晚于现在。
+									{isGroupId(conversationId) ? "这是群聊：AI 会从本群成员里安排谁说话（也可以点名），每条消息都会记下是哪位成员发的。" : ""}像写剧本一样描述：谁说几句、停顿多久、新的时间点、谁发红包/转账、外语消息都行。AI 会按剧本执行，时间不会晚于现在。
 								</div>
 								{scene && (
 									<button type="button" className="mb-1 ml-auto block text-[13px] text-[#576B95]" onClick={() => setScene("")}>
@@ -271,7 +271,7 @@ const RoleBar = () => {
 								)}
 								<textarea
 									className="h-[130px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
-									placeholder="例：对方说两句催我交周报，我回一句，停顿两小时，对方又说一句，最后我发一个 66 元红包给对方"
+									placeholder={isGroupId(conversationId) ? "例：群里小王、小李、阿美聊周末去哪吃饭，吵吵闹闹七八句，我插一句，阿美发一个 20 元红包，大家抢完起哄" : "例：对方说两句催我交周报，我回一句，停顿两小时，对方又说一句，最后我发一个 66 元红包给对方"}
 									value={scene}
 									onChange={(e) => setScene(e.target.value)}
 								/>

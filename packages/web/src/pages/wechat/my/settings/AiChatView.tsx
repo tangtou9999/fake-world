@@ -2,6 +2,7 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
+import { isGroupId } from "@/stateV2/group";
 import { callScheduleAtom } from "@/stateV2/videoCall";
 import { geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
@@ -26,6 +27,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
 	const session = state.sessions.find((s) => s.id === state.activeId) ?? state.sessions[0];
 	const isChat = mode === "chat" && !!conversationId;
+	const isGroupChat = isChat && isGroupId(conversationId);
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
 	const [busyKeys, setBusyKeys] = useState<string[]>([]);

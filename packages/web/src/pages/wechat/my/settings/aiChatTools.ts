@@ -5,14 +5,22 @@ import type { AiChatAction } from "@/stateV2/aiChat";
 import { GEMINI_VOICES, VOICE_ACCENTS, type VoiceProfile } from "@/stateV2/gemini";
 import { EConversationType, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { getGroup, groupDefaultSender, groupsAtom, isGroupId } from "@/stateV2/group";
+import { mainStore } from "@/stateV2/store";
 import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
 import { Node } from "slate";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
-export const listContacts = (): Contact[] =>
-	getAllProfilesValueSnapshot()
+const nameOf = (id: string) => {
+	const p = getAllProfilesValueSnapshot().find((x) => x.id === id);
+	return p?.remark || p?.nickname || id;
+};
+
+export const listContacts = (): Contact[] => [
+	...mainStore.get(groupsAtom).map((g) => ({ id: g.id, name: `群聊「${g.name}」`, tokens: [g.name, `群聊「${g.name}」`].filter((t) => t.length >= 2) })),
+	...getAllProfilesValueSnapshot()
 		.filter((p) => p.id !== MYSELF_ID)
 		.map((p) => {
 			const name = p.remark || p.nickname || p.id;
@@ -20,13 +28,28 @@ export const listContacts = (): Contact[] =>
 				new Set([p.remark, p.nickname, ...(p.remark ?? "").split(/[-—_（(\s]/)].filter((t): t is string => !!t && t.length >= 2)),
 			);
 			return { id: p.id, name, tokens };
-		});
+		}),
+];
+
+/** 群成员名单（带人设描述），给 AI 看 */
+export const groupMembersText = (groupId: string) => {
+	const g = getGroup(groupId);
+	if (!g) return "";
+	return g.memberIds
+		.filter((m) => m !== MYSELF_ID)
+		.map((m) => {
+			const p = getAllProfilesValueSnapshot().find((x) => x.id === m);
+			return `- ${nameOf(m)}${p?.description ? `（${p.description}）` : ""}`;
+		})
+		.join("\n");
+};
 
 export const findMentioned = (text: string, contacts: Contact[]) =>
 	contacts.filter((c) => c.tokens.some((t) => text.includes(t)));
 
-const describe = (v: Record<string, any>, name: string) => {
-	const who = v.role === "mine" ? "我" : name;
+const describe = (v: Record<string, any>, name: string, groupId?: string) => {
+	const friendName = groupId ? nameOf(v.senderId ?? groupDefaultSender(groupId) ?? "") : name;
+	const who = v.role === "mine" ? "我" : friendName;
 	let body: string;
 	switch (v.type) {
 		case EConversationType.text:
@@ -42,10 +65,10 @@ const describe = (v: Record<string, any>, name: string) => {
 			body = `[语音 ${v.duration ?? ""}″${v.stt ? ` 转文字：${v.stt}` : ""}]`;
 			break;
 		case EConversationType.redPacket:
-			body = `[红包 ¥${v.amount} ${v.note ?? ""} 状态：${v.redPacketStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : name}]`;
+			body = `[红包 ¥${v.amount} ${v.note ?? ""} 状态：${v.redPacketStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : friendName}]`;
 			break;
 		case EConversationType.transfer:
-			body = `[转账 ¥${v.amount} ${v.note ?? ""} 状态：${v.transferStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : name}]`;
+			body = `[转账 ¥${v.amount} ${v.note ?? ""} 状态：${v.transferStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : friendName}]`;
 			break;
 		case EConversationType.centerText:
 			return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.simpleContent ?? ""}`;
@@ -59,12 +82,12 @@ const describe = (v: Record<string, any>, name: string) => {
 export const chatLog = (id: string, name: string, maxLines?: number) => {
 	const all = getConversationListValueSnapshot(id) as unknown as Record<string, any>[];
 	const list = maxLines ? all.slice(-maxLines) : all;
-	let text = list.map((v) => describe(v, name)).join("\n");
+	let text = list.map((v) => describe(v, name, isGroupId(id) ? id : undefined)).join("\n");
 	if (text.length > 200_000) text = `（更早的记录因太长已省略）\n${text.slice(-200_000)}`;
 	return { count: all.length, text };
 };
 
-export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: string) => `
+export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: string, groupMembers?: string) => `
 【把内容放进聊天窗口】
 当用户要你为某个联系人生成、续写、改写聊天记录时：先正常回复（简短说明即可），然后在回复的最末尾附一个代码块，格式固定：
 \`\`\`wxchat
@@ -78,6 +101,12 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
 - items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是这句话说的内容，必须填写，播放时就用它读出声音，聊天里默认不显示，用户长按「转文字」才会看到；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds，并且要按这一句话「当时所处的真实场景」带上 scene、pace，可选 tone：scene 只能是 clean（安静/普通）、bed（家里被窝）、room（夜晚客厅房间）、crowd（嘈杂餐厅夜宵摊）、rain（雨夜车内）、mall（商场超市）、street（户外马路街头）之一；pace 只能是 normal（自然闲聊）、fast（快节奏互怼）、slow（深夜走心）之一；tone 是这一句的口气，如「奶声奶气撒娇，稍微提高音量」。同一个人今天在车里、明天在家里，scene 就要不同，别全用一个；外语消息可加 translation（中文译文）；每项都要有 at。
 - at 单调递增，不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现；追加时 at 不早于该聊天最后一条的时间。
 - 只有用户明确要求生成/修改聊天内容时才附代码块；普通聊天、咨询不要附。
+${groupMembers ? `
+【这是群聊】当前聊天是微信群，群成员（不含我）：
+${groupMembers}
+- 群里 who 为 friend 的每一项都必须加 "sender":"成员名"（照抄上面名字，不要写「对方」）；who 为 me 是「我」，不需要 sender。
+- 生成群聊要像真实群：多个成员轮流发言、插话、接梗、互相回应，每人风格不同（参考他们的人设和已有记录里的说话方式），不要让一个人连着说太多条；红包、转账也要标明是哪个成员发的（sender）；用户没点名谁说时由你合理安排。
+- 群里的 target 照抄「当前聊天」的名字。` : ""}
 当前所有联系人：${contactNames || "（暂无）"}`;
 
 export type Level = 0 | 1 | 2 | 3;
@@ -91,10 +120,11 @@ export const buildSystem = (
 	/** 聊天窗口里的 AI：带上导入规则；私人 AI 不带（它不能改聊天） */
 	chatMode?: { currentId: string },
 ) => {
+	const groupText = chatMode && isGroupId(chatMode.currentId) ? groupMembersText(chatMode.currentId) : "";
 	const now = dayjs().format("YYYY-MM-DD HH:mm dddd");
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
-	let s = chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur)}` : `${base}\n现在的真实时间：${now}`;
+	let s = chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`;
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);
