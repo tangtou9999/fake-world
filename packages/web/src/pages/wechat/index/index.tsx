@@ -6,13 +6,20 @@ import { unreadCountAtom, unreadCountEffect } from "@/stateV2/unreadCount";
 import BottomNavbar, { useToggleNavbarActivated } from "@/wechatComponents/BottomNavbar";
 import SearchBar from "@/wechatComponents/SearchBar";
 import { useAtom, useAtomValue } from "jotai";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import DialogueList from "./DialogueList";
 import MultipleDeviceLogin from "./MultipleDeviceLogin";
 
+/** 记住消息列表滚到哪了：进聊天再返回，还在原来的位置 */
+let savedHomeScroll = 0;
+
 const WechatIndex = () => {
+	const scrollRef = useRef<HTMLDivElement>(null);
+	useLayoutEffect(() => {
+		if (scrollRef.current) scrollRef.current.scrollTop = savedHomeScroll;
+	}, []);
 	const { count } = useAtomValue(unreadCountAtom);
 	const { t } = useTranslation();
 	const navigate = useNavigate();
@@ -46,7 +53,13 @@ const WechatIndex = () => {
 					</button>
 				</div>
 			</div>
-			<div className="flex flex-1 flex-col overflow-y-auto bg-white">
+			<div
+				ref={scrollRef}
+				onScroll={(e) => {
+					savedHomeScroll = e.currentTarget.scrollTop;
+				}}
+				className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-x-none bg-white"
+			>
 				<SearchBar />
 				<MultipleDeviceLogin />
 				<DialogueList />

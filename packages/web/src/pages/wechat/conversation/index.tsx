@@ -13,8 +13,10 @@ const Conversation = () => {
 	useEffect(() => {
 		if (!id) return;
 		setDialogueListValue((prev) =>
-			prev.some((v) => v.friendId === id && v.unreadMarkNumber)
-				? prev.map((v) => (v.friendId === id ? { ...v, unreadMarkNumber: undefined } : v))
+			prev.some((v) => v.friendId === id && (v.unreadMarkNumber || v.unreadDisplayType === "dot"))
+				? prev.map((v) =>
+						v.friendId === id ? { ...v, unreadMarkNumber: undefined, unreadDisplayType: "number" } : v,
+					)
 				: prev,
 		);
 	}, [id]);

@@ -24,3 +24,8 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 .wx-voice path{fill:#000;fill-opacity:1;stroke:#000;stroke-width:.3}
 @keyframes wxvp{0%{clip-path:inset(0 58% 0 0)}33%{clip-path:inset(0 52% 0 0)}66%{clip-path:inset(0 46% 0 0)}100%{clip-path:inset(0 34% 0 0)}}
 .wx-voice-playing{animation:wxvp 1.8s steps(1,end) infinite}
+
+/* 手机：整页固定，禁止左右拖动和回弹 */
+.wx-mobile,.wx-mobile body{overflow:hidden;overscroll-behavior:none}
+.wx-mobile body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
+.wx-mobile #screen{overscroll-behavior:none}

@@ -1,5 +1,5 @@
 import { Global, css } from "@emotion/react";
-import { type CSSProperties, memo } from "react";
+import { type CSSProperties, memo, useEffect } from "react";
 import { isDesktop, isMobileOnly } from "react-device-detect";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router-dom";
@@ -11,6 +11,13 @@ import useDeviceConfig from "../useDeviceConfig";
 
 const Screen = () => {
 	const { screenSize } = useDeviceConfig();
+
+	// 手机上把整页钉住：左右滑动不再带着页面晃
+	useEffect(() => {
+		if (!isMobileOnly) return;
+		document.documentElement.classList.add("wx-mobile");
+		return () => document.documentElement.classList.remove("wx-mobile");
+	}, []);
 
 	const style: CSSProperties = isMobileOnly
 		? {

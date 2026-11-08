@@ -169,8 +169,8 @@ const PayService = () => {
 
 	useEffect(() => {
 		setDialogueListValue((prev) =>
-			prev.some((v) => v.friendId === PAY_ID && v.unreadMarkNumber)
-				? prev.map((v) => (v.friendId === PAY_ID ? { ...v, unreadMarkNumber: undefined } : v))
+			prev.some((v) => v.friendId === PAY_ID && (v.unreadMarkNumber || v.unreadDisplayType === "dot"))
+				? prev.map((v) => (v.friendId === PAY_ID ? { ...v, unreadMarkNumber: undefined, unreadDisplayType: "number" } : v))
 				: prev,
 		);
 	}, []);
