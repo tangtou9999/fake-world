@@ -14,12 +14,13 @@ const NewGroup = () => {
 	const navigate = useNavigate();
 	const profiles = useAtomValue(allProfilesAtom);
 	const [picked, setPicked] = useState<string[]>([]);
+	const [name, setName] = useState("");
 	const list = profiles.filter((p) => p.id !== MYSELF_ID && p.id !== FILE_HELPER_ID && !p.id.startsWith("g_"));
 	const toggle = (id: string) => setPicked((v) => (v.includes(id) ? v.filter((x) => x !== id) : [...v, id]));
 
 	const done = () => {
 		if (picked.length < 2) return showToast({ content: "请至少选择 2 位联系人" });
-		const id = createGroup(picked);
+		const id = createGroup(picked, name);
 		navigate(`/wechat/conversation/${id}`, { replace: true });
 	};
 
@@ -33,6 +34,15 @@ const NewGroup = () => {
 					</button>
 				}
 			/>
+			<div className="shrink-0 border-black/5 border-b px-4 py-2">
+				<input
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="群聊名称（可不填，自动取成员名）"
+					aria-label="群聊名称"
+					className="w-full rounded-[4px] bg-[#F7F7F7] px-3 py-2 text-[16px] outline-none"
+				/>
+			</div>
 			<div className="flex-1 overflow-y-auto">
 				{list.map((p) => {
 					const on = picked.includes(p.id);

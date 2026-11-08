@@ -42,6 +42,7 @@ import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
+import { groupDefaultSender, isGroupId } from "@/stateV2/group";
 
 const ConversationList = () => {
 	const { listRef, conversationId, sendTransfer, sendRedPacketAcceptedReply } =
@@ -70,13 +71,17 @@ const ConversationList = () => {
 		});
 	};
 
+	/** 群聊里红包/转账是哪位成员发的；私聊就是对方 */
+	const peerOf = (item: { senderId?: string }) =>
+		isGroupId(conversationId) ? (item.senderId ?? groupDefaultSender(conversationId) ?? "") : conversationId;
+
 	const generateTransferReplyConversation = (conversationItemId: TConversationItem["id"]) => {
 		const item = getConversationListValueSnapshot(conversationId).find(
 			(v) => v.id === conversationItemId,
 		);
 		const { amount, originalSender, role } = item as IConversationTypeTransfer;
 		if (originalSender === "friend") {
-			applyMoneyMove({ kind: "transfer", direction: "in", peerId: conversationId, amount });
+			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item as TConversationItem), amount });
 		}
 		setConversationList((prev) =>
 			prev.map((item) =>
@@ -103,7 +108,7 @@ const ConversationList = () => {
 			applyMoneyMove({
 				kind: "redPacket",
 				direction: "in",
-				peerId: conversationId,
+				peerId: peerOf(packet),
 				amount: packet.amount,
 			});
 		}
@@ -171,11 +176,12 @@ const ConversationList = () => {
 	} | null>(null);
 	const [rp, setRp] = useState<{
 		stage: "open" | "detail";
+		peer: string;
 		id: string;
 		amount: string;
 		note: string;
 	} | null>(null);
-	const friend = getProfileValueSnapshot(conversationId);
+	const friend = getProfileValueSnapshot(rp?.peer || conversationId);
 	const friendName = friend?.remark || friend?.nickname || "好友";
 	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const voiceTok = useRef(0);
@@ -225,6 +231,7 @@ const ConversationList = () => {
 		if (isPacket && (item as IConversationTypeRedPacket).originalSender === "friend") {
 			setRp({
 				stage: "open",
+				peer: peerOf(item),
 				id: item.id,
 				amount: (item as IConversationTypeRedPacket).amount,
 				note: (item as IConversationTypeRedPacket).note ?? "",

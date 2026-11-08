@@ -7,6 +7,7 @@ import {
 import UserName from "@/wechatComponents/User/UserName";
 import { useAtom } from "jotai";
 import { memo } from "react";
+import { groupDefaultSender, isGroupId } from "@/stateV2/group";
 import { useConversationAPI } from "../../context";
 
 type Props = {
@@ -26,10 +27,13 @@ const RedPacketAcceptedReply = ({ redPacketId, upperText, id }: Props) => {
 	}
 
 	const { originalSender } = redPacket as IConversationTypeRedPacket;
+	const peerId = isGroupId(conversationId)
+		? ((redPacket as { senderId?: string }).senderId ?? groupDefaultSender(conversationId) ?? conversationId)
+		: conversationId;
 	const left =
-		originalSender === "friend" ? "你" : <UserName id={conversationId} className="text-black/50" />;
+		originalSender === "friend" ? "你" : <UserName id={peerId} className="text-black/50" />;
 	const right =
-		originalSender === "friend" ? <UserName id={conversationId} className="text-black/50" /> : "你";
+		originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
 
 	return (
 		<>

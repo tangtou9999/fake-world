@@ -64,10 +64,10 @@ const autoName = (ids: string[]) => {
 		.join("、");
 };
 
-export const createGroup = (memberIds: string[]) => {
+export const createGroup = (memberIds: string[], name?: string) => {
 	const ids = [MYSELF_ID, ...memberIds.filter((m) => m !== MYSELF_ID)];
 	const id = `${GROUP_PREFIX}${nanoid(8)}`;
-	const g: IGroup = { id, name: autoName(ids) || "群聊", memberIds: ids, ownerId: MYSELF_ID, showNick: true };
+	const g: IGroup = { id, name: name?.trim() || autoName(ids) || "群聊", memberIds: ids, ownerId: MYSELF_ID, showNick: true };
 	mainStore.set(groupsAtom, (prev) => [g, ...prev]);
 	setDialogueListValue((prev) => {
 		const pinned = prev.filter((v) => v.isPinned).length;

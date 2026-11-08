@@ -8,7 +8,8 @@ interface Props {
 }
 
 const UserName = ({ id, className, ...rest }: Props & ComponentPropsWithRef<"span">) => {
-	const { remark, nickname } = useAtomValue(profileAtom(id))!;
+	const profile = useAtomValue(profileAtom(id));
+	const { remark, nickname } = profile ?? { remark: undefined, nickname: "" };
 
 	return (
 		<span className={twMerge("text-wechatLink-1", className)} {...rest}>
