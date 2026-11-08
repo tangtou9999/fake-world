@@ -20,7 +20,7 @@ export class GeminiBlockedError extends Error {
 async function callOnce(model: string, apiKey: string, prompt: string, json: boolean, images: GeminiImage[] = [], extra: Extra = {}) {
 	const adult = getGeminiConfig().adultMode !== false;
 	const ctrl = new AbortController();
-	const timer = setTimeout(() => ctrl.abort(), 20_000);
+	const timer = setTimeout(() => ctrl.abort(), 40_000);
 	let res: Response;
 	let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]; promptFeedback?: { blockReason?: string } };
 	try {
