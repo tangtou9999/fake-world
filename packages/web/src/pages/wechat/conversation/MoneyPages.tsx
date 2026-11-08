@@ -9,6 +9,7 @@ import {
 	setConversationListValue,
 } from "@/stateV2/conversation";
 import { profileAtom } from "@/stateV2/profile";
+import { currentSenderId, isGroupId } from "@/stateV2/group";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { Chevron } from "@/wechatComponents/List";
 import dayjs from "dayjs";
@@ -35,6 +36,7 @@ function useSend(kind: Kind) {
 			amount,
 			note: params.note || undefined,
 			sendTimestamp: dayjs().valueOf(),
+			...(params.sender === "friend" && isGroupId(id) ? { senderId: currentSenderId(id) } : {}),
 		} as const;
 		setConversationListValue(id, (prev) => {
 			const upperText = fromLastGenerateUpperText(prev);

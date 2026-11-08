@@ -4,6 +4,7 @@ import {
 	type IConversationTypeRedPacketAcceptedReply,
 	conversationListAtom,
 } from "@/stateV2/conversation";
+import { groupDefaultSender, isGroupId } from "@/stateV2/group";
 import UserName from "@/wechatComponents/User/UserName";
 import { useAtom } from "jotai";
 import { memo } from "react";
@@ -26,10 +27,14 @@ const RedPacketAcceptedReply = ({ redPacketId, upperText, id }: Props) => {
 	}
 
 	const { originalSender } = redPacket as IConversationTypeRedPacket;
+	// 群聊里「对方」是发红包的那位成员，不是群本身（群没有个人资料，直接用会崩溃）
+	const peerId = isGroupId(conversationId)
+		? ((redPacket as { senderId?: string }).senderId ?? groupDefaultSender(conversationId) ?? conversationId)
+		: conversationId;
 	const left =
-		originalSender === "friend" ? "你" : <UserName id={conversationId} className="text-black/50" />;
+		originalSender === "friend" ? "你" : <UserName id={peerId} className="text-black/50" />;
 	const right =
-		originalSender === "friend" ? <UserName id={conversationId} className="text-black/50" /> : "你";
+		originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
 
 	return (
 		<>

@@ -42,6 +42,7 @@ import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
+import { groupDefaultSender, isGroupId } from "@/stateV2/group";
 
 const ConversationList = () => {
 	const { listRef, conversationId, sendTransfer, sendRedPacketAcceptedReply } =
@@ -76,7 +77,7 @@ const ConversationList = () => {
 		);
 		const { amount, originalSender, role } = item as IConversationTypeTransfer;
 		if (originalSender === "friend") {
-			applyMoneyMove({ kind: "transfer", direction: "in", peerId: conversationId, amount });
+			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item), amount });
 		}
 		setConversationList((prev) =>
 			prev.map((item) =>
@@ -93,6 +94,12 @@ const ConversationList = () => {
 		});
 	};
 
+	/** 这条消息对方是谁：群聊里是发消息的成员，私聊就是聊天对象 */
+	const peerOf = (item: unknown) =>
+		isGroupId(conversationId)
+			? ((item as { senderId?: string }).senderId ?? groupDefaultSender(conversationId) ?? conversationId)
+			: conversationId;
+
 	const generateRedPacketAcceptedReplyConversation = (
 		conversationItemId: TConversationItem["id"],
 	) => {
@@ -103,7 +110,7 @@ const ConversationList = () => {
 			applyMoneyMove({
 				kind: "redPacket",
 				direction: "in",
-				peerId: conversationId,
+				peerId: peerOf(packet),
 				amount: packet.amount,
 			});
 		}
@@ -174,8 +181,10 @@ const ConversationList = () => {
 		id: string;
 		amount: string;
 		note: string;
+		/** 群聊：发红包的成员 */
+		sender?: string;
 	} | null>(null);
-	const friend = getProfileValueSnapshot(conversationId);
+	const friend = getProfileValueSnapshot(rp?.sender ?? conversationId);
 	const friendName = friend?.remark || friend?.nickname || "好友";
 	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const voiceTok = useRef(0);
@@ -228,6 +237,7 @@ const ConversationList = () => {
 				id: item.id,
 				amount: (item as IConversationTypeRedPacket).amount,
 				note: (item as IConversationTypeRedPacket).note ?? "",
+				sender: peerOf(item),
 			});
 			return;
 		}
