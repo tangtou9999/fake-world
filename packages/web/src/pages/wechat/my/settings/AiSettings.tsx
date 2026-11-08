@@ -1,7 +1,7 @@
 import useScreenTopBg from "@/components/useScreenTopBg";
 import KeyPanel from "./KeyPanel";
 import { DEFAULT_GEMINI_MODEL, type VoiceFx, VOICE_PACES, VOICE_SCENES, geminiConfigAtom, hasApiKey, resolveProfile } from "@/stateV2/gemini";
-import { callGemini, listGeminiModels } from "@/utils/gemini";
+import { callGemini, listGeminiModels, normalizeDeepSeekApiKey, testDeepSeekConnection } from "@/utils/gemini";
 import { geminiSpeak, isModelId, unlockAudio } from "@/utils/tts";
 import { useAtom } from "jotai";
 import { type ReactNode, useState } from "react";
@@ -81,8 +81,13 @@ const AiSettings = () => {
 		setBusy(true);
 		setResult(null);
 		try {
-			const reply = await callGemini("只回复两个字：成功");
-			setResult({ ok: true, text: `连接成功：${reply.trim().slice(0, 30)}` });
+			if (normalizeDeepSeekApiKey(config.deepseekApiKey)) {
+				const reply = await testDeepSeekConnection(config.deepseekApiKey);
+				setResult({ ok: true, text: `DeepSeek 连接成功：${reply.trim().slice(0, 30)}` });
+			} else {
+				const reply = await callGemini("只回复两个字：成功");
+				setResult({ ok: true, text: `连接成功：${reply.trim().slice(0, 30)}` });
+			}
 		} catch (e) {
 			setResult({ ok: false, text: e instanceof Error ? e.message : String(e) });
 		} finally {
@@ -136,7 +141,7 @@ const AiSettings = () => {
 							placeholder="DeepSeek API Key（可不填）"
 							value={config.deepseekApiKey ?? ""}
 							autoComplete="off"
-							onChange={(e) => setConfig((v) => ({ ...v, deepseekApiKey: e.target.value.trim() }))}
+							onChange={(e) => setConfig((v) => ({ ...v, deepseekApiKey: normalizeDeepSeekApiKey(e.target.value) }))}
 						/>
 					</div>
 					<KeyPanel />
