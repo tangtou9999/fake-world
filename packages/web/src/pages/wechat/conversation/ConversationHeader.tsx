@@ -17,8 +17,8 @@ const ConversationHeader = () => {
 	const navigate = useModeNavigate();
 
 	return (
-		<div className="grid h-11 shrink-0 grid-cols-3 items-center border-black/10 border-b bg-[#EDEDED] px-4">
-			<div className="flex items-center">
+		<div className="flex h-11 shrink-0 items-center border-black/10 border-b bg-[#EDEDED] px-4">
+			<div className="flex min-w-[72px] shrink-0 items-center">
 				<BackFilledSVG
 					fill="black"
 					className="h-5 w-5 cursor-pointer"
@@ -36,10 +36,17 @@ const ConversationHeader = () => {
 					{unreadCount.count}
 				</canBeDetected.div>
 			</div>
-			<div className="flex items-center justify-center font-medium text-[17px] text-black/90">
-				{group ? `${group.name}(${groupCount(group)})` : (friendProfile?.remark ?? friendProfile?.nickname)}
+			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90">
+				{group ? (
+					<>
+						<span className="truncate">{group.name}</span>
+						<span className="shrink-0">({groupCount(group)})</span>
+					</>
+				) : (
+					<span className="truncate">{friendProfile?.remark ?? friendProfile?.nickname}</span>
+				)}
 			</div>
-			<div className="flex items-center justify-end">
+			<div className="flex min-w-[72px] shrink-0 items-center justify-end">
 				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => group && navigate(`/wechat/conversation/${id}/info`)} />
 			</div>
 		</div>
