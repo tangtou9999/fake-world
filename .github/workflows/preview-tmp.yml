@@ -13,13 +13,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: group-3
+          ref: group-ai
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm -F @fake-world/web exec tsc --noEmit
       - run: pnpm -F @fake-world/web exec vite build
       - name: Publish dist to preview-build branch
         run: |
