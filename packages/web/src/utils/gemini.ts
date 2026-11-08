@@ -68,7 +68,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	});
 	data = await res.json().catch(() => ({}));
 	} catch (e) {
-		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 20 秒没有回应，请重试" } as GeminiError;
+		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 40 秒没有回应，请重试" } as GeminiError;
 		throw e;
 	} finally {
 		clearTimeout(timer);
