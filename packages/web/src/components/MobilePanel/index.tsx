@@ -37,17 +37,19 @@ const MobilePanel = () => {
 		let taps: { t: number; x: number; y: number }[] = [];
 		const onClick = (e: MouseEvent) => {
 			const target = e.target as HTMLElement | null;
-			if (!isPreviewNow() || target?.closest("input,textarea,[contenteditable=true],.ant-drawer")) {
+			if (!isPreviewNow() || target?.closest("input,textarea,[contenteditable=true],.ant-drawer,[role=dialog][aria-label=提现]")) {
 				taps = [];
 				return;
 			}
 			const now = Date.now();
-			// 数字键盘（支付密码、金额）：连点的往往是不同的键，距离放宽
+			// 数字键盘（支付密码、金额）上快速连点是正常输入，不触发编辑模式
 			const btn = target?.closest("button");
-			const onKeypad = !!btn && (/^[0-9.]$/.test((btn.textContent ?? "").trim()) || btn.getAttribute("aria-label") === "删除");
-			const maxDist = onKeypad ? 400 : 60;
+			if (btn && (/^[0-9.]$/.test((btn.textContent ?? "").trim()) || btn.getAttribute("aria-label") === "删除")) {
+				taps = [];
+				return;
+			}
 			taps = [...taps, { t: now, x: e.clientX, y: e.clientY }].filter(
-				(p) => now - p.t < 700 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < maxDist,
+				(p) => now - p.t < 500 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < 35,
 			);
 			if (taps.length >= 3) {
 				taps = [];
