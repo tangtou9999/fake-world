@@ -1,4 +1,4 @@
-import { callKey, getCallVideo } from "@/utils/videoStore";
+import { RINGTONE_KEY, callKey, getCallVideo } from "@/utils/videoStore";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -70,6 +70,26 @@ const VideoCall = ({ conversationId, name, avatar, incoming, onEnd }: Props) => 
 			void v.play().catch(() => undefined);
 		});
 	}, [phase, frSrc]);
+
+	// 来电铃声：设置里上传的本地音频，响铃阶段循环播放，接听/挂断即停
+	useEffect(() => {
+		if (!incoming || phase !== "ring") return;
+		let a: HTMLAudioElement | null = null;
+		let url = "";
+		let dead = false;
+		void getCallVideo(RINGTONE_KEY).then((b) => {
+			if (!b || dead) return;
+			url = URL.createObjectURL(b);
+			a = new Audio(url);
+			a.loop = true;
+			void a.play().catch(() => undefined);
+		});
+		return () => {
+			dead = true;
+			a?.pause();
+			if (url) URL.revokeObjectURL(url);
+		};
+	}, [incoming, phase]);
 
 	const hang = () => onEnd(phase === "on" ? secRef.current : incoming ? 0 : -1);
 	const answer = () => {

@@ -7,7 +7,9 @@ import { bankCardsAtom } from "@/stateV2/bankCards";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { myProfileAtom } from "@/stateV2/profile";
 import List from "@/wechatComponents/List";
+import { RINGTONE_KEY, delCallVideo, getCallVideo, putCallVideo } from "@/utils/videoStore";
 import { message } from "antd";
+import { useEffect, useRef, useState } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import BankLogo from "../../wallet/BankLogo";
 import { genderLabel, maskPhone, useFillMeProfileDefaults } from "../profileText";
@@ -21,6 +23,18 @@ const Settings = () => {
 	const { setMode } = useMode();
 	useScreenTopBg("#EDEDED");
 	useFillMeProfileDefaults();
+	const [ringName, setRingName] = useState("");
+	const fileRef = useRef<HTMLInputElement>(null);
+	useEffect(() => {
+		void getCallVideo(RINGTONE_KEY).then((b) => setRingName(b ? ((b as File).name || "已设置") : ""));
+	}, []);
+	const pickRing = async (f?: File) => {
+		if (!f) return;
+		if (await putCallVideo(RINGTONE_KEY, f)) {
+			setRingName(f.name || "已设置");
+			message.success("来电铃声已设置，视频来电会默认响这个声音");
+		} else message.error("保存失败，可能文件太大或存储空间不足");
+	};
 	const phone = profile?.phone?.[0];
 	const grey = "max-w-[140px] truncate text-[15px] text-black/40";
 
@@ -98,6 +112,32 @@ const Settings = () => {
 					</List.Item>
 				</List>
 				<div className="px-4 py-2 text-[12px] text-black/30">仅在本机展示，不会连接银行</div>
+				<List className="mt-2">
+					<List.Item withJump onClick={() => fileRef.current?.click()} extra={<span className={grey}>{ringName || "未设置"}</span>}>
+						来电铃声
+					</List.Item>
+					{ringName && (
+						<List.Item
+							onClick={async () => {
+								await delCallVideo(RINGTONE_KEY);
+								setRingName("");
+							}}
+						>
+							<span className="text-[#FA5151]">清除来电铃声</span>
+						</List.Item>
+					)}
+				</List>
+				<input
+					ref={fileRef}
+					type="file"
+					accept="audio/*"
+					className="hidden"
+					onChange={(e) => {
+						void pickRing(e.target.files?.[0]);
+						e.target.value = "";
+					}}
+				/>
+				<div className="px-4 py-2 text-[12px] text-black/30">仅保存在本机；视频来电响铃时循环播放</div>
 				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">AI</div>
 				<List>
 					<List.Item

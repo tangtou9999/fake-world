@@ -48,3 +48,4 @@ export const delCallVideo = async (key: string) => {
 	}
 };
 export const callKey = (slot: "me" | "friend", conversationId: string) => `call:${slot}:${conversationId}`;
+export const RINGTONE_KEY = "ringtone";
