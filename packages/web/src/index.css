@@ -27,5 +27,4 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 
 /* 手机：整页固定，禁止左右拖动和回弹 */
 .wx-mobile,.wx-mobile body{overflow:hidden;overscroll-behavior:none}
-.wx-mobile body{position:fixed;top:0;left:0;right:0;bottom:0;width:100%}
 .wx-mobile #screen{overscroll-behavior:none}
