@@ -7,7 +7,9 @@ import TopOperations from "@/components/TopOperations";
 import { conversationListAtom } from "@/stateV2/conversation";
 import { EMetaDataType } from "@/stateV2/detectedNode";
 import { type IDialogueItem, dialogueItemAtom, dialogueListAtom } from "@/stateV2/dialogueList";
+import { groupAtom } from "@/stateV2/group";
 import { profileAtom } from "@/stateV2/profile";
+import GroupAvatar from "@/wechatComponents/GroupAvatar";
 import { Modal } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
 import { RESET } from "jotai/utils";
@@ -33,12 +35,13 @@ const DialogueItem = ({ itemId, className }: Props) => {
 		lastMessage,
 		lastMessageTime,
 	} = useAtomValue(dialogueItemAtom(itemId))!;
-	const friendProfile = useAtomValue(profileAtom(friendId))!;
+	const friendProfile = useAtomValue(profileAtom(friendId));
+	const group = useAtomValue(groupAtom(friendId));
 	const setConversationList = useSetAtom(conversationListAtom(friendId));
 	const setDialogueList = useSetAtom(dialogueListAtom);
 	const navigate = useNavigate();
 
-	const { nickname, avatarInfo, remark } = friendProfile;
+	const { nickname, avatarInfo, remark } = friendProfile ?? { nickname: group?.name ?? "", avatarInfo: "", remark: undefined };
 	const [sheet, setSheet] = useState(false);
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const pressed = useRef(false);
@@ -96,12 +99,16 @@ const DialogueItem = ({ itemId, className }: Props) => {
 					],
 					label: "对话项目",
 				},
-				{
-					type: EMetaDataType.FirendProfile,
-					index: friendId,
-					label: "好友个人信息",
-					treeItemDisplayName: (data) => `对话项目（${data.nickname}）`,
-				},
+				...(group
+					? []
+					: [
+							{
+								type: EMetaDataType.FirendProfile,
+								index: friendId,
+								label: "好友个人信息",
+								treeItemDisplayName: (data: { nickname: string }) => `对话项目（${data.nickname}）`,
+							} as const,
+						]),
 			]}
 			onTouchStart={startPress}
 			onTouchEnd={cancelPress}
@@ -150,7 +157,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 				</div>
 			)}
 			<Badge type={unreadDisplayType} text={unreadMarkNumber} hidden={badgeHide}>
-				<h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />
+				{group ? <GroupAvatar memberIds={group.memberIds} /> : <h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />}
 			</Badge>
 			<div className="ml-3 flex min-w-0 flex-1 flex-col justify-center gap-1 overflow-hidden">
 				<div className="flex items-center justify-between gap-2">

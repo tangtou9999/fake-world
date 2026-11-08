@@ -1,6 +1,7 @@
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { EConversationType, type TConversationItem } from "@/stateV2/conversation";
 import { normalizeUpperText } from "@/stateV2/conversation/helpers";
+import { groupDefaultSender } from "@/stateV2/group";
 import { memo } from "react";
 import { useParams } from "react-router-dom";
 import CenterText from "./CenterText";
@@ -20,7 +21,7 @@ const ConversationItem = ({ data }: Props) => {
 	const { type, role, id: conversationItemId } = data;
 	const upperText = normalizeUpperText(data.upperText, data.sendTimestamp);
 	const { id } = useParams<{ id: string }>();
-	const senderId = role === "friend" ? id! : MYSELF_ID;
+	const senderId = role === "friend" ? ((data as { senderId?: string }).senderId ?? groupDefaultSender(id!) ?? id!) : MYSELF_ID;
 
 	switch (type) {
 		case EConversationType.text:

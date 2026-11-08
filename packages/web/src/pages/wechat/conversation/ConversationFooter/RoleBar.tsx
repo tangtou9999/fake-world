@@ -1,4 +1,7 @@
+import { MYSELF_ID } from "@/faker/wechat/user";
 import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
+import { currentSenderId, groupAtom, groupSenderAtom, isGroupId } from "@/stateV2/group";
+import { allProfilesAtom } from "@/stateV2/profile";
 import {
 	EConversationType,
 	type TConversationItem,
@@ -26,6 +29,9 @@ const PREFIX = /^\s*(我|对方|他|她|friend|me)\s*[:：]\s*/i;
 
 const RoleBar = () => {
 	const { conversationId, scrollConversationListToBtm } = useConversationAPI();
+	const groupInfo = useAtomValue(groupAtom(conversationId));
+	const profiles = useAtomValue(allProfilesAtom);
+	const [, setSenders] = useAtom(groupSenderAtom);
 	const [config, setConfig] = useAtom(inputterConfigAtom);
 	const [open, setOpen] = useState(false);
 	const [text, setText] = useState("");
@@ -120,6 +126,7 @@ const RoleBar = () => {
 					({
 						type: EConversationType.text,
 						role: it.role,
+						...(it.role === "friend" && isGroupId(conversationId) ? { senderId: currentSenderId(conversationId) } : {}),
 						id: nanoid(8),
 						textContent: [{ type: "paragraph", children: [{ text: it.text }] }],
 						sendTimestamp: now + i,
@@ -139,7 +146,21 @@ const RoleBar = () => {
 			<div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap bg-[#F7F7F7] px-3 pt-2 [&>*]:shrink-0 [scrollbar-width:none]">
 				<span className="text-[13px] text-black/40">发送人</span>
 				{roleBtn("mine", "我")}
-				{roleBtn("friend", "对方")}
+				{roleBtn("friend", isGroupId(conversationId) ? "成员" : "对方")}
+				{isGroupId(conversationId) && config.sendRole === "friend" && (
+					<select
+						aria-label="选择发言成员"
+						value={currentSenderId(conversationId) ?? ""}
+						onChange={(e) => setSenders((v) => ({ ...v, [conversationId]: e.target.value }))}
+						className="h-7 max-w-[110px] rounded-full bg-black/5 px-2 text-[14px] text-black/70"
+					>
+						{(groupInfo?.memberIds ?? []).filter((m) => m !== MYSELF_ID).map((m) => (
+							<option key={m} value={m}>
+								{profiles.find((p) => p.id === m)?.remark || profiles.find((p) => p.id === m)?.nickname || m}
+							</option>
+						))}
+					</select>
+				)}
 				<button
 					type="button"
 					onClick={() => { setPreview(null); setAiErr(""); setAiDone(""); setAiOpen(true); }}

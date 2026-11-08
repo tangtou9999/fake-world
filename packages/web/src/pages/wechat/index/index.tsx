@@ -60,7 +60,7 @@ const WechatIndex = () => {
 						<div className="absolute -top-[6px] right-[14px] h-3 w-3 rotate-45 bg-[#4C4C4C]" />
 						{(
 							[
-								["发起群聊", ""],
+								["发起群聊", "/wechat/group/new"],
 								["添加朋友", "/wechat/add-friend"],
 								["扫一扫", "/wechat/scan-pay"],
 								["收付款", "/wechat/scan-pay"],

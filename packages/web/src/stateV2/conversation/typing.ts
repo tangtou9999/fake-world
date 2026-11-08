@@ -19,6 +19,8 @@ export interface IConversationItemBase {
 	upperText?: string;
 	sendTimestamp?: number;
 	role: TConversationRole;
+	/** 群聊里「对方」这条消息是谁发的（成员 id）；单聊不用 */
+	senderId?: string;
 }
 
 export interface IConversationTypeText extends IConversationItemBase {

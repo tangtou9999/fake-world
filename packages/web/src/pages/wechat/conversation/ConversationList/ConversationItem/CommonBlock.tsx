@@ -15,6 +15,8 @@ import type {
 } from "react";
 import { twJoin, twMerge } from "tailwind-merge";
 import { useConversationAPI } from "../../context";
+import { MYSELF_ID } from "@/faker/wechat/user";
+import { groupAtom } from "@/stateV2/group";
 
 interface Props<P = AnyObject> {
 	upperText: IConversationItemBase["upperText"];
@@ -42,9 +44,12 @@ const CommonBlock = <P extends AnyObject>({
 	innerBlockProps,
 	onClick,
 }: PropsWithChildren<Props<P>>) => {
-	const { avatarInfo } = useAtomValue(profileAtom(senderId))!;
+	const { avatarInfo, nickname, remark } = useAtomValue(profileAtom(senderId))!;
 	const navigate = useModeNavigate({ silence: true });
-	const { sendTickleText } = useConversationAPI();
+	const { sendTickleText, conversationId } = useConversationAPI();
+	const group = useAtomValue(groupAtom(conversationId));
+	const showName = !!group && senderId !== MYSELF_ID && group.showNick !== false;
+
 
 	const handleClick: MouseEventHandler<HTMLImageElement> = (ev) => {
 		const { detail: count } = ev;
@@ -81,6 +86,8 @@ const CommonBlock = <P extends AnyObject>({
 					)}
 					onClick={debouncedHandleClick}
 				/>
+				<div className={showName ? "flex min-w-0 max-w-[85%] flex-col items-start" : "contents"}>
+				{showName && <div className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>}
 				<InnerBlockComponent
 					css={css`
             &::before {
@@ -95,6 +102,7 @@ const CommonBlock = <P extends AnyObject>({
 				>
 					{children}
 				</InnerBlockComponent>
+				</div>
 				{extraElement}
 			</div>
 		</>

@@ -1,6 +1,7 @@
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { touchDialogue } from "@/stateV2/fileHelper";
+import { currentSenderId, isGroupId } from "@/stateV2/group";
 import {
 	EConversationType,
 	type IConversationTypeRedPacket,
@@ -100,6 +101,7 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 				{
 					type: EConversationType.text,
 					role: sendRole,
+					...(sendRole === "friend" && isGroupId(conversationId) ? { senderId: currentSenderId(conversationId) } : {}),
 					textContent: value,
 					id: nanoid(8),
 					sendTimestamp: dayjs().valueOf(),
