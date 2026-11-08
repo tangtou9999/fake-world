@@ -42,8 +42,12 @@ const MobilePanel = () => {
 				return;
 			}
 			const now = Date.now();
+			// 数字键盘（支付密码、金额）：连点的往往是不同的键，距离放宽
+			const btn = target?.closest("button");
+			const onKeypad = !!btn && (/^[0-9.]$/.test((btn.textContent ?? "").trim()) || btn.getAttribute("aria-label") === "删除");
+			const maxDist = onKeypad ? 400 : 60;
 			taps = [...taps, { t: now, x: e.clientX, y: e.clientY }].filter(
-				(p) => now - p.t < 700 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < 60,
+				(p) => now - p.t < 700 && Math.hypot(p.x - e.clientX, p.y - e.clientY) < maxDist,
 			);
 			if (taps.length >= 3) {
 				taps = [];
