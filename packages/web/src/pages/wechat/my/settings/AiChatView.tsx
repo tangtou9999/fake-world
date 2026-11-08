@@ -275,7 +275,15 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				)}
 				{messages.length === 0 && (gemini.apiKey || gemini.apiKey2) && (
 					<div className="mt-8 text-center text-[14px] text-black/40 leading-7">
-						{isChat ? (
+						{isGroupChat ? (
+							<>
+								「群里接着聊，大家吵吵闹闹写 30 条」
+								<br />
+								「阿美发个红包，其他人抢完起哄」
+								<br />
+								「小王和小李为了吃什么吵起来」
+							</>
+						) : isChat ? (
 							<>
 								「接着聊下去，写 20 条」
 								<br />
