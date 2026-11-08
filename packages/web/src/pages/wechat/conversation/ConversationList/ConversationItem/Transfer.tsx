@@ -3,7 +3,8 @@ import ErrorSVG from "@/assets/error-outlined.svg?react";
 import Previous2SVG from "@/assets/previous2-outlined.svg?react";
 import Transfer2SVG from "@/assets/transfer2-outlined.svg?react";
 import type { IConversationTypeTransfer } from "@/stateV2/conversation";
-import type { IStateProfile } from "@/stateV2/profile";
+import { type IStateProfile, profileAtom } from "@/stateV2/profile";
+import { useAtomValue } from "jotai";
 import { get, isEmpty } from "lodash-es";
 import { type ComponentType, type SVGProps, memo } from "react";
 import { twJoin } from "tailwind-merge";
@@ -18,6 +19,7 @@ type Props = {
 	amount: IConversationTypeTransfer["amount"];
 	note: IConversationTypeTransfer["note"];
 	originalSender: IConversationTypeTransfer["originalSender"];
+	transferTo?: string;
 };
 
 const SVG_COMPONENT_MAP: Record<
@@ -38,9 +40,17 @@ const Transfer = ({
 	note,
 	originalSender,
 	role,
+	transferTo,
 }: Props) => {
+	const target = useAtomValue(profileAtom(transferTo ?? ""));
+	const targetName = target?.remark || target?.nickname;
 	const SVGComp = SVG_COMPONENT_MAP[transferStatus];
 	const getTransferNote = () => {
+		// 群聊：写明转给了谁
+		if (transferTo && targetName) {
+			if (transferStatus === "awaiting") return isEmpty(note) ? `转账给${targetName}` : note;
+			if (transferStatus === "accepted") return `${targetName}已收款`;
+		}
 		if (transferStatus === "awaiting") {
 			return isEmpty(note)
 				? get(TRANSFER_TEXT_NOTE_MAP, [originalSender, role, "awaiting"], "")

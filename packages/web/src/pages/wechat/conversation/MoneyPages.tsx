@@ -8,6 +8,8 @@ import {
 	fromLastGenerateUpperText,
 	setConversationListValue,
 } from "@/stateV2/conversation";
+import { groupAtom, groupDefaultSender, isGroupId } from "@/stateV2/group";
+import { MYSELF_ID } from "@/faker/wechat/user";
 import { profileAtom } from "@/stateV2/profile";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { Chevron } from "@/wechatComponents/List";
@@ -26,7 +28,7 @@ const validAmount = (v: string) => /^\d{1,7}(\.\d{1,2})?$/.test(v) && Number(v) 
 function useSend(kind: Kind) {
 	const { id = "" } = useParams<{ id: string }>();
 	const navigate = useNavigate();
-	return (params: { sender: Sender; amount: string; note: string; done: boolean }) => {
+	return (params: { sender: Sender; amount: string; note: string; done: boolean; target?: string }) => {
 		const amount = Number(params.amount).toFixed(2);
 		const base = {
 			id: nanoid(8),
@@ -35,6 +37,8 @@ function useSend(kind: Kind) {
 			amount,
 			note: params.note || undefined,
 			sendTimestamp: dayjs().valueOf(),
+			// 群聊：我转给 target；对方发的则由 target 这位成员发出
+			...(params.target && params.sender === "friend" ? { senderId: params.target } : {}),
 		} as const;
 		setConversationListValue(id, (prev) => {
 			const upperText = fromLastGenerateUpperText(prev);
@@ -48,6 +52,7 @@ function useSend(kind: Kind) {
 						}
 					: {
 							...base,
+							...(params.target && params.sender === "mine" ? { transferTo: params.target } : {}),
 							type: EConversationType.transfer,
 							transferStatus: params.done ? "accepted" : "awaiting",
 							upperText,
@@ -56,9 +61,9 @@ function useSend(kind: Kind) {
 		});
 		// 同步到零钱：我发出 → 扣；对方发的且已领取 → 加
 		if (params.sender === "mine") {
-			applyMoneyMove({ kind, direction: "out", peerId: id, amount });
+			applyMoneyMove({ kind, direction: "out", peerId: params.target || id, amount });
 		} else if (params.done) {
-			applyMoneyMove({ kind, direction: "in", peerId: id, amount });
+			applyMoneyMove({ kind, direction: "in", peerId: params.target || id, amount });
 		}
 		touchDialogue(id, kind === "redPacket" ? "[微信红包]" : "[转账]");
 		navigate(`/wechat/conversation/${id}`, { replace: true });
@@ -222,10 +227,24 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 const keyCls =
 	"flex items-center justify-center rounded-[5px] bg-white text-[24px] text-black/90 active:bg-[#E4E4E4]";
 
+const MemberRow = ({ id, active, onPick }: { id: string; active: boolean; onPick: () => void }) => {
+	const p = useAtomValue(profileAtom(id));
+	return (
+		<button type="button" onClick={onPick} className="flex w-full items-center border-black/5 border-b bg-white px-5 py-3 text-left">
+			<span className="h-10 w-10 shrink-0 overflow-hidden rounded-[5px] bg-[#ddd]">{p?.avatarInfo && <h.img src={p.avatarInfo} className="h-full w-full object-cover" />}</span>
+			<span className="ml-3 flex-1 truncate text-[17px]">{p?.remark || p?.nickname || id}</span>
+			{active && <span className="text-[#07C160]">✓</span>}
+		</button>
+	);
+};
+
 export const TransferSend = () => {
 	useScreenTopBg("#EDEDED");
 	const { id = "" } = useParams<{ id: string }>();
-	const profile = useAtomValue(profileAtom(id));
+	const group = useAtomValue(groupAtom(id));
+	const [target, setTarget] = useState<string>(() => (isGroupId(id) ? (groupDefaultSender(id) ?? "") : ""));
+	const [picking, setPicking] = useState(false);
+	const profile = useAtomValue(profileAtom(group ? target : id));
 	const send = useSend("transfer");
 	const [amount, setAmount] = useState("");
 	const [note, setNote] = useState("");
@@ -251,13 +270,36 @@ export const TransferSend = () => {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-[#EDEDED]">
 			<Nav />
-			<div className="flex shrink-0 items-start px-[31px] pt-[14px] pb-[22px]">
+			{picking && group && (
+				<div className="fixed inset-0 z-[60] flex items-end bg-black/40" onClick={() => setPicking(false)}>
+					<div className="max-h-[70%] w-full overflow-y-auto rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
+						<div className="border-black/10 border-b py-3 text-center text-[16px] text-black/60">选择转账对象</div>
+						{group.memberIds
+							.filter((m) => m !== MYSELF_ID)
+							.map((m) => (
+								<MemberRow
+									key={m}
+									id={m}
+									active={m === target}
+									onPick={() => {
+										setTarget(m);
+										setPicking(false);
+									}}
+								/>
+							))}
+					</div>
+				</div>
+			)}
+			<div
+				className="flex shrink-0 items-start px-[31px] pt-[14px] pb-[22px]"
+				onClick={group ? () => setPicking(true) : undefined}
+			>
 				<div className="min-w-0 flex-1">
 					<div className="truncate font-medium text-[17px] text-black/90 leading-6">
 						转账给 {name} {mask}
 					</div>
 					<div className="mt-[3px] text-[16px] text-black/40 leading-5">
-						微信号： {profile?.wechat}
+						{group ? "点击头像可更换转账对象" : `微信号： ${profile?.wechat ?? ""}`}
 					</div>
 				</div>
 				<span className="h-[42px] w-[42px] shrink-0 overflow-hidden rounded-[5px] bg-[#ddd]">
@@ -325,7 +367,7 @@ export const TransferSend = () => {
 					type="button"
 					className={`flex items-center justify-center rounded-[5px] text-[18px] text-white ${ok ? "bg-[#07C160]" : "bg-[#07C160]/60"}`}
 					style={{ gridColumn: 4, gridRow: "2 / span 3" }}
-					onClick={() => ok && send({ sender: isEdit ? sender : "mine", amount, note: note.trim(), done: isEdit && done })}
+					onClick={() => ok && send({ sender: isEdit ? sender : "mine", amount, note: note.trim(), done: isEdit && done, target: group ? target : undefined })}
 				>
 					转账
 				</button>

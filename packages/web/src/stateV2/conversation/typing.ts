@@ -43,6 +43,8 @@ export interface IConversationTypeTransfer extends IConversationItemBase {
 	transferStatus: "awaiting" | "accepted" | "rejected" | "expired";
 	amount: string;
 	note?: string;
+	/** 群聊里这笔转账转给了哪位成员（成员 id） */
+	transferTo?: string;
 }
 
 export interface IConversationTypeRedPacket extends IConversationItemBase {

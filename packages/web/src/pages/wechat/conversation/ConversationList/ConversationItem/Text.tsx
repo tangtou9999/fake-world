@@ -1,6 +1,8 @@
 import type { IConversationTypeText } from "@/stateV2/conversation";
 import type { IStateProfile } from "@/stateV2/profile";
 import SlateText from "@/wechatComponents/SlateText";
+import { slateToPlain } from "@/wechatComponents/SlateText/emojiNames";
+import { MYSELF_ID } from "@/faker/wechat/user";
 import { memo } from "react";
 import CommonBlock from "./CommonBlock";
 import TextReference from "./TextReference";
@@ -14,7 +16,33 @@ type Props = {
 	translation?: IConversationTypeText["translation"];
 };
 
+/** 视频通话记录：小摄像机图标 + 文字；我发起的图标在右、对方来电的图标在左 */
+const CallIcon = ({ mirror }: { mirror?: boolean }) => (
+	<svg width="21" height="15" viewBox="0 0 21 15" fill="none" aria-hidden="true" className="shrink-0" style={mirror ? { transform: "scaleX(-1)" } : undefined}>
+		<rect x="1" y="1.5" width="13" height="12" rx="2.2" stroke="#1A1A1A" strokeWidth="1.6" />
+		<path d="M15.5 6.2 19.6 3.6v7.8l-4.1-2.6" stroke="#1A1A1A" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+	</svg>
+);
+
 const Text = ({ upperText, senderId, textContent, referenceId, conversationItemId, translation }: Props) => {
+	const plain = textContent.map((n) => slateToPlain(n as never)).join("");
+	if (plain.startsWith("📹 ")) {
+		const label = plain.slice(3);
+		const mine = senderId === MYSELF_ID;
+		return (
+			<CommonBlock
+				upperText={upperText}
+				senderId={senderId}
+				innerBlockClassName="group-[.friend]:bg-white group-[.mine]:bg-[#8CE97F] group-[.friend]:before:bg-white group-[.mine]:before:bg-[#8CE97F]"
+			>
+				<span className="flex items-center gap-3 whitespace-nowrap">
+					{!mine && <CallIcon />}
+					<span>{label}</span>
+					{mine && <CallIcon mirror />}
+				</span>
+			</CommonBlock>
+		);
+	}
 	return (
 		<>
 			<CommonBlock

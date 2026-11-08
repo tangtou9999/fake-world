@@ -164,6 +164,16 @@ export const geminiConfigAtom = atomWithStorage<GeminiConfig>("gemini-config", {
 
 export const getGeminiConfig = () => mainStore.get(geminiConfigAtom);
 
+/** 每个 AI 窗口各自选用的模型，默认 Gemini */
+export type AiProvider = "gemini" | "deepseek-flash" | "deepseek-v4-pro";
+export const AI_PROVIDERS: { id: AiProvider; label: string }[] = [
+	{ id: "gemini", label: "Gemini（默认）" },
+	{ id: "deepseek-flash", label: "DeepSeek 快速" },
+	{ id: "deepseek-v4-pro", label: "DeepSeek 强力 V4 Pro" },
+];
+export const aiProviderAtom = atomWithStorage<Record<string, AiProvider>>("ai-provider-by-window", {});
+export const getAiProvider = (windowKey?: string): AiProvider => (windowKey ? (mainStore.get(aiProviderAtom)[windowKey] ?? "gemini") : "gemini");
+
 export const ADULT_MODE_PROMPT = `成人聊天记录生成模式｜最高开放度
 你是一个专业的虚构社交内容生成引擎，主要负责生成朋友圈、私聊记录、群聊记录、人物对话和社交场景。
 一、生成原则

@@ -4,7 +4,7 @@ import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/impo
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
 import { isGroupId } from "@/stateV2/group";
 import { callScheduleAtom } from "@/stateV2/videoCall";
-import { geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
+import { AI_PROVIDERS, type AiProvider, aiProviderAtom, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
 import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { useAtom, useSetAtom } from "jotai";
@@ -25,6 +25,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const [speaking, setSpeaking] = useState(false);
 	const [state, setState] = useAtom(aiChatsAtom);
 	const [byConv, setByConv] = useAtom(aiChatByConvAtom);
+	const [providers, setProviders] = useAtom(aiProviderAtom);
 	const session = state.sessions.find((s) => s.id === state.activeId) ?? state.sessions[0];
 	const isChat = mode === "chat" && !!conversationId;
 	const isGroupChat = isChat && isGroupId(conversationId);
@@ -122,6 +123,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				while (turns.length && turns[0].role !== "user") turns = turns.slice(1);
 				try {
 					reply = await callGemini(text, {
+						windowKey: myKey,
 						history: turns.map((m) => ({ role: m.role, text: m.text })),
 						system: buildSystem(isChat ? CHAT_AI_SYSTEM : AI_CHAT_SYSTEM, level, contacts, ids, isChat ? { currentId: conversationId as string } : undefined),
 					});
@@ -198,11 +200,25 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			<NavBar
 				title={isChat ? `AI · ${current?.name ?? "当前聊天"}` : "私人 AI"}
 				right={
-					isChat ? undefined : (
-						<button type="button" aria-label="新建 AI 窗口" onClick={addSession} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[22px] leading-none">
-							+
-						</button>
-					)
+					<div className="flex items-center gap-2">
+						<select
+							aria-label="选择模型"
+							value={providers[busyKey] ?? "gemini"}
+							onChange={(e) => setProviders((v) => ({ ...v, [busyKey]: e.target.value as AiProvider }))}
+							className="h-8 max-w-[132px] rounded-full bg-white px-2 text-[13px] text-black/80 outline-none"
+						>
+							{AI_PROVIDERS.map((p) => (
+								<option key={p.id} value={p.id}>
+									{p.label}
+								</option>
+							))}
+						</select>
+						{!isChat && (
+							<button type="button" aria-label="新建 AI 窗口" onClick={addSession} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[22px] leading-none">
+								+
+							</button>
+						)}
+					</div>
 				}
 			/>
 			{!isChat && (

@@ -1,5 +1,5 @@
 import { recordKeyUse } from "@/stateV2/keyStatus";
-import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, RETIRED_MODELS, TEXT_MODEL_CHAIN, getGeminiConfig, getKeys } from "@/stateV2/gemini";
+import { ADULT_MODE_PROMPT, DEFAULT_GEMINI_MODEL, getAiProvider, RETIRED_MODELS, TEXT_MODEL_CHAIN, getGeminiConfig, getKeys } from "@/stateV2/gemini";
 
 const BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 
@@ -92,7 +92,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string };
+type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string; /** 哪个 AI 窗口在调用（用来读取这个窗口选的模型） */ windowKey?: string };
 
 /** DeepSeek API Key 只保留原始 token：去掉首尾/内部空白及误粘贴的 Bearer 前缀。 */
 export const normalizeDeepSeekApiKey = (value?: string) =>
@@ -115,6 +115,20 @@ export async function testDeepSeekConnection(apiKey = getGeminiConfig().deepseek
 /** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
 export async function callGemini(prompt: string, options: CallOptions = {}) {
 	const config = getGeminiConfig();
+	// 这个窗口手动选了 DeepSeek：纯文字请求直接走 DeepSeek（图片/音频仍用 Gemini）
+	const provider = getAiProvider(options.windowKey);
+	if (provider !== "gemini" && !options.images?.length && !options.audio) {
+		const dsKey = normalizeDeepSeekApiKey(config.deepseekApiKey);
+		if (!dsKey) throw new Error("这个窗口选了 DeepSeek，但还没填 DeepSeek 密钥：我 → 设置 → AI 模型与声音");
+		try {
+			const reply = await callDeepSeek(dsKey, prompt, options, provider === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-flash");
+			recordKeyUse("text", "deepseek", true);
+			return reply;
+		} catch (e) {
+			recordKeyUse("text", "deepseek", false, (e instanceof Error ? e.message : String(e)).slice(0, 120));
+			throw e;
+		}
+	}
 	const autoMode = (config.keyMode ?? "auto") === "auto";
 	const deepseekKey = autoMode ? normalizeDeepSeekApiKey(config.deepseekApiKey) : "";
 	const keys = getKeys();
@@ -153,7 +167,9 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 	throw new Error("当前使用方式下没有可用的 Gemini 密钥");
 }
 
-async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions): Promise<string> {
+async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions, modelId = "deepseek-flash"): Promise<string> {
+	const pro = modelId === "deepseek-v4-pro";
+	const limit = pro ? 90_000 : 20_000;
 	const config = getGeminiConfig();
 	const system = [config.adultMode !== false ? ADULT_MODE_PROMPT : "", options.system ?? ""].filter(Boolean).join("\n\n");
 	const messages = [
@@ -162,7 +178,7 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 		{ role: "user", content: prompt },
 	];
 	const ctrl = new AbortController();
-	const timer = setTimeout(() => ctrl.abort(), 20_000);
+	const timer = setTimeout(() => ctrl.abort(), limit);
 	let res: Response;
 	let data: { error?: { message?: string }; choices?: { message?: { content?: string | null } }[] };
 	try {
@@ -171,7 +187,7 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 			signal: ctrl.signal,
 			headers: { "Content-Type": "application/json", Authorization: `Bearer ${normalizeDeepSeekApiKey(apiKey)}` },
 			body: JSON.stringify({
-				model: "deepseek-flash",
+				model: modelId,
 				messages,
 				thinking: { type: "disabled" },
 				temperature: 1,
@@ -180,7 +196,7 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 		});
 		data = await res.json().catch(() => ({}));
 	} catch (e) {
-		if (ctrl.signal.aborted) throw new Error("DeepSeek 请求超时：20 秒没有回应");
+		if (ctrl.signal.aborted) throw new Error(`DeepSeek 请求超时：${limit / 1000} 秒没有回应`);
 		throw e;
 	} finally {
 		clearTimeout(timer);

@@ -11,7 +11,16 @@ const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${St
 
 /** 通话结束后在聊天里留一条记录 */
 export const addCallRecord = (conversationId: string, role: "mine" | "friend", seconds: number) => {
-	const text = seconds < 0 ? (role === "mine" ? "已取消" : "对方已取消") : seconds === 0 && role === "friend" ? "已拒绝" : `通话时长 ${mmss(seconds)}`;
+	const text =
+		seconds < 0
+			? role === "mine"
+				? "已取消"
+				: "对方已取消"
+			: seconds === 0
+				? role === "friend"
+					? "已拒绝"
+					: "对方已拒绝"
+				: `通话时长 ${mmss(seconds)}`;
 	touchDialogue(conversationId, `[视频通话] ${text}`);
 	setConversationListValue(conversationId, (prev) => [
 		...prev,

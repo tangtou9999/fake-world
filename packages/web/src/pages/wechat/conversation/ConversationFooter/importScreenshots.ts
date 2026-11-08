@@ -101,8 +101,21 @@ export function applyParsedItems(
 	const before = range ? existing.filter((v) => (v.sendTimestamp ?? 0) < range.from) : [];
 	const after = range ? existing.filter((v) => (v.sendTimestamp ?? 0) > range.to) : [];
 	const lastBefore = range ? (before.at(-1)?.sendTimestamp ?? 0) : undefined;
-	const stamps = timed ? computeStamps(conversationId, list, replace, { last: lastBefore, cap: after[0]?.sendTimestamp }) : [];
-	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : (existing.at(-1)?.sendTimestamp ?? 0);
+	// 追加「很久以前」的聊天（一个月前、半年前……）：不挤到最后一条后面，而是按时间插进原有记录中间
+	const firstAtRaw = list.find((v) => v.at && dayjs(v.at).isValid())?.at;
+	const firstAtTs = firstAtRaw ? dayjs(firstAtRaw).valueOf() : 0;
+	const lastExistingTs = existing.at(-1)?.sendTimestamp ?? 0;
+	const past = timed && !replace && !range && firstAtTs > 0 && firstAtTs < lastExistingTs - 60_000;
+	const insertAt = past ? existing.findIndex((v) => (v.sendTimestamp ?? 0) > firstAtTs) : -1;
+	const nextAfterPast = past && insertAt >= 0 ? existing[insertAt] : undefined;
+	const stamps = timed
+		? computeStamps(conversationId, list, replace, {
+				last: past ? 0 : lastBefore,
+				cap: past ? nextAfterPast?.sendTimestamp : after[0]?.sendTimestamp,
+				fromZero: past,
+			})
+		: [];
+	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : past ? (insertAt > 0 ? (existing[insertAt - 1].sendTimestamp ?? 0) : 0) : (existing.at(-1)?.sendTimestamp ?? 0);
 	let pendingTime: string | undefined;
 	const items: TConversationItem[] = [];
 	let lastPreview = "";
@@ -173,6 +186,14 @@ export function applyParsedItems(
 		if (range) {
 			return [...prev.filter((v) => (v.sendTimestamp ?? 0) < range.from), ...items, ...prev.filter((v) => (v.sendTimestamp ?? 0) > range.to)];
 		}
+		if (past) {
+			const idx = prev.findIndex((v) => (v.sendTimestamp ?? 0) > firstAtTs);
+			if (idx < 0) return [...prev, ...items];
+			const lastNew = items.at(-1)?.sendTimestamp ?? 0;
+			const next = prev[idx];
+			const fixedNext = { ...next, upperText: (next.sendTimestamp ?? 0) - lastNew >= 5 * 60_000 ? formatWechatTime(next.sendTimestamp ?? 0) : undefined } as TConversationItem;
+			return [...prev.slice(0, idx), ...items, fixedNext, ...prev.slice(idx + 1)];
+		}
 		return replace ? items : [...prev, ...items];
 	});
 	if (lastPreview && !(range && after.length)) touchDialogue(conversationId, lastPreview);
@@ -184,13 +205,13 @@ function computeStamps(
 	conversationId: string,
 	list: ParsedItem[],
 	replace: boolean,
-	opt: { last?: number; cap?: number } = {},
+	opt: { last?: number; cap?: number; fromZero?: boolean } = {},
 ) {
 	const now = Date.now();
 	const last = opt.last ?? (replace ? 0 : (getConversationListValueSnapshot(conversationId).at(-1)?.sendTimestamp ?? 0));
 	const top = Math.min(now, opt.cap ? opt.cap - 1000 : now);
 	const out: number[] = [];
-	let prev = last || now - list.length * 60_000;
+	let prev = opt.fromZero ? 0 : last || now - list.length * 60_000;
 	list.forEach((it) => {
 		const d = it.at ? dayjs(it.at) : null;
 		let t = d?.isValid() ? d.valueOf() : prev + 30_000;
@@ -228,7 +249,7 @@ ${ctx.script}
 
 执行规则：
 1. 严格遵守剧本里的数量和顺序，如「对方说两句、我说一句」就是 2 条 friend、1 条 me；「中间停顿几句」或「过了一会/第二天」意味着时间间隔，用 at 的跳跃表现，不要生成消息。
-2. 每个元素都必须有 at（"YYYY-MM-DD HH:mm"）。at 必须单调递增、不早于最后一条已有消息的时间、且绝对不能晚于现在的真实时间 ${ctx.now}。「第二天」「一小时后」等如果会超过现在，就把整段剧本整体往前挪（例如挪到昨天或前天），保证最后一条仍不晚于现在。同一段连续对话间隔 5 秒到 2 分钟；「停顿」「新的时间节点」间隔至少 10 分钟，通常几十分钟到几小时。
+2. 每个元素都必须有 at（"YYYY-MM-DD HH:mm"）。at 必须单调递增、且绝对不能晚于现在的真实时间 ${ctx.now}。默认接在最后一条已有消息之后；但如果用户明确要求生成「很久以前」的聊天（如「一个月前」「两个月前」「半年前」「去年」「上个月那几天」），at 必须真的写成那段过去的日期（以现在的真实时间往前推算，系统会按时间把它插到聊天记录的正确位置），不要写成今天或最近几天。「第二天」「一小时后」等如果会超过现在，就把整段剧本整体往前挪（例如挪到昨天或前天），保证最后一条仍不晚于现在。同一段连续对话间隔 5 秒到 2 分钟；「停顿」「新的时间节点」间隔至少 10 分钟，通常几十分钟到几小时。
 3. kind 只能是：
    text（who, text, 可选 translation：若这条是外语，translation 填中文译文）
    redPacket（who, amount 数字字符串, note 祝福语, status：awaiting）
@@ -277,7 +298,7 @@ export async function generateScript(conversationId: string, script: string) {
 		lastAt: lastTs ? dayjs(lastTs).format("YYYY-MM-DD HH:mm") : "（没有历史消息）",
 		script,
 	});
-	const raw = await callGemini(prompt, { json: true });
+	const raw = await callGemini(prompt, { json: true, windowKey: `c:${conversationId}` });
 	const list = parseJsonLoose<ParsedItem[]>(raw);
 	if (!Array.isArray(list) || list.length === 0) throw new Error("没有生成出内容，换个说法再试一次");
 	return list.filter((v) => v && v.kind !== "time");

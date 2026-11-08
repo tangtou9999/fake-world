@@ -2,7 +2,7 @@ import { activatedNodeAtom } from "@/stateV2/detectedNode";
 import { getModeValueSnapshot } from "@/stateV2/mode";
 import { App as AntdApp, Button, Drawer, Tabs } from "antd";
 import { useAtom } from "jotai";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import { isMobileOnly } from "react-device-detect";
 import CommonBlock from "../LeftPanel/CommonBlock";
 import MainMenu from "../LeftPanel/MainMenu";
@@ -73,6 +73,15 @@ const MobilePanel = () => {
 		if (!isEdit && panel === "edit") setPanel(null);
 	}, [isEdit]);
 
+	// AI 聊天页面里不需要「工具 / 完成」浮条
+	const [hash, setHash] = useState(window.location.hash);
+	useEffect(() => {
+		const onHash = () => setHash(window.location.hash);
+		window.addEventListener("hashchange", onHash);
+		return () => window.removeEventListener("hashchange", onHash);
+	}, []);
+	const onAiPage = /\/ai(\/chat)?$/.test(hash.split("?")[0]);
+
 	const finish = () => {
 		setPanel(null);
 		setActivatedNode(null);
@@ -81,7 +90,7 @@ const MobilePanel = () => {
 
 	return (
 		<>
-			{isEdit && !open && (
+			{isEdit && !open && !onAiPage && (
 				<div className="pointer-events-none fixed top-[calc(env(safe-area-inset-top)+4px)] left-1/2 z-[900] flex -translate-x-1/2 flex-row items-center gap-3">
 					<button
 						type="button"

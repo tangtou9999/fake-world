@@ -53,6 +53,7 @@ const ConversationItem = ({ data }: Props) => {
 					note={data.note}
 					transferStatus={data.transferStatus}
 					originalSender={data.originalSender}
+					transferTo={data.transferTo}
 				/>
 			);
 		case EConversationType.redPacket:
