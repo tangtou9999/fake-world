@@ -67,6 +67,24 @@ const CommonBlock = <P extends AnyObject>({
 
 	const { run: debouncedHandleClick } = useDebounceFn(handleClick, { wait: 200 });
 
+	const inner = (
+		<InnerBlockComponent
+						css={css`
+	            &::before {
+	              clip-path: polygon(0% 50%, 50% 100%, 0% 100%);
+	            }
+	          `}
+						className={twMerge(
+							"group-[.friend]:before:-left-[1px] group-[.mine]:before:-right-[1px] group-[.mine]:before:-rotate-[135deg] relative max-w-[85%] break-words rounded p-[10px] before:absolute before:top-[6px] before:h-7 before:w-7 before:rounded-sm group-[.friend]:before:rotate-45",
+							showName && "max-w-full",
+							innerBlockClassName,
+						)}
+						{...(innerBlockProps as P)}
+					>
+						{children}
+					</InnerBlockComponent>
+	);
+
 	return (
 		<>
 			{upperText && <div className="m-auto mt-2 mb-[17px] text-[14px] leading-5 text-black/50">{upperText}</div>}
@@ -86,24 +104,14 @@ const CommonBlock = <P extends AnyObject>({
 					)}
 					onClick={debouncedHandleClick}
 				/>
-				<div className={showName ? "flex min-w-0 flex-col items-start" : "contents"}>
-				{showName && <div className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>}
-				<InnerBlockComponent
-					css={css`
-            &::before {
-              clip-path: polygon(0% 50%, 50% 100%, 0% 100%);
-            }
-          `}
-					className={twMerge(
-						"group-[.friend]:before:-left-[1px] group-[.mine]:before:-right-[1px] group-[.mine]:before:-rotate-[135deg] relative max-w-[85%] break-words rounded p-[10px] before:absolute before:top-[6px] before:h-7 before:w-7 before:rounded-sm group-[.friend]:before:rotate-45",
-						showName && "max-w-full",
-						innerBlockClassName,
-					)}
-					{...(innerBlockProps as P)}
-				>
-					{children}
-				</InnerBlockComponent>
-				</div>
+				{showName ? (
+					<div className="flex min-w-0 flex-col items-start">
+						<div className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>
+						{inner}
+					</div>
+				) : (
+					inner
+				)}
 				{extraElement}
 			</div>
 		</>
