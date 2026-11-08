@@ -1,7 +1,7 @@
 import { atom } from "jotai";
 import { mainStore } from "./store";
 
-export type KeyId = "main" | "backup";
+export type KeyId = "main" | "backup" | "deepseek";
 export type KeyUse = { which: KeyId; ok: boolean; msg?: string; at: number };
 
 /** 最近一次「文字 AI / 声音」实际用了哪个密钥（只在内存里，刷新后清空） */
