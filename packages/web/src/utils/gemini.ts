@@ -96,7 +96,7 @@ type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTur
 
 /** DeepSeek API Key 只保留原始 token：去掉首尾/内部空白及误粘贴的 Bearer 前缀。 */
 export const normalizeDeepSeekApiKey = (value?: string) =>
-	(value ?? "").trim().replace(/^(?:Bearer\\s+)+/i, "").replace(/\\s+/g, "");
+	(value ?? "").trim().replace(/^(?:Bearer\s+)+/i, "").replace(/\s+/g, "");
 
 export async function testDeepSeekConnection(apiKey = getGeminiConfig().deepseekApiKey ?? "") {
 	const key = normalizeDeepSeekApiKey(apiKey);
