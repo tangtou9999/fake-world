@@ -234,7 +234,7 @@ const AiSettings = () => {
 					</div>
 					<input type="checkbox" className="h-5 w-5 shrink-0 accent-[#07C160]" checked={config.adultMode !== false} onChange={(e) => setConfig((v) => ({ ...v, adultMode: e.target.checked }))} />
 				</div>
-				<button type="button" disabled={busy || (!hasApiKey(config) && !(config.keyMode !== "main" && config.keyMode !== "backup" && config.deepseekApiKey))} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
+				<button type="button" disabled={busy || (!hasApiKey(config) && !((config.keyMode ?? "auto") === "auto" && config.deepseekApiKey))} onClick={test} className="mx-auto mt-5 block h-[46px] w-[200px] rounded-[6px] bg-[#07C160] text-[16px] text-white disabled:opacity-40">
 					{busy ? "检测中…" : "检测连接"}
 				</button>
 				{result && <div className={`mx-4 mt-4 rounded-[8px] p-3 text-[14px] leading-6 ${result.ok ? "bg-[#E6F6EC] text-[#0a7a3c]" : "bg-[#FBE9E9] text-[#C62828]"}`}>{result.text}</div>}
