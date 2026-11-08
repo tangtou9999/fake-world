@@ -86,7 +86,7 @@ const CommonBlock = <P extends AnyObject>({
 					)}
 					onClick={debouncedHandleClick}
 				/>
-				<div className={showName ? "flex min-w-0 max-w-[85%] flex-col items-start" : "contents"}>
+				<div className={showName ? "flex min-w-0 flex-col items-start" : "contents"}>
 				{showName && <div className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>}
 				<InnerBlockComponent
 					css={css`
@@ -96,6 +96,7 @@ const CommonBlock = <P extends AnyObject>({
           `}
 					className={twMerge(
 						"group-[.friend]:before:-left-[1px] group-[.mine]:before:-right-[1px] group-[.mine]:before:-rotate-[135deg] relative max-w-[85%] break-words rounded p-[10px] before:absolute before:top-[6px] before:h-7 before:w-7 before:rounded-sm group-[.friend]:before:rotate-45",
+						showName && "max-w-full",
 						innerBlockClassName,
 					)}
 					{...(innerBlockProps as P)}
