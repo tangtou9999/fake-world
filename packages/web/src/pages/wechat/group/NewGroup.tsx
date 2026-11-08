@@ -1,3 +1,4 @@
+import { h } from "@/components/HashAssets";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { createGroup } from "@/stateV2/group";
@@ -38,7 +39,7 @@ const NewGroup = () => {
 					return (
 						<button key={p.id} type="button" onClick={() => toggle(p.id)} className="flex w-full items-center px-4 py-2 text-left">
 							<span className={`mr-3 flex h-[22px] w-[22px] shrink-0 items-center justify-center rounded-full border text-[13px] ${on ? "border-[#07C160] bg-[#07C160] text-white" : "border-black/25"}`}>{on ? "✓" : ""}</span>
-							<img src={p.avatarInfo} alt="" className="h-10 w-10 shrink-0 rounded-[4px] object-cover" />
+							<h.img src={p.avatarInfo} alt="" className="h-10 w-10 shrink-0 rounded-[4px] object-cover" />
 							<span className="ml-3 truncate border-black/5 border-b py-3 text-[17px]" style={{ flex: 1 }}>
 								{p.remark || p.nickname}
 							</span>

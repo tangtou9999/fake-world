@@ -1,3 +1,4 @@
+import { h } from "@/components/HashAssets";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { setConversationListValue } from "@/stateV2/conversation";
 import { setDialogueListValue } from "@/stateV2/dialogueList";
@@ -77,7 +78,7 @@ const GroupInfo = () => {
 					<div className="grid grid-cols-5 gap-y-[14px]">
 						{shown.map((p) => (
 							<div key={p.id} className="flex flex-col items-center">
-								<img src={p.avatarInfo} alt="" className="h-[50px] w-[50px] rounded-[5px] object-cover" />
+								<h.img src={p.avatarInfo} alt="" className="h-[50px] w-[50px] rounded-[5px] object-cover" />
 								<div className="mt-[6px] w-[62px] truncate text-center text-[12px] text-black/50">{(p.id === MYSELF_ID && group.myNick) || p.remark || p.nickname}</div>
 							</div>
 						))}

@@ -1,3 +1,4 @@
+import { h } from "@/components/HashAssets";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
 import { MYSELF_ID } from "@/faker/wechat/user";
 
@@ -13,11 +14,11 @@ const GroupAvatar = ({ memberIds, className = "h-12 w-12" }: { memberIds: string
 		<div className={`${className} flex shrink-0 flex-col items-center justify-center gap-[2px] overflow-hidden rounded-[6px] bg-[#DEDEDE] p-[2px]`}>
 			{rows.map((n, r) => (
 				// biome-ignore lint/suspicious/noArrayIndexKey: 固定排布
-				<div key={r} className="flex w-full flex-1 items-center justify-center gap-[2px]" style={{ minHeight: 0 }}>
+				<div key={r} className="flex w-full justify-center gap-[2px]">
 					{Array.from({ length: n }, () => {
 						const id = ids[k++];
 						const p = all.find((x) => x.id === id);
-						return <img key={id} src={p?.avatarInfo} alt="" className="h-full min-w-0 flex-1 object-cover" style={{ maxWidth: "33%" }} />;
+						return <h.img key={id} src={p?.avatarInfo} alt="" className="bg-white object-cover" style={{ width: "calc((100% - 4px) / 3)", aspectRatio: "1 / 1" }} />;
 					})}
 				</div>
 			))}
