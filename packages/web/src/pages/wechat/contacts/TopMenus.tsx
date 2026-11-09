@@ -8,10 +8,10 @@ import { useTranslation } from "react-i18next";
 import List from "@/wechatComponents/List";
 
 import { OfficialIcon, ServiceIcon, WecomIcon } from "./ContactIcons";
-import GroupChatIMG from "./assets/group-chat.png";
-import NewIMG from "./assets/new.png";
-import OnlyChatIMG from "./assets/only-chat.png";
-import TagIMG from "./assets/tag.png";
+import GroupChatIMG from "./assets/group-chat.png?inline";
+import NewIMG from "./assets/new.png?inline";
+import OnlyChatIMG from "./assets/only-chat.png?inline";
+import TagIMG from "./assets/tag.png?inline";
 
 const iconClass = "mr-3 h-10 w-10 shrink-0 rounded";
 
