@@ -8,6 +8,7 @@ import { getGeminiConfig } from "@/stateV2/gemini";
 import { type GeminiImage, callGemini, parseJsonLoose } from "@/utils/gemini";
 import { nanoid } from "nanoid";
 import dayjs from "dayjs";
+import { parseAt } from "@/utils/parseAt";
 import { Node } from "slate";
 import { formatWechatTime, getConversationListValueSnapshot } from "@/stateV2/conversation";
 import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValueSnapshot } from "@/stateV2/profile";
@@ -117,8 +118,7 @@ export function applyParsedItems(
 	const after = range ? existing.filter((v) => (v.sendTimestamp ?? 0) > range.to) : [];
 	const lastBefore = range ? (before.at(-1)?.sendTimestamp ?? 0) : undefined;
 	// 追加「很久以前」的聊天（一个月前、半年前……）：不挤到最后一条后面，而是按时间插进原有记录中间
-	const firstAtRaw = list.find((v) => v.at && dayjs(v.at).isValid())?.at;
-	const firstAtTs = firstAtRaw ? dayjs(firstAtRaw).valueOf() : 0;
+	const firstAtTs = list.map((v) => parseAt(v.at)).find((t): t is number => t !== null) ?? 0;
 	const lastExistingTs = existing.at(-1)?.sendTimestamp ?? 0;
 	const past = timed && !replace && !range && firstAtTs > 0 && firstAtTs < lastExistingTs - 60_000;
 	const insertAt = past ? existing.findIndex((v) => (v.sendTimestamp ?? 0) > firstAtTs) : -1;
@@ -234,7 +234,8 @@ export function applyParsedItems(
 		return replace ? items : [...prev, ...items];
 	});
 	dripJobs.forEach((j) => dripClaims(conversationId, j.packetId, j.claimers));
-	if (lastPreview && !(range && after.length)) touchDialogue(conversationId, lastPreview);
+	// 往过去插入的消息不算「最新消息」，不要改首页那一行的预览和排序
+	if (lastPreview && !past && !(range && after.length)) touchDialogue(conversationId, lastPreview);
 	return items.length;
 }
 
@@ -251,8 +252,8 @@ function computeStamps(
 	const out: number[] = [];
 	let prev = opt.fromZero ? 0 : last || now - list.length * 60_000;
 	list.forEach((it) => {
-		const d = it.at ? dayjs(it.at) : null;
-		let t = d?.isValid() ? d.valueOf() : prev + 30_000;
+		const parsed = parseAt(it.at);
+		let t = parsed ?? prev + 30_000;
 		if (t < prev + 1000) t = prev + 1000;
 		out.push(t);
 		prev = t;
@@ -353,7 +354,8 @@ export async function translateText(text: string) {
 
 export const previewLine = (it: ParsedItem) => {
 	const who = it.who === "me" ? "我" : it.sender || "对方";
-	const tm = it.at ? dayjs(it.at).format("M/D HH:mm") : "";
+	const at = parseAt(it.at);
+	const tm = at !== null ? dayjs(at).format("YYYY/M/D HH:mm") : it.at ? `⚠️${it.at}` : "";
 	switch (it.kind) {
 		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}`;
 		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}`;

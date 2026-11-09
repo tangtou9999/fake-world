@@ -3,6 +3,7 @@ import { EConversationType, type TConversationItem, formatWechatTime, getConvers
 import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
+import { parseAt } from "@/utils/parseAt";
 
 export type ChatOp =
 	| { op: "delete"; ids: string[] }
@@ -102,9 +103,9 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 				missing++;
 				continue;
 			}
-			const at = o.at ? dayjs(o.at) : null;
-			if (at?.isValid()) {
-				it.sendTimestamp = Math.min(at.valueOf(), Date.now());
+			const atTs = parseAt(o.at);
+			if (atTs !== null) {
+				it.sendTimestamp = Math.min(atTs, Date.now());
 				touched.add(it.id);
 			}
 			if (o.op === "edit") {

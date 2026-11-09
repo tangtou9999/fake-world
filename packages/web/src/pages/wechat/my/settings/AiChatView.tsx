@@ -13,6 +13,7 @@ import { GeminiBlockedError, callGemini } from "@/utils/gemini";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { useAtom, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
+import { parseAt } from "@/utils/parseAt";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
@@ -36,6 +37,8 @@ const needsFix = (r: string, ask = ""): string => {
 		const j = parseJsonLoose<{ items?: { at?: string }[] }>(m[1]);
 		if (Array.isArray(j.items) && j.items.some((v) => !v?.at))
 			return "你上一条的代码块里有些 items 没有写 at。每一项都必须有 at（YYYY-MM-DD HH:mm），并且严格按用户要求的真实日期。请重新输出完整的 ```wxchat 代码块。";
+		if (Array.isArray(j.items) && j.items.some((v) => parseAt(v?.at) === null))
+			return "你上一条的代码块里有 at 的日期格式系统认不出来。at 必须是半角的 YYYY-MM-DD HH:mm（带四位年份、24 小时制，如 2026-01-06 12:00）。请重新输出完整的 ```wxchat 代码块。";
 	} catch {
 		return "";
 	}
@@ -504,7 +507,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 								<div className="text-[14px] font-medium">
 									{m.action.mode === "range"
 										? `准备修改「${m.action.target}」${m.action.from} ~ ${m.action.to} 这一段（替换为 ${m.action.items.length} 条）`
-										: `准备放进「${m.action.target}」的聊天（${m.action.mode === "replace" ? "清空整个聊天并替换" : "追加到末尾"}，共 ${m.action.items.length} 条）`}
+										: `准备放进「${m.action.target}」的聊天（${m.action.mode === "replace" ? "清空整个聊天并替换" : "追加 / 按日期插入"}，共 ${m.action.items.length} 条）`}
 								</div>
 								<div className="mt-2 max-h-[160px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
 									{m.action.items.map((it, i) => (
@@ -524,7 +527,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											清空替换
 										</button>
 										<button type="button" onClick={() => applyCard(m, "append")} className={`h-10 rounded-[6px] text-[15px] ${m.action.mode === "append" ? "bg-[#07C160] text-white" : "bg-black/5"}`}>
-											追加到末尾
+											追加 / 按日期插入（过去的日期会插到对应位置）
 										</button>
 									</div>
 									)

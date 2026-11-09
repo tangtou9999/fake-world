@@ -18,7 +18,8 @@ const Badge = ({
 	children,
 	hidden,
 }: PropsWithChildren<Props>) => {
-	if (hidden || (isNil(text) && type === "number")) {
+	// 数字角标：没有数字或数字为 0 时不显示（全部已读后不能剩一个 0）
+	if (hidden || (type === "number" && (isNil(text) || !(Number(text) > 0)))) {
 		return <>{children}</>;
 	}
 	const isOneText = text?.toString().length === 1;

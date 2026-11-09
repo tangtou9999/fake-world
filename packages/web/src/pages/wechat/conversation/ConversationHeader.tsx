@@ -27,13 +27,13 @@ const ConversationHeader = () => {
 					}}
 				/>
 				<canBeDetected.div
-					className="ml-1 rounded-2xl bg-[rgba(0,0,0,0.15)] px-2 py-[2px] text-xs"
+					className={`ml-1 rounded-2xl bg-[rgba(0,0,0,0.15)] px-2 py-[2px] text-xs ${unreadCount.count > 0 ? "" : "invisible"}`}
 					metaData={{
 						type: EMetaDataType.UnreadCount,
 						treeItemDisplayName: "未读消息数",
 					}}
 				>
-					{unreadCount.count}
+					{unreadCount.count > 0 ? unreadCount.count : ""}
 				</canBeDetected.div>
 			</div>
 			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90">

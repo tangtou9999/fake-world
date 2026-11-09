@@ -21,7 +21,7 @@ export const unreadCountEffect = atomEffect((get, set) => {
 		...pv,
 		WECHAT: {
 			...pv.WECHAT,
-			badgeNumber: count,
+			badgeNumber: count > 0 ? count : undefined,
 		},
 	}));
 });
