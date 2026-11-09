@@ -21,6 +21,8 @@ export type AiChatMessage = {
 	failed?: boolean;
 	voice?: boolean;
 	action?: AiChatAction;
+	/** AI 提议的「改时间 / 改内容 / 删除」指令，用户点应用才执行 */
+	ops?: { target: string; targetId?: string; ops: import("@/pages/wechat/my/settings/chatOps").ChatOp[]; applied?: string };
 	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
 	/** AI 提议「N 分钟后对方打视频过来」：用户点「设置」才生效 */
 	callMake?: { minutes: number; done?: boolean };

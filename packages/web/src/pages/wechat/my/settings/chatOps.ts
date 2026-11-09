@@ -1,0 +1,146 @@
+import { clampPacket } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
+import { EConversationType, type TConversationItem, formatWechatTime, getConversationListValueSnapshot, setConversationListValue } from "@/stateV2/conversation";
+import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
+import { parseJsonLoose } from "@/utils/gemini";
+import dayjs from "dayjs";
+
+export type ChatOp =
+	| { op: "delete"; ids: string[] }
+	| { op: "setTime"; id: string; at: string }
+	| { op: "edit"; id: string; text?: string; amount?: string; note?: string; status?: string; seconds?: number; at?: string };
+
+export type OpsAction = { target: string; targetId?: string; ops: ChatOp[]; applied?: string };
+
+/** 解析 AI 回复末尾的 ```wxops 代码块 */
+export const parseOps = (raw: string): { text: string; ops?: OpsAction } => {
+	const m = raw.match(/```wxops\s*([\s\S]*?)```/);
+	const text = raw.replace(/```wxops[\s\S]*?(```|$)/g, "").trim();
+	if (!m) return { text };
+	try {
+		const j = parseJsonLoose<{ target?: string; ops?: unknown[] }>(m[1]);
+		const ops: ChatOp[] = [];
+		for (const o of (Array.isArray(j.ops) ? j.ops : []) as Record<string, unknown>[]) {
+			if (o?.op === "delete") {
+				const ids = (Array.isArray(o.ids) ? o.ids : [o.id]).map((v) => String(v ?? "").replace(/^#/, "")).filter(Boolean);
+				if (ids.length) ops.push({ op: "delete", ids });
+			} else if ((o?.op === "setTime" || o?.op === "move") && o.id && o.at) {
+				ops.push({ op: "setTime", id: String(o.id).replace(/^#/, ""), at: String(o.at) });
+			} else if (o?.op === "edit" && o.id) {
+				ops.push({ op: "edit", id: String(o.id).replace(/^#/, ""), text: o.text as string, amount: o.amount as string, note: o.note as string, status: o.status as string, seconds: o.seconds as number, at: o.at as string });
+			}
+		}
+		if (!ops.length) return { text: `${text}\n\n（AI 附上的修改指令里没有可执行的内容，请让它重新输出）` };
+		return { text, ops: { target: String(j.target ?? ""), ops } };
+	} catch {
+		return { text: `${text}\n\n（AI 附上的修改指令格式有误，没能识别，请让它重新输出一次）` };
+	}
+};
+
+const plainOf = (v: TConversationItem) => {
+	const r = v as unknown as Record<string, any>;
+	switch (v.type) {
+		case EConversationType.text:
+			return (r.textContent ?? []).map((n: any) => (n.children ?? []).map((c: any) => c.text ?? (c.emojiSymbol ? "[表情]" : "")).join("")).join("");
+		case EConversationType.redPacket:
+			return `红包 ¥${r.amount} ${r.note ?? ""}`;
+		case EConversationType.transfer:
+			return `转账 ¥${r.amount} ${r.note ?? ""}`;
+		case EConversationType.voice:
+			return `语音 ${r.duration}″`;
+		case EConversationType.centerText:
+			return `（系统提示）${r.simpleContent ?? ""}`;
+		case EConversationType.redPacketAcceptedReply:
+			return "（领取红包提示）";
+		default:
+			return `[${String(v.type)}]`;
+	}
+};
+
+/** 给确认卡片显示：这条 id 对应哪条消息 */
+export const describeId = (conversationId: string, id: string) => {
+	const v = getConversationListValueSnapshot(conversationId).find((x) => x.id === id);
+	if (!v) return `（找不到 #${id}）`;
+	return `${dayjs(v.sendTimestamp).format("M/D HH:mm")} ${v.role === "mine" ? "我" : "对方"}：${plainOf(v).slice(0, 30)}`;
+};
+
+export const describeOp = (conversationId: string, o: ChatOp) => {
+	switch (o.op) {
+		case "delete":
+			return `删除 ${o.ids.length} 条：${o.ids.slice(0, 3).map((i) => describeId(conversationId, i)).join("；")}${o.ids.length > 3 ? "……" : ""}`;
+		case "setTime":
+			return `改时间 → ${o.at}：${describeId(conversationId, o.id)}`;
+		default: {
+			const f = [o.text !== undefined && `内容「${o.text.slice(0, 20)}」`, o.amount && `金额 ¥${o.amount}`, o.note !== undefined && `备注「${o.note}」`, o.status && `状态 ${o.status}`, o.seconds && `${o.seconds} 秒`, o.at && `时间 ${o.at}`].filter(Boolean).join("，");
+			return `修改 ${f}：${describeId(conversationId, o.id)}`;
+		}
+	}
+};
+
+/** 执行修改；返回结果说明。改完按时间重新排序，并重算受影响消息的时间标签 */
+export const applyOps = (conversationId: string, ops: ChatOp[]) => {
+	let deleted = 0;
+	let edited = 0;
+	let missing = 0;
+	const touched = new Set<string>();
+	setConversationListValue(conversationId, (prev) => {
+		let list = prev.map((v) => ({ ...v })) as Record<string, any>[];
+		const find = (id: string) => list.find((v) => v.id === id);
+		for (const o of ops) {
+			if (o.op === "delete") {
+				const set = new Set(o.ids);
+				const before = list.length;
+				// 红包被删，对应的「xx领取了红包」提示一起删
+				list = list.filter((v) => !set.has(v.id) && !(v.type === EConversationType.redPacketAcceptedReply && set.has(v.redPacketId)));
+				const n = o.ids.filter((id) => prev.some((v) => v.id === id)).length;
+				deleted += n;
+				missing += o.ids.length - n;
+				if (list.length !== before) for (const v of list) touched.add(v.id);
+				continue;
+			}
+			const it = find(o.id);
+			if (!it) {
+				missing++;
+				continue;
+			}
+			const at = o.at ? dayjs(o.at) : null;
+			if (at?.isValid()) {
+				it.sendTimestamp = Math.min(at.valueOf(), Date.now());
+				touched.add(it.id);
+			}
+			if (o.op === "edit") {
+				if (o.text !== undefined && it.type === EConversationType.text) it.textContent = [{ type: "paragraph", children: textToSlateChildren(o.text) }];
+				if (o.text !== undefined && it.type === EConversationType.centerText) it.simpleContent = o.text;
+				if (o.text !== undefined && it.type === EConversationType.voice) it.stt = o.text;
+				if (o.seconds && it.type === EConversationType.voice) it.duration = Math.max(1, Math.round(o.seconds));
+				if (o.amount && (it.type === EConversationType.redPacket || it.type === EConversationType.transfer)) {
+					const n = Number(o.amount);
+					if (Number.isFinite(n) && n > 0) it.amount = it.type === EConversationType.redPacket ? Number(clampPacket(String(n))).toFixed(2) : n.toFixed(2);
+				}
+				if (o.note !== undefined && (it.type === EConversationType.redPacket || it.type === EConversationType.transfer)) it.note = o.note || undefined;
+				if (o.status && it.type === EConversationType.redPacket && ["awaiting", "accepted", "expired"].includes(o.status)) it.redPacketStatus = o.status;
+				if (o.status && it.type === EConversationType.transfer && ["awaiting", "accepted", "rejected", "expired"].includes(o.status)) it.transferStatus = o.status;
+				edited++;
+			} else edited++;
+		}
+		// 按时间稳定排序（没有时间的保持原位）
+		const keyed = list.map((v, i) => ({ v, i, t: v.sendTimestamp ?? 0 }));
+		if (keyed.some((k, i) => i > 0 && k.t && keyed[i - 1].t && k.t < keyed[i - 1].t)) {
+			keyed.sort((a, b) => (a.t && b.t ? a.t - b.t : a.i - b.i));
+			list = keyed.map((k) => k.v);
+		}
+		// 时间标签：改过的位置及其后一条重新算（相隔 5 分钟以上显示，今天/昨天/星期自动判断）
+		const after = new Set<string>();
+		list.forEach((v, i) => {
+			if (touched.has(v.id) && list[i + 1]) after.add(list[i + 1].id);
+		});
+		list.forEach((v, i) => {
+			if (!v.sendTimestamp) return;
+			const prevTs = list[i - 1]?.sendTimestamp ?? 0;
+			const needed = !prevTs || v.sendTimestamp - prevTs >= 5 * 60_000;
+			if (touched.has(v.id) || after.has(v.id)) v.upperText = needed ? formatWechatTime(v.sendTimestamp) : undefined;
+			else if (needed && !v.upperText) v.upperText = formatWechatTime(v.sendTimestamp);
+		});
+		return list as TConversationItem[];
+	});
+	return `已执行：删除 ${deleted} 条、修改 ${edited} 处${missing ? `，有 ${missing} 个 id 找不到（已跳过）` : ""}`;
+};

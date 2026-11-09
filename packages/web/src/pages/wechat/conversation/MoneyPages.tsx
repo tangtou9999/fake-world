@@ -153,11 +153,12 @@ export const RedPacketSend = () => {
 	useScreenTopBg("#EDEDED");
 	const send = useSend("redPacket");
 	const [amount, setAmount] = useState("");
+	const tooMuch = Number(amount) > 200;
 	const [note, setNote] = useState("");
 	const { isEdit } = useMode();
 	const [sender, setSender] = useState<Sender>("mine");
 	const [done, setDone] = useState(false);
-	const ok = validAmount(amount);
+	const ok = validAmount(amount) && !tooMuch;
 
 	return (
 		<div className="flex min-h-0 flex-1 flex-col bg-[#EDEDED]">
@@ -185,6 +186,7 @@ export const RedPacketSend = () => {
 						/>
 					</span>
 				</div>
+				{tooMuch && <div className="mt-2 text-[13px] text-[#FA5151]">单个红包金额不可超过 200 元</div>}
 				<div className="mt-[12px] flex h-[62px] items-center rounded-[6px] bg-white px-[15px]">
 					<input
 						placeholder="恭喜发财，大吉大利"

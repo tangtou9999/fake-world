@@ -17,14 +17,14 @@ import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
 import { dripClaims, instantClaims, planGroupPacket } from "@/stateV2/groupRedPacket";
 
 export type ParsedItem = {
-	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "other";
+	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "call" | "other";
 	who?: "friend" | "me";
 	text?: string;
 	amount?: string;
 	/** 群红包份数（默认群里所有人） */
 	count?: number;
 	note?: string;
-	status?: "accepted" | "awaiting" | "expired" | "rejected";
+	status?: "accepted" | "awaiting" | "expired" | "rejected" | "cancelled";
 	seconds?: number;
 	/** 剧本模式：消息发生的时间 "YYYY-MM-DD HH:mm" */
 	at?: string;
@@ -37,6 +37,18 @@ export type ParsedItem = {
 	/** 群聊：这条消息是哪位群成员发的（成员名字，照抄群成员列表） */
 	sender?: string;
 };
+
+/** 单个红包最高 200 元 */
+export const MAX_RED_PACKET = 200;
+export const clampPacket = (v: string) => {
+	const n = Number(v);
+	return Number.isFinite(n) && n > MAX_RED_PACKET ? MAX_RED_PACKET.toFixed(2) : v;
+};
+
+const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+/** 视频通话记录文字：who 是「谁打的」 */
+export const callText = (role: "mine" | "friend", status?: string, seconds?: number) =>
+	status === "rejected" ? (role === "mine" ? "对方已拒绝" : "已拒绝") : status === "cancelled" ? (role === "mine" ? "已取消" : "对方已取消") : `通话时长 ${mmss(Math.max(1, Math.round(seconds || 30)))}`;
 
 /** 群成员的显示名（备注优先） */
 export const memberName = (id: string) => {
@@ -150,7 +162,7 @@ export function applyParsedItems(
 				return;
 			case "redPacket": {
 				const packetId = common.id;
-				let amount = it.amount || "0.00";
+				let amount = clampPacket(it.amount || "0.00");
 				let status: "awaiting" | "accepted" | "expired" = it.status === "awaiting" ? "awaiting" : it.status === "expired" ? "expired" : "accepted";
 				let claimers: string[] = [];
 				if (isGroupId(conversationId) && Number(amount) > 0) {
@@ -174,6 +186,12 @@ export function applyParsedItems(
 					else items.push(...instantClaims(packetId, claimers, ts));
 				}
 				lastPreview = "[微信红包]";
+				return;
+			}
+			case "call": {
+				const text = callText(role, it.status, it.seconds);
+				items.push({ ...common, type: EConversationType.text, role, textContent: paragraph(`📹 ${text}`), upperText: takeUpper() } as TConversationItem);
+				lastPreview = `[视频通话] ${text}`;
 				return;
 			}
 			case "transfer":
@@ -275,6 +293,7 @@ ${ctx.script}
    redPacket（who, amount 数字字符串, note 祝福语, status：awaiting）
    transfer（who, amount, note, status：awaiting）
    voice（who, seconds, text 为转文字）
+   call（视频通话记录：who 是谁打的；status：rejected 被拒绝 / cancelled 已取消 / accepted 接通（接通要写 seconds 通话秒数））
    system（text，居中的灰色系统提示）
 4. 「发红包/转账」由谁发就用谁的 who；金额没说就按场景给合理金额。
 5. 口语化、简短，符合各自身份，不要旁白、编号。不要输出 time 类元素。
@@ -338,6 +357,7 @@ export const previewLine = (it: ParsedItem) => {
 	switch (it.kind) {
 		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}`;
 		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}`;
+		case "call": return `${tm} ${who}发起视频通话：${callText(it.who === "me" ? "mine" : "friend", it.status, it.seconds)}`;
 		case "voice": return `${tm} ${who}语音 ${it.seconds ?? 3}″ ${it.text ?? ""}`;
 		case "system": return `${tm} [系统] ${it.text ?? ""}`;
 		default: return `${tm} ${who}：${it.text ?? ""}${it.translation ? `（${it.translation}）` : ""}`;

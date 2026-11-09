@@ -1,4 +1,5 @@
 import { parseJsonLoose } from "@/utils/gemini";
+import { applyOps, describeOp, parseOps } from "./chatOps";
 import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
@@ -20,6 +21,9 @@ type Props = { mode: "private" | "chat"; conversationId?: string };
 
 const needsFix = (r: string, ask = ""): string => {
 	const m = r.match(/```wxchat\s*([\s\S]*?)```/);
+	if (!m && /```wxops/.test(r)) return "";
+	if (!m && /(删除|删掉|改时间|改成|挪到|移到|调整时间|修改)/.test(ask) && /(这就|马上|现在|已经|帮你|好的|我来).{0,20}(删|改|挪|调|修改)/.test(r))
+		return "你上一条只说了要修改，却没有附 ```wxops 代码块，聊天里什么都没有变。请现在重新输出：一句简短说明 + 完整的 ```wxops 代码块（id 必须照抄聊天记录里 # 后面的内容）。";
 	if (!m) {
 		const asked = /(生成|追加|写入|补).{0,10}(聊天记录|记录|对话)|^(生成|写)/.test(ask);
 		const promised = asked || /(现在|这就|马上|重新|立刻|接下来|下面).{0,14}(生成|写|发|输出|追加|记录)|忘了附|没有附/.test(r);
@@ -200,7 +204,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const cm = isChat ? vm.text.match(/```wxcall\s*([\s\S]*?)```/) : null;
 			const callMinutes = cm ? Number((cm[1].match(/-?\d+(\.\d+)?/) ?? [])[0]) : Number.NaN;
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
-			const parsed = isChat ? parseAction(vmText) : { text: vm.text, action: undefined };
+			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
+			const parsed = isChat ? parseAction(po.text) : { text: vm.text, action: undefined };
+			const opsTarget = po.ops ? resolveTarget(po.ops.target, contacts, conversationId) : undefined;
 
 			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
 			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
@@ -212,6 +218,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					text: parsed.text + extra,
 					voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
+					ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
 					callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
 				},
 			]);
@@ -451,6 +458,34 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											保存
 										</button>
 									</div>
+								)}
+							</div>
+						)}
+						{m.ops && (
+							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
+								<div className="font-medium text-[14px]">准备修改「{m.ops.target}」已有的消息（共 {m.ops.ops.length} 项）</div>
+								<div className="mt-2 max-h-[160px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
+									{m.ops.ops.map((o, i) => (
+										<div key={i}>{describeOp(m.ops?.targetId || conversationId || "", o)}</div>
+									))}
+								</div>
+								{m.ops.applied ? (
+									<div className="mt-2 text-[13px] text-[#07C160]">✓ {m.ops.applied}</div>
+								) : (
+									<button
+										type="button"
+										className="mt-2 h-10 w-full rounded-[6px] bg-[#07C160] text-[15px] text-white"
+										onClick={() => {
+											const o = m.ops;
+											if (!o) return;
+											const cid = o.targetId || resolveTarget(o.target, listContacts(), conversationId)?.id;
+											if (!cid) return window.alert(`找不到联系人「${o.target}」`);
+											const res = applyOps(cid, o.ops);
+											updateMessages((all) => all.map((x) => (x.id === m.id && x.ops ? { ...x, ops: { ...x.ops, applied: res } } : x)));
+										}}
+									>
+										应用修改
+									</button>
 								)}
 							</div>
 						)}

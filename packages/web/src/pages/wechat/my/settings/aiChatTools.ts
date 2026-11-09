@@ -51,6 +51,7 @@ const describe = (v: Record<string, any>, name: string, groupId?: string) => {
 	const friendName = groupId ? nameOf(v.senderId ?? groupDefaultSender(groupId) ?? "") : name;
 	const who = v.role === "mine" ? "我" : friendName;
 	let body: string;
+	const tag = `#${v.id} `;
 	switch (v.type) {
 		case EConversationType.text:
 			body = (v.textContent ?? []).map((n: never) => slateToPlain(n)).join("\n");
@@ -71,11 +72,16 @@ const describe = (v: Record<string, any>, name: string, groupId?: string) => {
 			body = `[转账 ¥${v.amount} ${v.note ?? ""} 状态：${v.transferStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : friendName}]`;
 			break;
 		case EConversationType.centerText:
-			return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.simpleContent ?? ""}`;
+			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.simpleContent ?? ""}`;
+		case EConversationType.redPacketAcceptedReply:
+			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.claimerId ? nameOf(v.claimerId) : "有人"}领取了红包 #${v.redPacketId}`;
+		case EConversationType.personalCard:
+			body = "[名片]";
+			break;
 		default:
 			body = `[${String(v.type)}]`;
 	}
-	return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] ${who}：${body}`;
+	return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] ${who}：${body}`;
 };
 
 /** 搜索所有聊天里含关键词的消息，按聊天分组 */
@@ -88,7 +94,7 @@ export const searchChats = (q: string) => {
 		let count = 0;
 		let snippet = "";
 		for (const v of all) {
-			const body = describe(v, c.name, isGroupId(c.id) ? c.id : undefined).replace(/^\[[^\]]*\]\s*[^：]*：/, "");
+			const body = describe(v, c.name, isGroupId(c.id) ? c.id : undefined).replace(/^#\S+\s*\[[^\]]*\]\s*[^：]*：/, "");
 			if (!body.toLowerCase().includes(key)) continue;
 			count++;
 			if (!snippet) snippet = body;
@@ -114,6 +120,8 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
 {"target":"联系人名字","mode":"append","items":[{"kind":"text","who":"friend","text":"内容","at":"YYYY-MM-DD HH:mm"}]}
 \`\`\`
 - target：${currentName ? `默认就是当前聊天「${currentName}」；用户明确说别的联系人时才改成那个人，` : ""}必须是联系人列表里的名字（照抄）。
+- 视频通话记录也用 items 生成：{"kind":"call","who":"me或friend（谁打的）","status":"rejected被拒绝/cancelled已取消/accepted接通","seconds":接通时的秒数,"at":"..."}。例如「我给对方打视频被拒绝」= who:me,status:rejected。
+- 红包金额单个最高 200 元，超过要拆成多个，或自己调到 200 以内。
 - mode 有三种：
   append = 追加到该聊天末尾；
   replace = 清空整个聊天后用 items 整个替换（用户说「重写整个聊天」才用，items 要包含全部记录）；
@@ -129,6 +137,14 @@ ${groupMembers}
 - 群里的 target 照抄「当前聊天」的名字。
 - 群红包：kind 为 redPacket，amount 是红包总额，who/sender 指明谁发；可选 "count":份数（默认=群里所有人含我）。系统会自动把总额随机拆成 count 份：对方发的红包，其余成员会在 5~10 秒内陆续领取，并留一份给我；我发的红包，群友同样陆续领取。不需要你另外写「某某领取了红包」的系统消息，也不要把 status 写成 accepted。` : ""}
 微信表情：文字里可以写 [名字] 表示表情，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；不要用其他方括号表情或 Unicode 小黄脸，数量像真人聊天一样适度。读取聊天记录时表情也显示成 [名字]。
+【修改已有的消息（改时间 / 改内容 / 删除）】
+聊天记录里每条消息前面的 #xxxx 是它固定不变的 id（包括红包、转账、通话、系统提示）。要对已有消息动手时，不要用 wxchat 重写整个聊天，而是在回复末尾附：
+\`\`\`wxops
+{"target":"联系人名字","ops":[{"op":"delete","ids":["id1","id2"]},{"op":"setTime","id":"id3","at":"YYYY-MM-DD HH:mm"},{"op":"edit","id":"id4","text":"新内容"},{"op":"edit","id":"id5","amount":"88","note":"备注","status":"accepted"}]}
+\`\`\`
+- delete 可批量；setTime 改单条时间（系统会按时间自动重新排序、重算「昨天/今天」等时间标签，不用你管）；edit 可改文字 text、红包/转账的 amount note status、语音的 text seconds。
+- id 必须照抄聊天记录里的 #后面的内容，不要编造；找不到就先告诉用户。红包金额单个最高 200。
+- 同一个回复里 wxops 和 wxchat 可以都带，但改已有消息时优先 wxops。
 当前所有联系人：${contactNames || "（暂无）"}`;
 
 export type Level = 0 | 1 | 2 | 3;
@@ -152,7 +168,7 @@ export const buildSystem = (
 		const c = contacts.find((x) => x.id === id);
 		if (!c) continue;
 		const log = chatLog(id, c.name, level === 2 ? 40 : undefined);
-		s += `\n\n【与「${c.name}」的${level === 2 ? "最近" : "完整"}聊天记录（共 ${log.count} 条，格式：[时间] 说话人：内容）】\n${log.text || "（还没有消息）"}`;
+		s += `\n\n【与「${c.name}」的${level === 2 ? "最近" : "完整"}聊天记录（共 ${log.count} 条，格式：#消息id [时间] 说话人：内容；这就是该聊天的全部记录，没有省略）】\n${log.text || "（还没有消息）"}`;
 	}
 	return s;
 };
