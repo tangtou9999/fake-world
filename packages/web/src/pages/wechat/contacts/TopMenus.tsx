@@ -7,11 +7,8 @@ import { useTranslation } from "react-i18next";
 
 import List from "@/wechatComponents/List";
 
+import { GROUP_CHAT_ICON, NEW_ICON, ONLY_CHAT_ICON, TAG_ICON } from "./iconData";
 import { OfficialIcon, ServiceIcon, WecomIcon } from "./ContactIcons";
-import GroupChatIMG from "./assets/group-chat.png?inline";
-import NewIMG from "./assets/new.png?inline";
-import OnlyChatIMG from "./assets/only-chat.png?inline";
-import TagIMG from "./assets/tag.png?inline";
 
 const iconClass = "mr-3 h-10 w-10 shrink-0 rounded";
 
@@ -33,7 +30,7 @@ const TopMenus = () => {
 		<List className="relative after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:origin-bottom after:scale-y-50 after:bg-black/10">
 			<List.Item
 				textPrevClassName="ml-4"
-				textPrev={imageIcon(NewIMG)}
+				textPrev={imageIcon(NEW_ICON)}
 				onClick={() => navigate("/wechat/new-friends")}
 				extra={
 					pending > 0 ? (
@@ -45,13 +42,13 @@ const TopMenus = () => {
 			>
 				{t("wechatPage.contacts.new")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(OnlyChatIMG)}>
+			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(ONLY_CHAT_ICON)}>
 				{t("wechatPage.contacts.chatsOnly")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(GroupChatIMG)}>
+			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(GROUP_CHAT_ICON)}>
 				{t("wechatPage.contacts.group")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(TagIMG)}>
+			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(TAG_ICON)}>
 				{t("wechatPage.contacts.tags")}
 			</List.Item>
 			<List.Item textPrevClassName="ml-4" textPrev={<OfficialIcon className={iconClass} />}>
