@@ -1,4 +1,5 @@
 import { parseJsonLoose } from "@/utils/gemini";
+import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
@@ -51,6 +52,27 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const isGroupChat = isChat && isGroupId(conversationId);
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
+	const [searching, setSearching] = useState(false);
+	const [sq, setSq] = useState("");
+	const jumpTo = (sid: string | undefined, mid: string) => {
+		setSearching(false);
+		setSq("");
+		if (sid && sid !== session.id) setState((v) => ({ ...v, activeId: sid }));
+		window.setTimeout(() => {
+			const el = document.querySelector(`[data-mid="${mid}"]`);
+			if (!el) return;
+			el.scrollIntoView({ block: "center" });
+			el.classList.add("wx-flash");
+			window.setTimeout(() => el.classList.remove("wx-flash"), 1800);
+		}, 350);
+	};
+	const sKey = sq.trim().toLowerCase();
+	const hits = sKey
+		? (isChat ? [{ sid: undefined as string | undefined, name: "", msgs: messages }] : state.sessions.map((x) => ({ sid: x.id as string | undefined, name: x.name || `${x.no}号AI`, msgs: x.messages })))
+				.flatMap((g) => g.msgs.filter((m) => m.text.toLowerCase().includes(sKey)).map((m) => ({ sid: g.sid, name: g.name, m })))
+				.slice(-60)
+				.reverse()
+		: [];
 	const [busyKeys, setBusyKeys] = useState<string[]>([]);
 	const busyKey = isChat ? `c:${conversationId}` : `s:${session.id}`;
 	const busy = busyKeys.includes(busyKey);
@@ -247,6 +269,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 								</option>
 							))}
 						</select>
+						<button type="button" aria-label="搜索聊天记录" onClick={() => setSearching(true)} className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+							<SearchOutlinedSVG width={22} height={22} fill="rgba(0,0,0,0.8)" />
+						</button>
 						{!isChat && (
 							<button type="button" aria-label="新建 AI 窗口" onClick={addSession} className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[22px] leading-none">
 								+
@@ -355,7 +380,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					</div>
 				)}
 				{messages.map((m) => (
-					<div key={m.id} className={`mb-3 flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+					<div key={m.id} data-mid={m.id} className={`mb-3 flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
 						<div
 							className={`max-w-[82%] whitespace-pre-wrap break-words rounded-[6px] px-3 py-[10px] text-[16px] leading-[23px] ${m.role === "user" ? (m.failed ? "bg-[#95EC69]/50" : "bg-[#95EC69]") : m.error ? "bg-[#FBE9E9] text-[#C62828]" : "bg-white"}`}
 						>
@@ -482,6 +507,41 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				)}
 				<div ref={bottomRef} />
 			</div>
+			{searching && (
+				<div className="fixed inset-0 z-50 flex flex-col bg-white">
+					<div className="flex shrink-0 items-center gap-3 bg-[#EDEDED] px-[15px] pt-[calc(env(safe-area-inset-top)+8px)] pb-2">
+						<div className="flex h-[35px] flex-1 items-center rounded-md bg-white px-2">
+							<SearchOutlinedSVG width={22} height={22} fill="rgba(0,0,0,0.35)" />
+							<input autoFocus aria-label="搜索关键词" value={sq} onChange={(e) => setSq(e.target.value)} placeholder={isChat ? "搜索这个聊天的 AI 记录" : "搜索所有 AI 窗口的记录"} className="ml-1 min-w-0 flex-1 bg-transparent text-[16px] outline-none" />
+						</div>
+						<button type="button" className="text-[16px] text-[#576B95]" onClick={() => { setSearching(false); setSq(""); }}>
+							取消
+						</button>
+					</div>
+					<div className="min-h-0 flex-1 overflow-auto">
+						{sKey && hits.length === 0 && <div className="pt-16 text-center text-[15px] text-black/40">没有找到「{sq.trim()}」</div>}
+						{hits.map((h) => {
+							const t = h.m.text;
+							const i = t.toLowerCase().indexOf(sKey);
+							const a = Math.max(0, i - 10);
+							return (
+								<button key={`${h.sid}-${h.m.id}`} type="button" onClick={() => jumpTo(h.sid, h.m.id)} className="block w-full border-black/5 border-b px-4 py-3 text-left">
+									<div className="text-[12px] text-black/40">
+										{h.name ? `${h.name} · ` : ""}
+										{h.m.role === "user" ? "我说" : "AI 说"}
+									</div>
+									<div className="mt-1 line-clamp-2 break-all text-[15px]">
+										{a > 0 ? "…" : ""}
+										{t.slice(a, i)}
+										<span className="text-[#07C160]">{t.slice(i, i + sKey.length)}</span>
+										{t.slice(i + sKey.length, i + sKey.length + 50)}
+									</div>
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			)}
 			{picker && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => setPicker(false)}>
 					<div className="max-h-[70%] overflow-auto rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>

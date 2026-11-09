@@ -22,9 +22,12 @@ html,body{touch-action:manipulation;-webkit-text-size-adjust:100%}
 
 /* 聊天语音气泡的 WiFi 图标：更黑一点；播放时三段慢慢出现 */
 .wx-voice path{fill:#000;fill-opacity:1;stroke:#000;stroke-width:.3}
-@keyframes wxvp{0%{clip-path:inset(0 58% 0 0)}33%{clip-path:inset(0 52% 0 0)}66%{clip-path:inset(0 46% 0 0)}100%{clip-path:inset(0 34% 0 0)}}
-.wx-voice-playing{animation:wxvp 1.8s steps(1,end) infinite}
+@keyframes wxvp{0%{clip-path:inset(0 55% 0 0)}33.34%{clip-path:inset(0 43% 0 0)}66.67%{clip-path:inset(0 30% 0 0)}100%{clip-path:inset(0 30% 0 0)}}
+.wx-voice-playing{animation:wxvp 1.05s steps(1,end) infinite}
 
 /* 手机：整页固定，禁止左右拖动和回弹 */
 .wx-mobile,.wx-mobile body{overscroll-behavior:none}
 .wx-mobile #screen{overscroll-behavior:none}
+
+@keyframes wxflash{0%,60%{background:rgba(7,193,96,.28)}100%{background:transparent}}
+.wx-flash{animation:wxflash 1.8s ease-out}

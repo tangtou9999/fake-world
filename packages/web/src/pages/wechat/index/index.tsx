@@ -60,7 +60,7 @@ const WechatIndex = () => {
 				}}
 				className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-x-none bg-white"
 			>
-				<SearchBar />
+				<SearchBar onClick={() => navigate("/wechat/search")} />
 				<MultipleDeviceLogin />
 				<DialogueList />
 			</div>

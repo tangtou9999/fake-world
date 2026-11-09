@@ -78,6 +78,26 @@ const describe = (v: Record<string, any>, name: string, groupId?: string) => {
 	return `[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] ${who}：${body}`;
 };
 
+/** 搜索所有聊天里含关键词的消息，按聊天分组 */
+export const searchChats = (q: string) => {
+	const key = q.trim().toLowerCase();
+	if (!key) return [] as { id: string; name: string; count: number; snippet: string }[];
+	const out: { id: string; name: string; count: number; snippet: string }[] = [];
+	for (const c of listContacts()) {
+		const all = getConversationListValueSnapshot(c.id) as unknown as Record<string, any>[];
+		let count = 0;
+		let snippet = "";
+		for (const v of all) {
+			const body = describe(v, c.name, isGroupId(c.id) ? c.id : undefined).replace(/^\[[^\]]*\]\s*[^：]*：/, "");
+			if (!body.toLowerCase().includes(key)) continue;
+			count++;
+			if (!snippet) snippet = body;
+		}
+		if (count) out.push({ id: c.id, name: c.name, count, snippet });
+	}
+	return out;
+};
+
 /** 某个联系人的全部聊天记录（不再只取最近几条）；极端过长时保留最新的部分 */
 export const chatLog = (id: string, name: string, maxLines?: number) => {
 	const all = getConversationListValueSnapshot(id) as unknown as Record<string, any>[];

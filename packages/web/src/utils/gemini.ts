@@ -169,7 +169,7 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 
 async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions, modelId = "deepseek-flash"): Promise<string> {
 	const pro = modelId === "deepseek-v4-pro";
-	const limit = pro ? 90_000 : 20_000;
+	const limit = pro ? 150_000 : 25_000;
 	const config = getGeminiConfig();
 	const system = [config.adultMode !== false ? ADULT_MODE_PROMPT : "", options.system ?? ""].filter(Boolean).join("\n\n");
 	const messages = [
@@ -189,7 +189,7 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 			body: JSON.stringify({
 				model: modelId,
 				messages,
-				thinking: { type: "disabled" },
+				thinking: { type: pro ? "enabled" : "disabled" },
 				temperature: 1,
 				...(options.json ? { response_format: { type: "json_object" } } : {}),
 			}),

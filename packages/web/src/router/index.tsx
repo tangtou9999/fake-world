@@ -5,6 +5,7 @@ import Discover from "@/pages/wechat/discover";
 import AddFriend from "@/pages/wechat/addFriend/AddFriend";
 import RequestDetail from "@/pages/wechat/addFriend/RequestDetail";
 import NewFriends from "@/pages/wechat/addFriend/NewFriends";
+import ChatSearch from "@/pages/wechat/search";
 import ChatAi from "@/pages/wechat/conversation/ChatAi";
 import GroupInfo from "@/pages/wechat/group/GroupInfo";
 import NewGroup from "@/pages/wechat/group/NewGroup";
@@ -74,6 +75,7 @@ export const routes: RouteObject[] = [
 					{ path: "conversation/:id/ai", element: <ChatAi /> },
 					{ path: "conversation/:id/info", element: <GroupInfo /> },
 					{ path: "group/new", element: <NewGroup /> },
+					{ path: "search", element: <ChatSearch /> },
 					{ path: "add-friend", element: <AddFriend /> },
 					{ path: "new-friends", element: <NewFriends /> },
 					{ path: "new-friends/:id", element: <RequestDetail /> },
