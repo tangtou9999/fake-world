@@ -37,7 +37,7 @@ const RedPacketAcceptedReply = ({ redPacketId, upperText, id, claimerId }: Props
 		"你"
 	) : <UserName id={peerId} className="text-black/50" />;
 	const right =
-		originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
+		claimerId && claimerId === peerId ? "自己" : originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
 
 	return (
 		<>
