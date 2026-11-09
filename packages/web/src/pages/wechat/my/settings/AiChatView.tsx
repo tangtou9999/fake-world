@@ -24,17 +24,31 @@ type Props = { mode: "private" | "chat"; conversationId?: string };
 const needsFix = (r: string, ask = ""): string => {
 	const m = r.match(/```wxchat\s*([\s\S]*?)```/);
 	if (!m && /```wxops/.test(r)) return "";
+	// 代码块写到一半被截断（有开头没有结尾的 ```）：以前会被悄悄吃掉，现在要求重出
+	if (!m && /```wxchat/.test(r))
+		return "你上一条的 ```wxchat 代码块没有写完（缺少结尾的 ```），聊天里什么都没有生成。请重新输出：一句简短说明 + 完整并闭合的 ```wxchat 代码块；如果内容很多，就少写几条，保证代码块完整。";
 	if (!m && /(删除|删掉|改时间|改成|挪到|移到|调整时间|修改)/.test(ask) && /(这就|马上|现在|已经|帮你|好的|我来).{0,20}(删|改|挪|调|修改)/.test(r))
 		return "你上一条只说了要修改，却没有附 ```wxops 代码块，聊天里什么都没有变。请现在重新输出：一句简短说明 + 完整的 ```wxops 代码块（id 必须照抄聊天记录里 # 后面的内容）。";
 	if (!m) {
-		const asked = /(生成|追加|写入|补).{0,10}(聊天记录|记录|对话)|^(生成|写)/.test(ask);
-		const promised = asked || /(现在|这就|马上|重新|立刻|接下来|下面).{0,14}(生成|写|发|输出|追加|记录)|忘了附|没有附/.test(r);
+		// 「怎么生成聊天记录」这类纯提问不算要执行
+		const isQuestion = /(怎么|如何|为什么|是什么|什么意思)/.test(ask);
+		const asked =
+			!isQuestion &&
+			(/(生成|追加|写入|补).{0,10}(聊天记录|记录|对话)|^(生成|写)/.test(ask) ||
+				(/(生成|追加|写入|补上|重写|重新生成|替换|写进|放进|放到|再放|发一些|发几|发点|发个)/.test(ask) &&
+					/(聊天|记录|消息|转账|红包|表情|窗口|对话|聊天框|一段|几条)/.test(ask)));
+		// 回复以冒号结尾、后面却什么都没有：说明本该跟着的内容丢了
+		const bare = r.replace(/```[\s\S]*?(```|$)/g, "").trim();
+		const dangling = /[：:]$/.test(bare) && !/```copy/.test(r);
+		const promised = asked || dangling || /(现在|这就|马上|重新|立刻|接下来|下面).{0,14}(生成|写|发|输出|追加|记录)|忘了附|没有附/.test(r);
 		return promised && !/```wx(voice|call)/.test(r)
 			? "你上一条只说了要生成，却没有附 ```wxchat 代码块，聊天里什么都没有生成。请现在重新输出：一句简短说明 + 完整的 ```wxchat 代码块（每一项都要有 at 日期时间）。"
 			: "";
 	}
 	try {
 		const j = parseJsonLoose<{ items?: { at?: string }[] }>(m[1]);
+		if (!Array.isArray(j.items) || j.items.length === 0)
+			return "你上一条的 ```wxchat 代码块里 items 是空的，聊天里什么都没有生成。请重新输出带完整 items 的 ```wxchat 代码块（每一项都要有 at）。";
 		if (Array.isArray(j.items) && j.items.some((v) => !v?.at))
 			return "你上一条的代码块里有些 items 没有写 at。每一项都必须有 at（YYYY-MM-DD HH:mm），并且严格按用户要求的真实日期。请重新输出完整的 ```wxchat 代码块。";
 		if (Array.isArray(j.items) && j.items.some((v) => parseAt(v?.at) === null))
@@ -215,10 +229,19 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
 			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
 			const parsed = isChat ? parseAction(po.text) : { text: vm.text, action: undefined };
-			const opsTarget = po.ops ? resolveTarget(po.ops.target, contacts, conversationId) : undefined;
+			// 目标锁定当前窗口：只有用户这一句话里明确点名了别的联系人，才听 AI 写的 target；
+			// 否则（比如之前对话里提过「老妈」，AI 就把 target 写成老妈）一律写进当前聊天
+			const curContact = isChat ? contacts.find((c) => c.id === conversationId) : undefined;
+			const userNamedOther = isChat && findMentioned(text, contacts).some((c) => c.id !== conversationId);
+			const lockCur = (t: (typeof contacts)[number] | undefined) => (curContact && !userNamedOther ? curContact : t);
+			const opsTarget = po.ops ? lockCur(resolveTarget(po.ops.target, contacts, conversationId)) : undefined;
 
-			const target = parsed.action ? resolveTarget(parsed.action.target, contacts, conversationId) : undefined;
-			const extra = usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "";
+			const target = parsed.action ? lockCur(resolveTarget(parsed.action.target, contacts, conversationId)) : undefined;
+			let failNote = "";
+			if (isChat && !parsed.action && !po.ops && !Number.isFinite(callMinutes) && !vm.make && !parsed.text.includes("（AI 附上的") && needsFix(reply, text)) {
+				failNote = "\n\n⚠️ 这次没有写入：AI 没有输出有效的聊天数据（重试 2 次也没成功），聊天里没有任何改动。可以再发一次，或把一次要生成的条数减少、换个更强的模型。";
+			}
+			const extra = (usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "") + failNote;
 			updateMessages((m) => [
 				...m,
 				{

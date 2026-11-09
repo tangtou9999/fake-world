@@ -120,7 +120,7 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
 \`\`\`wxchat
 {"target":"联系人名字","mode":"append","items":[{"kind":"text","who":"friend","text":"内容","at":"YYYY-MM-DD HH:mm"}]}
 \`\`\`
-- target：${currentName ? `默认就是当前聊天「${currentName}」；用户明确说别的联系人时才改成那个人，` : ""}必须是联系人列表里的名字（照抄）。
+- target：${currentName ? `默认就是当前聊天「${currentName}」；只有用户「这一句话」里明确点名别的联系人时才改成那个人（之前的对话里提过别人不算，上下文里带着别的聊天记录也不算），` : ""}必须是联系人列表里的名字（照抄）。
 - 视频通话记录也用 items 生成：{"kind":"call","who":"me或friend（谁打的）","status":"rejected被拒绝/cancelled已取消/accepted接通","seconds":接通时的秒数,"at":"..."}。例如「我给对方打视频被拒绝」= who:me,status:rejected。
 - 红包金额单个最高 200 元，超过要拆成多个，或自己调到 200 以内。
 - mode 有三种：
@@ -139,6 +139,8 @@ ${groupMembers}
 - 群里的 target 照抄「当前聊天」的名字。
 - 群红包：kind 为 redPacket，amount 是红包总额，who/sender 指明谁发；可选 "count":份数（默认=群里所有人含我）。系统会自动把总额随机拆成 count 份：对方发的红包，其余成员会在 5~10 秒内陆续领取，并留一份给我；我发的红包，群友同样陆续领取。不需要你另外写「某某领取了红包」的系统消息，也不要把 status 写成 accepted。` : ""}
 微信表情：文字里可以写 [名字] 表示表情，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；不要用其他方括号表情或 Unicode 小黄脸，数量像真人聊天一样适度。读取聊天记录时表情也显示成 [名字]。
+【表情包】这里做不到发真正的表情图片，只能用上面的 [名字] 文字表情。用户要「发表情包/测试表情」时，就生成一批带这些 [名字] 的 text 消息放进 wxchat 代码块，并在说明里直说是文字表情；不要说「已经发了表情图」。
+【必须执行】用户要你生成、放进、重写、补上聊天内容时，回复里必须带完整的 wxchat 代码块；说明文字只写一句话，不要以冒号结尾，也不要在没附代码块的情况下说「已经放进去了」。附不了就直接说做不到。
 【修改已有的消息（改时间 / 改内容 / 删除）】
 聊天记录里每条消息前面的 #xxxx 是它固定不变的 id（包括红包、转账、通话、系统提示）。要对已有消息动手时，不要用 wxchat 重写整个聊天，而是在回复末尾附：
 \`\`\`wxops
@@ -204,10 +206,14 @@ export const parseVoiceMake = (raw: string): { text: string; make?: VoiceMake } 
 export const parseAction = (raw: string): { text: string; action?: AiChatAction } => {
 	const m = raw.match(/```wxchat\s*([\s\S]*?)```/);
 	const text = raw.replace(/```wxchat[\s\S]*?(```|$)/g, "").trim();
-	if (!m) return { text };
+	if (!m) {
+		// 有开头没结尾：多半是输出太长被截断，不能再悄悄吞掉
+		if (/```wxchat/.test(raw)) return { text: `${text}\n\n（AI 附上的聊天数据没有输出完整，可能是一次内容太多被截断了，聊天里没有改动。请让它少生成一些，或分几次生成。）` };
+		return { text };
+	}
 	try {
 		const j = parseJsonLoose<{ target?: string; mode?: string; from?: string; to?: string; items?: unknown[] }>(m[1]);
-		if (!Array.isArray(j.items) || j.items.length === 0) return { text };
+		if (!Array.isArray(j.items) || j.items.length === 0) return { text: `${text}\n\n（AI 附上的聊天数据里没有任何消息，聊天里没有改动，请让它重新输出一次）` };
 		const mode = j.mode === "range" && j.from && j.to ? "range" : j.mode === "replace" ? "replace" : "append";
 		return {
 			text,
