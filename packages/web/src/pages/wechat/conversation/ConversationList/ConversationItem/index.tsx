@@ -99,7 +99,7 @@ const ConversationItem = ({ data }: Props) => {
 			);
 		case EConversationType.redPacketAcceptedReply:
 			return (
-				<RedPacketAcceptedReply id={data.id} redPacketId={data.redPacketId} upperText={upperText} />
+				<RedPacketAcceptedReply id={data.id} redPacketId={data.redPacketId} upperText={upperText} claimerId={data.claimerId} />
 			);
 		case EConversationType.personalCard:
 			return (

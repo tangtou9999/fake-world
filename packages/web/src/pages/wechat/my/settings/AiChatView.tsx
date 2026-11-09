@@ -1,3 +1,4 @@
+import { parseJsonLoose } from "@/utils/gemini";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
@@ -15,6 +16,25 @@ import { NavBar } from "../../addFriend/Shared";
 import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
+
+const needsFix = (r: string, ask = ""): string => {
+	const m = r.match(/```wxchat\s*([\s\S]*?)```/);
+	if (!m) {
+		const asked = /(生成|追加|写入|补).{0,10}(聊天记录|记录|对话)|^(生成|写)/.test(ask);
+		const promised = asked || /(现在|这就|马上|重新|立刻|接下来|下面).{0,14}(生成|写|发|输出|追加|记录)|忘了附|没有附/.test(r);
+		return promised && !/```wx(voice|call)/.test(r)
+			? "你上一条只说了要生成，却没有附 ```wxchat 代码块，聊天里什么都没有生成。请现在重新输出：一句简短说明 + 完整的 ```wxchat 代码块（每一项都要有 at 日期时间）。"
+			: "";
+	}
+	try {
+		const j = parseJsonLoose<{ items?: { at?: string }[] }>(m[1]);
+		if (Array.isArray(j.items) && j.items.some((v) => !v?.at))
+			return "你上一条的代码块里有些 items 没有写 at。每一项都必须有 at（YYYY-MM-DD HH:mm），并且严格按用户要求的真实日期。请重新输出完整的 ```wxchat 代码块。";
+	} catch {
+		return "";
+	}
+	return "";
+};
 
 const AiChatView = ({ mode, conversationId }: Props) => {
 	useScreenTopBg("#EDEDED");
@@ -117,16 +137,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			let reply = "";
 			let usedLevel: Level = 0;
 			let blocked: unknown = null;
+			let lastTurns: { role: "user" | "model"; text: string }[] = [];
+			let lastSystem = "";
 			for (const level of [0, 1, 2, 3] as Level[]) {
 				const take = level === 0 ? 40 : level === 1 ? 6 : 0;
 				let turns = take ? prior.slice(-take) : [];
 				while (turns.length && turns[0].role !== "user") turns = turns.slice(1);
 				try {
-					reply = await callGemini(text, {
-						windowKey: myKey,
-						history: turns.map((m) => ({ role: m.role, text: m.text })),
-						system: buildSystem(isChat ? CHAT_AI_SYSTEM : AI_CHAT_SYSTEM, level, contacts, ids, isChat ? { currentId: conversationId as string } : undefined),
-					});
+					lastTurns = turns.map((m) => ({ role: m.role, text: m.text }));
+					lastSystem = buildSystem(isChat ? CHAT_AI_SYSTEM : AI_CHAT_SYSTEM, level, contacts, ids, isChat ? { currentId: conversationId as string } : undefined);
+					reply = await callGemini(text, { windowKey: myKey, history: lastTurns, system: lastSystem });
 					usedLevel = level;
 					blocked = null;
 					break;
@@ -139,6 +159,20 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				}
 			}
 			if (blocked) throw blocked;
+			// AI 偶尔嘴上说生成却漏了代码块，或漏了日期：自动让它重出，最多 2 次
+			for (let retry = 0; retry < 2 && isChat; retry++) {
+				const fix = needsFix(reply, text);
+				if (!fix) break;
+				try {
+					reply = await callGemini(fix, {
+						windowKey: myKey,
+						history: [...lastTurns, { role: "user", text }, { role: "model", text: reply }],
+						system: lastSystem,
+					});
+				} catch {
+					break;
+				}
+			}
 			if (cancelled.current.delete(userMsg.id)) return;
 			const vm = parseVoiceMake(reply.trim());
 			const cm = isChat ? vm.text.match(/```wxcall\s*([\s\S]*?)```/) : null;

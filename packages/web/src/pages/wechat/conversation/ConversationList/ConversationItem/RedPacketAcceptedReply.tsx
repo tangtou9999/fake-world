@@ -14,9 +14,10 @@ type Props = {
 	redPacketId: IConversationTypeRedPacketAcceptedReply["redPacketId"];
 	upperText: IConversationTypeRedPacketAcceptedReply["upperText"];
 	id: IConversationTypeRedPacketAcceptedReply["id"];
+	claimerId?: string;
 };
 
-const RedPacketAcceptedReply = ({ redPacketId, upperText, id }: Props) => {
+const RedPacketAcceptedReply = ({ redPacketId, upperText, id, claimerId }: Props) => {
 	const { conversationId } = useConversationAPI();
 	const [conversationList, setConversationList] = useAtom(conversationListAtom(conversationId));
 	const redPacket = conversationList.find((v) => v.id === redPacketId);
@@ -30,8 +31,11 @@ const RedPacketAcceptedReply = ({ redPacketId, upperText, id }: Props) => {
 	const peerId = isGroupId(conversationId)
 		? ((redPacket as { senderId?: string }).senderId ?? groupDefaultSender(conversationId) ?? conversationId)
 		: conversationId;
-	const left =
-		originalSender === "friend" ? "你" : <UserName id={peerId} className="text-black/50" />;
+	const left = claimerId ? (
+		<UserName id={claimerId} className="text-black/50" />
+	) : originalSender === "friend" ? (
+		"你"
+	) : <UserName id={peerId} className="text-black/50" />;
 	const right =
 		originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
 

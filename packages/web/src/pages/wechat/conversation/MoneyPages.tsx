@@ -1,5 +1,6 @@
 import useMode from "@/components/useMode";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
+import { dripClaims, planGroupPacket } from "@/stateV2/groupRedPacket";
 import { h } from "@/components/HashAssets";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import {
@@ -59,6 +60,11 @@ function useSend(kind: Kind) {
 						};
 			return [...prev, item as TConversationItem];
 		});
+		// 群红包：我发的，群友 5~10 秒内陆续领取
+		if (kind === "redPacket" && isGroupId(id) && params.sender === "mine" && !params.done) {
+			const plan = planGroupPacket(id, true, Number(amount));
+			dripClaims(id, base.id, plan.claimers);
+		}
 		// 同步到零钱：我发出 → 扣；对方发的且已领取 → 加
 		if (params.sender === "mine") {
 			applyMoneyMove({ kind, direction: "out", peerId: params.target || id, amount });

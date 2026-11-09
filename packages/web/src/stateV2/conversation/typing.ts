@@ -58,6 +58,8 @@ export interface IConversationTypeRedPacket extends IConversationItemBase {
 export interface IConversationTypeRedPacketAcceptedReply extends IConversationItemBase {
 	type: EConversationType.redPacketAcceptedReply;
 	redPacketId: string;
+	/** 群聊：领取红包的成员 id（没有则是「我」领取） */
+	claimerId?: string;
 }
 
 export interface IConversationTypeImage extends IConversationItemBase {

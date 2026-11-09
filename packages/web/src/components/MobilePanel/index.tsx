@@ -78,9 +78,14 @@ const MobilePanel = () => {
 	useEffect(() => {
 		const onHash = () => setHash(window.location.hash);
 		window.addEventListener("hashchange", onHash);
-		return () => window.removeEventListener("hashchange", onHash);
+		// 路由跳转用的是 pushState，不会触发 hashchange，所以再轮询一下
+		const timer = window.setInterval(onHash, 300);
+		return () => {
+			window.removeEventListener("hashchange", onHash);
+			window.clearInterval(timer);
+		};
 	}, []);
-	const onAiPage = /\/ai(\/chat)?$/.test(hash.split("?")[0]);
+	const onAiPage = /\/ai(\/chat)?\/?$/.test(hash.split("?")[0]);
 
 	const finish = () => {
 		setPanel(null);

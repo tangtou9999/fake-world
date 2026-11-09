@@ -14,12 +14,15 @@ import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValue
 import { EMOJI_NAME_LIST, slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
+import { dripClaims, instantClaims, planGroupPacket } from "@/stateV2/groupRedPacket";
 
 export type ParsedItem = {
 	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "other";
 	who?: "friend" | "me";
 	text?: string;
 	amount?: string;
+	/** 群红包份数（默认群里所有人） */
+	count?: number;
 	note?: string;
 	status?: "accepted" | "awaiting" | "expired" | "rejected";
 	seconds?: number;
@@ -118,6 +121,7 @@ export function applyParsedItems(
 	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : past ? (insertAt > 0 ? (existing[insertAt - 1].sendTimestamp ?? 0) : 0) : (existing.at(-1)?.sendTimestamp ?? 0);
 	let pendingTime: string | undefined;
 	const items: TConversationItem[] = [];
+	const dripJobs: { packetId: string; claimers: string[] }[] = [];
 	let lastPreview = "";
 	let rotate = 0;
 	list.forEach((it, i) => {
@@ -144,19 +148,34 @@ export function applyParsedItems(
 			case "system":
 				items.push({ ...common, type: EConversationType.centerText, role: "friend", simpleContent: it.text ?? "", upperText: takeUpper() } as TConversationItem);
 				return;
-			case "redPacket":
+			case "redPacket": {
+				const packetId = common.id;
+				let amount = it.amount || "0.00";
+				let status: "awaiting" | "accepted" | "expired" = it.status === "awaiting" ? "awaiting" : it.status === "expired" ? "expired" : "accepted";
+				let claimers: string[] = [];
+				if (isGroupId(conversationId) && Number(amount) > 0) {
+					const plan = planGroupPacket(conversationId, role === "mine", Number(amount), it.count);
+					amount = plan.amount;
+					claimers = plan.claimers;
+					status = "awaiting";
+				}
 				items.push({
 					...common,
 					type: EConversationType.redPacket,
 					role,
 					originalSender: role,
-					amount: it.amount || "0.00",
+					amount,
 					note: it.note || undefined,
-					redPacketStatus: it.status === "awaiting" ? "awaiting" : it.status === "expired" ? "expired" : "accepted",
+					redPacketStatus: status,
 					upperText: takeUpper(),
 				} as TConversationItem);
+				if (claimers.length) {
+					if (!past && !replace && !range) dripJobs.push({ packetId, claimers });
+					else items.push(...instantClaims(packetId, claimers, ts));
+				}
 				lastPreview = "[微信红包]";
 				return;
+			}
 			case "transfer":
 				items.push({
 					...common,
@@ -196,6 +215,7 @@ export function applyParsedItems(
 		}
 		return replace ? items : [...prev, ...items];
 	});
+	dripJobs.forEach((j) => dripClaims(conversationId, j.packetId, j.claimers));
 	if (lastPreview && !(range && after.length)) touchDialogue(conversationId, lastPreview);
 	return items.length;
 }
