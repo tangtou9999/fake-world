@@ -162,7 +162,8 @@ export const buildSystem = (
 	const now = dayjs().format("YYYY-MM-DD HH:mm dddd");
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
-	let s = chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`;
+	const COPY_RULE = "\n【可复制内容】回复里如果有需要用户单独复制走的文本（需求说明、代码、文案、提示词等），把它单独放进 ```copy 代码块里，正文放在块外面；一条回复可以有多个 ```copy 块，每块只放一份完整内容，块里不要夹带解释。普通聊天回复不要滥用。";
+	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`) + COPY_RULE;
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);

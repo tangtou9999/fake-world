@@ -1,4 +1,5 @@
 import { parseJsonLoose } from "@/utils/gemini";
+import CopyBlock, { parseSegments } from "./CopyBlock";
 import { applyOps, describeOp, parseOps } from "./chatOps";
 import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
 import useScreenTopBg from "@/components/useScreenTopBg";
@@ -56,6 +57,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const isGroupChat = isChat && isGroupId(conversationId);
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
+	const [toast, setToast] = useState("");
+	const showToast = (r: "copied" | "selected") => {
+		setToast(r === "copied" ? "已复制" : "已选中，请长按选择「拷贝」");
+		window.setTimeout(() => setToast(""), 1600);
+	};
 	const [searching, setSearching] = useState(false);
 	const [sq, setSq] = useState("");
 	const jumpTo = (sid: string | undefined, mid: string) => {
@@ -392,7 +398,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							className={`max-w-[82%] whitespace-pre-wrap break-words rounded-[6px] px-3 py-[10px] text-[16px] leading-[23px] ${m.role === "user" ? (m.failed ? "bg-[#95EC69]/50" : "bg-[#95EC69]") : m.error ? "bg-[#FBE9E9] text-[#C62828]" : "bg-white"}`}
 						>
 							{m.voice ? "🎤 " : ""}
-							{m.text}
+							{m.role === "model" && !m.error && m.text.includes("```")
+								? parseSegments(m.text).map((seg, i) =>
+										seg.type === "copy" ? <CopyBlock key={i} content={seg.content} onResult={showToast} /> : <div key={i}>{seg.content}</div>,
+									)
+								: m.text}
 						</div>
 						{m.callMake && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
@@ -598,6 +608,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					</div>
 				</div>
 			)}
+			{toast && <div className="pointer-events-none fixed bottom-[120px] left-1/2 z-[60] -translate-x-1/2 rounded-[6px] bg-black/75 px-4 py-2 text-[14px] text-white">{toast}</div>}
 			{note && <div className="max-h-[40vh] overflow-auto whitespace-pre-line bg-[#FBE9E9] px-4 py-2 text-[13px] text-[#C62828]">{note}</div>}
 			<div className="flex items-end gap-2 border-t-[0.5px] border-t-[#D6D6D6] bg-[#F7F7F7] px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
 					<>

@@ -20,6 +20,13 @@ const ROWS: string[][] = [
 	/* 13 */ ["鞭炮", "猪头", "企鹅", "企鹅摇", "企鹅笑"],
 ];
 
+/** 微信里常见的老名字 → 面板里已对上的表情（AI 写了没收录的名字时，也显示成表情而不是文字） */
+const ALIAS: Record<string, string> = {
+	害羞: "脸红", 流泪: "泪奔", 大哭: "泪奔", 发怒: "怄火", 抓狂: "怄火", 尴尬: "囧", 吐: "想吐", 白眼: "鄙视", 傲慢: "嫌弃",
+	破涕为笑: "泪笑", 苦涩: "难过", 可爱: "憨笑", 坏笑: "奸笑", 阴险: "奸笑", 左哼哼: "鄙视", 右哼哼: "鄙视", 好: "OK", 赞: "强",
+	加油: "奋斗", 吃瓜群众: "吃瓜", 悠闲: "愉快", 开心: "愉快", 笑脸: "微笑", 哭: "泪奔", 捂嘴笑: "偷笑", 再见: "拜托", 流汗: "汗",
+};
+
 const NAME_TO_SYMBOL = new Map<string, string>();
 const SYMBOL_TO_NAME = new Map<string, string>();
 ROWS.forEach((row, y) =>
@@ -36,7 +43,7 @@ export const textToSlateChildren = (text: string) => {
 	const children: ({ text: string } | { type: "emoji"; emojiSymbol: string; children: [{ text: string }] })[] = [];
 	let last = 0;
 	for (const m of text.matchAll(/\[([^\[\]\s]{1,6})\]/g)) {
-		const symbol = NAME_TO_SYMBOL.get(m[1]);
+		const symbol = NAME_TO_SYMBOL.get(m[1]) ?? (ALIAS[m[1]] ? NAME_TO_SYMBOL.get(ALIAS[m[1]]) : undefined);
 		if (!symbol) continue;
 		children.push({ text: text.slice(last, m.index) });
 		children.push({ type: "emoji", emojiSymbol: symbol, children: [{ text: "" }] });
