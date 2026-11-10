@@ -142,3 +142,5 @@ liangniangbaby@gmail.com
 [fork-url]: https://github.com/LiangNiang/fake-world/forks
 [license-shield]: https://img.shields.io/github/license/LiangNiang/fake-world?style=flat-square
 [license-url]: https://github.com/LiangNiang/fake-world/blob/main/LICENSE
+
+<!-- pages redeploy 2026-11-10T15:37:41Z -->
