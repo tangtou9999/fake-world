@@ -1,0 +1,14 @@
+素材库来源与许可
+
+头像 avatars/（卡通、宠物、花、风景，不含真人照片）
+  来源：DiceBear Lorelei（作者 Rebecca Stumpf）
+  许可：CC BY 4.0
+  https://www.dicebear.com/
+  https://creativecommons.org/licenses/by/4.0/
+
+朋友圈配图 moments/food、moments/scenery、moments/lifestyle、moments/travel
+  来源：Wikimedia Commons
+  许可：每张图各自的许可不同（CC BY、CC BY-SA、CC0、公有领域等）
+
+每一项的路径、分类、tags、原始链接和许可写在同目录的 index.json（source、license 字段）。
+使用这些图片时请保留本说明与 index.json。

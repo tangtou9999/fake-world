@@ -7,6 +7,7 @@ import {
 	type TConversationItem,
 	type TConversationRole,
 	fromLastGenerateUpperText,
+	getConversationListValueSnapshot,
 	inputterConfigAtom,
 	setConversationListValue,
 } from "@/stateV2/conversation";
@@ -24,6 +25,9 @@ import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
+import LongShot from "../LongShot";
+import { armReplay } from "../replay";
+import { standInAtom } from "../standIn";
 import VideoSheet from "./VideoSheet";
 import VoiceSheet from "./VoiceSheet";
 
@@ -54,6 +58,7 @@ const RoleBar = () => {
 	const [rangeFrom, setRangeFrom] = useState("");
 	const [rangeTo, setRangeTo] = useState("");
 	const [rangeText, setRangeText] = useState("");
+	const [standIn, setStandIn] = useAtom(standInAtom);
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -224,6 +229,24 @@ const RoleBar = () => {
 				>
 					批量
 				</button>
+				<LongShot />
+				<button
+					type="button"
+					onClick={() => armReplay(conversationId, getConversationListValueSnapshot(conversationId).map((m) => m.id))}
+					className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]"
+				>
+					回放
+				</button>
+				{!isGroupId(conversationId) && (
+					<button
+						type="button"
+						aria-pressed={!!standIn[conversationId]}
+						onClick={() => setStandIn((v) => ({ ...v, [conversationId]: !v[conversationId] }))}
+						className={`h-7 rounded-full px-3 text-[14px] ${standIn[conversationId] ? "bg-[#07C160] text-white" : "bg-[#07C160]/10 text-[#07C160]"}`}
+					>
+						AI代回
+					</button>
+				)}
 			</div>
 			{videoOpen && <VideoSheet conversationId={conversationId} onClose={() => setVideoOpen(false)} />}
 			{voiceOpen && <VoiceSheet conversationId={conversationId} onClose={() => setVoiceOpen(false)} />}
