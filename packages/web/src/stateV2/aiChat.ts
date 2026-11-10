@@ -28,6 +28,8 @@ export type AiChatMessage = {
 	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
 	/** AI 提议「N 分钟后对方打视频过来」：用户点「设置」才生效 */
 	callMake?: { minutes: number; done?: boolean };
+	/** AI 提议改资料 / 状态栏 / 角标 / 多设备 / 封面赞：用户点「确认执行」才写入 */
+	screen?: { ops: import("@/pages/wechat/my/settings/screenOps").ScreenOp[]; lines?: string[]; applied?: string };
 	voiceMake?: { name: string; sample: string; profile: { voice: string; chest: number; air: number; accent: string; persona: string }; saved?: boolean };
 };
 

@@ -7,6 +7,8 @@ import PeopleOutlinedSVG from "@/assets/people-outlined.svg?react";
 import WechatSVG from "@/assets/wechat.svg?react";
 import Badge from "@/components/Badge";
 import { canBeDetected } from "@/components/NodeDetected";
+import { NavBadgeSheet, PhoneEditHit, useCompactPhone } from "@/components/ScreenSheets";
+import useMode from "@/components/useMode";
 import TopOperations from "@/components/TopOperations";
 import useDeviceConfig from "@/components/useDeviceConfig";
 import { EBottomNavBars, bottomNavbarsAtom } from "@/stateV2/bottomNavbars";
@@ -14,7 +16,7 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import { simulatedChrome } from "@/stateV2/device";
 import { useAtomValue, useSetAtom } from "jotai";
 import { mapValues } from "lodash-es";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { isMobileOnly } from "react-device-detect";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -44,6 +46,10 @@ const BottomNavbar = () => {
 	const { t } = useTranslation();
 	const { screenSize } = useDeviceConfig();
 	const homeIndicator = isMobileOnly ? 0 : simulatedChrome(screenSize.height).homeIndicator;
+	const { isEdit } = useMode();
+	const compact = useCompactPhone();
+	const [badge, setBadge] = useState<EBottomNavBars | null>(null);
+	const phoneEdit = compact && isEdit;
 
 	return (
 		<canBeDetected.div
@@ -56,7 +62,7 @@ const BottomNavbar = () => {
 		>
 			<div className="grid h-[49px] grid-cols-4">
 				<canBeDetected.div
-					className="flex cursor-pointer flex-col items-center justify-center"
+					className="relative flex cursor-pointer flex-col items-center justify-center"
 					metaData={{
 						type: EMetaDataType.NavigationBar,
 						index: EBottomNavBars.WECHAT,
@@ -87,9 +93,10 @@ const BottomNavbar = () => {
 					>
 						{t("wechatPage.bottomNavbar.wechat")}
 					</span>
+					{phoneEdit && <PhoneEditHit label="编辑微信角标" onOpen={() => setBadge(EBottomNavBars.WECHAT)} />}
 				</canBeDetected.div>
 				<canBeDetected.div
-					className="flex cursor-pointer flex-col items-center justify-center"
+					className="relative flex cursor-pointer flex-col items-center justify-center"
 					metaData={{
 						type: EMetaDataType.NavigationBar,
 						index: EBottomNavBars.ADDRESS_BOOK,
@@ -120,9 +127,10 @@ const BottomNavbar = () => {
 					>
 						{t("wechatPage.bottomNavbar.contacts")}
 					</span>
+					{phoneEdit && <PhoneEditHit label="编辑通讯录角标" onOpen={() => setBadge(EBottomNavBars.ADDRESS_BOOK)} />}
 				</canBeDetected.div>
 				<canBeDetected.div
-					className="flex cursor-pointer flex-col items-center justify-center"
+					className="relative flex cursor-pointer flex-col items-center justify-center"
 					metaData={{
 						type: EMetaDataType.NavigationBar,
 						index: EBottomNavBars.DISCOVER,
@@ -153,9 +161,10 @@ const BottomNavbar = () => {
 					>
 						{t("wechatPage.bottomNavbar.discover")}
 					</span>
+					{phoneEdit && <PhoneEditHit label="编辑发现角标" onOpen={() => setBadge(EBottomNavBars.DISCOVER)} />}
 				</canBeDetected.div>
 				<canBeDetected.div
-					className="flex cursor-pointer flex-col items-center justify-center"
+					className="relative flex cursor-pointer flex-col items-center justify-center"
 					metaData={{
 						type: EMetaDataType.NavigationBar,
 						index: EBottomNavBars.MY,
@@ -186,8 +195,10 @@ const BottomNavbar = () => {
 					>
 						{t("wechatPage.bottomNavbar.me")}
 					</span>
+					{phoneEdit && <PhoneEditHit label="编辑我的角标" onOpen={() => setBadge(EBottomNavBars.MY)} />}
 				</canBeDetected.div>
 			</div>
+			{badge && <NavBadgeSheet tab={badge} onClose={() => setBadge(null)} />}
 		</canBeDetected.div>
 	);
 };

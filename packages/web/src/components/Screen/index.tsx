@@ -1,5 +1,7 @@
+import { useCompactPhone } from "../ScreenSheets";
 import { Global, css } from "@emotion/react";
 import { type CSSProperties, memo, useEffect } from "react";
+import { useAtomValue } from "jotai";
 import { isDesktop, isMobileOnly } from "react-device-detect";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router-dom";
@@ -15,6 +17,8 @@ import useDeviceConfig from "../useDeviceConfig";
 
 const Screen = () => {
 	const { screenSize } = useDeviceConfig();
+	const mode = useAtomValue(modeAtom);
+	const compact = useCompactPhone();
 
 	useEffect(() => {
 		refreshMoments();
@@ -80,7 +84,7 @@ const Screen = () => {
         `}
 			/>
 			<DetectedOverall />
-			{isDesktop && <StatusBar />}
+			{(isDesktop || (compact && mode === "edit")) && <StatusBar />}
 			<ErrorBoundary FallbackComponent={Fallback}>
 				<Outlet />
 			</ErrorBoundary>
