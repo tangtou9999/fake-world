@@ -8,12 +8,14 @@ import {
 } from "@/stateV2/conversation";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
 import { MYSELF_ID } from "@/faker/wechat/user";
+import { IMAGES_CACHE } from "@/db";
+import { isMD5 } from "@/utils";
 import { slateToPlain } from "@/wechatComponents/SlateText/emojiNames";
 import { useConversationAPI } from "./context";
 import { Node } from "slate";
 import { useAtomValue } from "jotai";
 import { toPng } from "html-to-image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const snippet = (item: TConversationItem) => {
 	if (item.type === EConversationType.text) {
@@ -34,46 +36,10 @@ const lineOf = (item: TConversationItem, index: number) => {
 	return `${index + 1}. ${[item.upperText, who, text].filter(Boolean).join(" ")}`;
 };
 
-const waitImages = (root: HTMLElement) =>
-	Promise.all(
-		[...root.querySelectorAll("img")].map(
-			(img) =>
-				img.complete
-					? Promise.resolve()
-					: new Promise<void>((resolve) => {
-							img.onload = () => resolve();
-							img.onerror = () => resolve();
-						}),
-		),
-	);
-
-/** 外链图片一旦留在节点里，浏览器会拒绝把整张长图画出来。能读到的先画进画布，读不到的用灰块占位。 */
-const bakeImages = (root: HTMLElement) => {
-	for (const img of root.querySelectorAll("img")) {
-		img.removeAttribute("srcset");
-		const canvas = document.createElement("canvas");
-		const w = img.naturalWidth || 40;
-		const h = img.naturalHeight || 40;
-		canvas.width = Math.max(1, w);
-		canvas.height = Math.max(1, h);
-		const ctx = canvas.getContext("2d");
-		if (!ctx) continue;
-		let baked = false;
-		if (img.naturalWidth > 0) {
-			try {
-				ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-				img.src = canvas.toDataURL(w * h > 40000 ? "image/jpeg" : "image/png", 0.9);
-				baked = true;
-			} catch {
-				baked = false;
-			}
-		}
-		if (!baked) {
-			ctx.fillStyle = "#d8d8d8";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			img.src = canvas.toDataURL("image/png");
-		}
-	}
+const resolveSrc = (value?: string) => {
+	if (!value) return "";
+	if (isMD5(value)) return IMAGES_CACHE.get(value) ?? "";
+	return value;
 };
 
 const grayPixel = () => {
@@ -88,11 +54,101 @@ const grayPixel = () => {
 	return canvas.toDataURL("image/png");
 };
 
+const readBlob = (blob: Blob) =>
+	new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(String(reader.result));
+		reader.onerror = () => reject(reader.error);
+		reader.readAsDataURL(blob);
+	});
+
+const loadImage = (src: string, cross: boolean) =>
+	new Promise<HTMLImageElement>((resolve, reject) => {
+		const el = new Image();
+		if (cross) el.crossOrigin = "anonymous";
+		el.onload = () => resolve(el);
+		el.onerror = () => reject(new Error("load"));
+		el.src = src;
+	});
+
+/** 用一块新画布导出。跨域失败只丢掉这一张，不会把整张长图弄脏。 */
+const drawn = (img: HTMLImageElement) => {
+	const nw = img.naturalWidth || 1;
+	const nh = img.naturalHeight || 1;
+	const scale = Math.min(1, 1080 / Math.max(nw, nh));
+	const w = Math.max(1, Math.round(nw * scale));
+	const h = Math.max(1, Math.round(nh * scale));
+	const canvas = document.createElement("canvas");
+	canvas.width = w;
+	canvas.height = h;
+	const ctx = canvas.getContext("2d");
+	if (!ctx) throw new Error("canvas");
+	ctx.drawImage(img, 0, 0, w, h);
+	return canvas.toDataURL(w * h > 40000 ? "image/jpeg" : "image/png", 0.9);
+};
+
+const rasterize = async (src: string) => {
+	if (!src) return grayPixel();
+	if (!src.startsWith("data:")) {
+		try {
+			const res = await fetch(src);
+			if (res.ok) return drawn(await loadImage(await readBlob(await res.blob()), false));
+		} catch {
+			/* 再试带 crossOrigin 的加载 */
+		}
+		try {
+			return drawn(await loadImage(src, true));
+		} catch {
+			return grayPixel();
+		}
+	}
+	try {
+		return drawn(await loadImage(src, false));
+	} catch {
+		return src.startsWith("data:") ? src : grayPixel();
+	}
+};
+
+/** 截图前把头像和聊天图片都换成 dataURL，并等它们 decode 完。 */
+const inlineImages = async (root: HTMLElement) => {
+	await Promise.all(
+		[...root.querySelectorAll("img")].map(async (img) => {
+			img.removeAttribute("srcset");
+			await new Promise<void>((resolve) => {
+				const done = () => resolve();
+				if (img.complete) {
+					done();
+					return;
+				}
+				img.addEventListener("load", done, { once: true });
+				img.addEventListener("error", done, { once: true });
+				if (img.complete) done();
+			});
+			const src = img.currentSrc || img.src || img.getAttribute("src") || "";
+			let data = "";
+			if (img.naturalWidth > 0) {
+				try {
+					data = drawn(img);
+				} catch {
+					data = "";
+				}
+			}
+			if (!data) data = await rasterize(src);
+			img.removeAttribute("crossorigin");
+			img.src = data;
+			try {
+				await img.decode();
+			} catch {
+				/* 占位图继续 */
+			}
+		}),
+	);
+};
+
 const paintHost = async (host: HTMLElement, width: number) => {
 	document.body.appendChild(host);
 	try {
-		await waitImages(host);
-		bakeImages(host);
+		await inlineImages(host);
 		const cssHeight = Math.max(host.scrollHeight, 1);
 		const pixelRatio = Math.max(1, Math.min(2, 16000 / cssHeight));
 		try {
@@ -210,13 +266,13 @@ const syntheticHost = (conversationId: string, ids: string[]) => {
 		if (time) block.appendChild(el("div", "text-align:center;color:rgba(0,0,0,.45);font-size:13px;margin-bottom:8px;", time));
 		const row = el("div", `display:flex;align-items:flex-start;gap:8px;${mine ? "flex-direction:row-reverse;" : ""}`);
 		const avatar = document.createElement("img");
-		avatar.src = who?.avatarInfo || "";
+		avatar.src = resolveSrc(who?.avatarInfo);
 		avatar.style.cssText = "width:40px;height:40px;border-radius:4px;object-fit:cover;background:#d8d8d8;flex:none;";
 		row.appendChild(avatar);
 		const bubble = el("div", `max-width:240px;border-radius:4px;padding:10px;font-size:16px;line-height:22px;white-space:pre-wrap;word-break:break-word;background:${mine ? "#8CE97F" : "#fff"};`);
 		if (item.type === EConversationType.image) {
 			const pic = document.createElement("img");
-			pic.src = item.imageInfo;
+			pic.src = resolveSrc(item.imageInfo);
 			pic.style.cssText = "width:140px;border-radius:4px;display:block;";
 			bubble.appendChild(pic);
 		} else bubble.textContent = plainMessage(item);
@@ -242,24 +298,40 @@ export const exportConversationPng = async (conversationId: string, ids: string[
 	return paintHost(host, width);
 };
 
-const openInNewPage = (dataUrl: string) => {
-	const page = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>聊天长截图</title><style>html,body{margin:0;background:#000}p{margin:0;padding:12px 16px;color:#fff;text-align:center;font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}img{width:100%;height:auto;display:block}</style></head><body><p>长按图片，选择「存储图像」</p><img src="${dataUrl}" alt="聊天长截图"></body></html>`;
+const openInNewPage = (blob: Blob) => {
+	const imgUrl = URL.createObjectURL(blob);
+	const page = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>聊天长截图</title><style>html,body{margin:0;background:#000}p{margin:0;padding:12px 16px;color:#fff;text-align:center;font:15px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}img{width:100%;height:auto;display:block;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto}</style></head><body><p>长按图片，选择「存储图像」</p><img src="${imgUrl}" alt="聊天长截图"></body></html>`;
 	const url = URL.createObjectURL(new Blob([page], { type: "text/html" }));
 	const opened = window.open(url, "_blank");
 	if (!opened) {
 		const a = document.createElement("a");
-		a.href = dataUrl;
+		a.href = imgUrl;
 		a.target = "_blank";
 		a.rel = "noopener";
 		a.click();
 	}
 };
 
-const downloadPng = (dataUrl: string) => {
+const downloadPng = (blob: Blob) => {
 	const a = document.createElement("a");
-	a.href = dataUrl;
+	const url = URL.createObjectURL(blob);
+	a.href = url;
 	a.download = "聊天长截图.png";
 	a.click();
+	URL.revokeObjectURL(url);
+};
+
+const sharePng = async (blob: Blob) => {
+	const file = new File([blob], "聊天长截图.png", { type: blob.type || "image/png" });
+	if (navigator.canShare?.({ files: [file] })) {
+		try {
+			await navigator.share({ files: [file] });
+			return;
+		} catch (e) {
+			if (e instanceof DOMException && e.name === "AbortError") return;
+		}
+	}
+	downloadPng(blob);
 };
 
 /** 编辑模式底部栏里的「长截图」。预览模式不渲染。 */
@@ -271,7 +343,26 @@ const LongShot = () => {
 	const [to, setTo] = useState("");
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState("");
-	const [preview, setPreview] = useState("");
+	const [preview, setPreview] = useState<{ url: string; blob: Blob } | null>(null);
+	const previewUrl = useRef("");
+	useEffect(
+		() => () => {
+			if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+		},
+		[],
+	);
+	const closePreview = () => {
+		if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+		previewUrl.current = "";
+		setPreview(null);
+	};
+	const showPreview = async (dataUrl: string) => {
+		const blob = await (await fetch(dataUrl)).blob();
+		const url = URL.createObjectURL(blob);
+		if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+		previewUrl.current = url;
+		setPreview({ url, blob });
+	};
 
 	const show = () => {
 		setErr("");
@@ -293,7 +384,7 @@ const LongShot = () => {
 		try {
 			const url = await captureChat(ids);
 			setOpen(false);
-			setPreview(url);
+			await showPreview(url);
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : "生成失败");
 		} finally {
@@ -345,17 +436,20 @@ const LongShot = () => {
 				</div>
 			)}
 			{preview && (
-				<div className="fixed inset-0 z-[80] flex flex-col bg-black/80 px-4 py-6" onClick={() => setPreview("")}>
+				<div className="fixed inset-0 z-[80] flex flex-col bg-black/80 px-4 py-6" onClick={closePreview}>
 					<div className="mx-auto flex min-h-0 w-full max-w-[440px] flex-1 flex-col" onClick={(e) => e.stopPropagation()}>
-						<div className="mb-2 text-center text-[14px] leading-5 text-white">iPhone 可长按图片保存。也可以新开一页或下载 PNG。</div>
+						<div className="mb-2 text-center text-[14px] leading-5 text-white">iPhone 可长按图片保存，或点「分享保存」存到相册。</div>
 						<div className="min-h-0 flex-1 overflow-auto rounded-[8px] bg-[#EDEDED]">
-							<img src={preview} alt="聊天长截图" className="block w-full" />
+							<img src={preview.url} alt="聊天长截图" className="wx-longshot block w-full" />
 						</div>
 						<div className="mt-3 flex gap-2">
-							<button type="button" onClick={() => openInNewPage(preview)} className="h-11 flex-1 rounded-[8px] bg-white text-[16px] text-black">
+							<button type="button" onClick={() => openInNewPage(preview.blob)} className="h-11 flex-1 rounded-[8px] bg-white text-[16px] text-black">
 								新页面打开
 							</button>
-							<button type="button" onClick={() => downloadPng(preview)} className="h-11 flex-1 rounded-[8px] bg-[#07C160] text-[16px] text-white">
+							<button type="button" onClick={() => void sharePng(preview.blob)} className="h-11 flex-1 rounded-[8px] bg-white text-[16px] text-black">
+								分享保存
+							</button>
+							<button type="button" onClick={() => downloadPng(preview.blob)} className="h-11 flex-1 rounded-[8px] bg-[#07C160] text-[16px] text-white">
 								下载 PNG
 							</button>
 						</div>

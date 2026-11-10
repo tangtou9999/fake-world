@@ -8,6 +8,7 @@ import { profileAtom } from "@/stateV2/profile";
 import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { useAtomValue } from "jotai";
 import { replayAtom } from "./replay";
+import { standInTypingAtom } from "./standIn";
 import { inEditMode } from "@/components/SheetKit";
 import ChatInfoSheet from "@/components/ChatInfoSheet";
 import { useRef, useState } from "react";
@@ -20,7 +21,8 @@ const ConversationHeader = () => {
 	const unreadCount = useAtomValue(unreadCountAtom);
 	const navigate = useModeNavigate();
 	const replay = useAtomValue(replayAtom);
-	const typing = !!(replay && replay.conversationId === id && replay.typing);
+	const standTyping = useAtomValue(standInTypingAtom);
+	const typing = !!(replay && replay.conversationId === id && replay.typing) || !!standTyping[id ?? ""];
 	const [info, setInfo] = useState(false);
 	const press = useRef<ReturnType<typeof setTimeout>>();
 	const startPress = () => {

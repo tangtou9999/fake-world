@@ -1,10 +1,10 @@
 import { useCompactPhone } from "../ScreenSheets";
 import { Global, css } from "@emotion/react";
-import { type CSSProperties, memo, useEffect } from "react";
+import { type CSSProperties, memo, useEffect, useState } from "react";
 import { useAtomValue } from "jotai";
 import { isDesktop, isMobileOnly } from "react-device-detect";
 import { ErrorBoundary } from "react-error-boundary";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 
 import { refreshMoments } from "@/stateV2/moments/autoRoll";
 import Fallback from "../Fallback";
@@ -15,10 +15,54 @@ import { showToast } from "@/wechatComponents/Toast";
 import StatusBar from "../StatusBar";
 import useDeviceConfig from "../useDeviceConfig";
 
+const isChatPath = (path: string) => /^\/wechat\/conversation\/[^/]+$/.test(path);
+
 const Screen = () => {
 	const { screenSize } = useDeviceConfig();
 	const mode = useAtomValue(modeAtom);
 	const compact = useCompactPhone();
+	const { pathname } = useLocation();
+	const lockChat = isMobileOnly && isChatPath(pathname);
+	const [frame, setFrame] = useState<{ height: number; offsetTop: number } | null>(null);
+
+	// iPhone Safari 弹键盘时页面会被顶上去。把聊天容器钉在 visualViewport 里，标题栏留在顶部。
+	useEffect(() => {
+		if (!lockChat) {
+			setFrame(null);
+			return;
+		}
+		const vv = window.visualViewport;
+		if (!vv) return;
+		let seen = false;
+		let lastH = 0;
+		const apply = () => {
+			const height = vv.height;
+			setFrame({ height, offsetTop: vv.offsetTop });
+			if (seen && height !== lastH) {
+				requestAnimationFrame(() => {
+					const list = document.getElementById("conversation-list");
+					if (list) list.scrollTop = 9999999;
+				});
+			}
+			seen = true;
+			lastH = height;
+		};
+		const html = document.documentElement;
+		const body = document.body;
+		const prevHtml = html.style.overflow;
+		const prevBody = body.style.overflow;
+		html.style.overflow = "hidden";
+		body.style.overflow = "hidden";
+		apply();
+		vv.addEventListener("resize", apply);
+		vv.addEventListener("scroll", apply);
+		return () => {
+			vv.removeEventListener("resize", apply);
+			vv.removeEventListener("scroll", apply);
+			html.style.overflow = prevHtml;
+			body.style.overflow = prevBody;
+		};
+	}, [lockChat]);
 
 	useEffect(() => {
 		refreshMoments();
@@ -65,9 +109,18 @@ const Screen = () => {
 	const style: CSSProperties = isMobileOnly
 		? {
 				width: "100vw",
-				height: "calc(100vh - 1px)",
+				height: lockChat && frame ? `${frame.height}px` : "calc(100vh - 1px)",
 				paddingTop: "max(0px, calc(env(safe-area-inset-top) - 5px))",
 				backgroundColor: "var(--screen-top-bg, #EDEDED)",
+				...(lockChat && frame
+					? {
+							position: "fixed" as const,
+							left: 0,
+							top: 0,
+							transform: `translateY(${frame.offsetTop}px)`,
+							zIndex: 2,
+						}
+					: {}),
 			}
 		: {
 				width: screenSize.width,
