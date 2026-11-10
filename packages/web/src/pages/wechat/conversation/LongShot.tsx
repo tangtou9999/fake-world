@@ -3,7 +3,12 @@ import {
 	EConversationType,
 	type TConversationItem,
 	conversationListAtom,
+	formatWechatTime,
+	getConversationListValueSnapshot,
 } from "@/stateV2/conversation";
+import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
+import { MYSELF_ID } from "@/faker/wechat/user";
+import { slateToPlain } from "@/wechatComponents/SlateText/emojiNames";
 import { useConversationAPI } from "./context";
 import { Node } from "slate";
 import { useAtomValue } from "jotai";
@@ -83,6 +88,42 @@ const grayPixel = () => {
 	return canvas.toDataURL("image/png");
 };
 
+const paintHost = async (host: HTMLElement, width: number) => {
+	document.body.appendChild(host);
+	try {
+		await waitImages(host);
+		bakeImages(host);
+		const cssHeight = Math.max(host.scrollHeight, 1);
+		const pixelRatio = Math.max(1, Math.min(2, 16000 / cssHeight));
+		try {
+			return await toPng(host, {
+				pixelRatio,
+				backgroundColor: "#EDEDED",
+				width,
+				height: cssHeight,
+				skipFonts: true,
+				imagePlaceholder: grayPixel(),
+				style: {
+					position: "relative",
+					left: "0px",
+					top: "0px",
+					right: "auto",
+					bottom: "auto",
+					inset: "auto",
+					insetInline: "auto",
+					insetBlock: "auto",
+					transform: "none",
+				},
+			});
+		} catch (e) {
+			const reason = e instanceof Error ? e.message : e instanceof Event ? e.type : String(e);
+			throw new Error(`生成失败（${width}×${cssHeight}）：${reason || "未知错误"}`);
+		}
+	} finally {
+		host.remove();
+	}
+};
+
 /** 把当前屏幕上的标题栏和选中消息克隆出来，不带编辑栏、多选底色 */
 const captureChat = async (ids: string[]) => {
 	const list = document.getElementById("conversation-list");
@@ -120,40 +161,85 @@ const captureChat = async (ids: string[]) => {
 		body.appendChild(copy);
 	}
 	host.appendChild(body);
-	document.body.appendChild(host);
-	try {
-		await waitImages(host);
-		bakeImages(host);
-		const cssHeight = host.scrollHeight;
-		const pixelRatio = Math.max(1, Math.min(2, 16000 / Math.max(cssHeight, 1)));
-		try {
-			return await toPng(host, {
-				pixelRatio,
-				backgroundColor: "#EDEDED",
-				width,
-				height: cssHeight,
-				skipFonts: true,
-				imagePlaceholder: grayPixel(),
-				// 节点放在屏幕外，避免生成时闪一下；画进图片时再拉回原位
-				style: {
-					position: "relative",
-					left: "0px",
-					top: "0px",
-					right: "auto",
-					bottom: "auto",
-					inset: "auto",
-					insetInline: "auto",
-					insetBlock: "auto",
-					transform: "none",
-				},
-			});
-		} catch (e) {
-			const reason = e instanceof Error ? e.message : e instanceof Event ? e.type : String(e);
-			throw new Error(`生成失败（${width}×${cssHeight}）：${reason || "未知错误"}`);
-		}
-	} finally {
-		host.remove();
+	return paintHost(host, width);
+};
+
+const plainMessage = (item: TConversationItem) => {
+	if (item.type === EConversationType.text) return item.textContent.map((n) => slateToPlain(n as never)).join("");
+	if (item.type === EConversationType.centerText) return item.simpleContent;
+	if (item.type === EConversationType.transfer) return `转账 ¥${item.amount}`;
+	if (item.type === EConversationType.redPacket) return item.note || "红包";
+	if (item.type === EConversationType.image) return "";
+	if (item.type === EConversationType.voice) return "语音";
+	return ConversationTypeLabel[item.type] ?? "";
+};
+
+const el = (tag: string, style: string, text?: string) => {
+	const node = document.createElement(tag);
+	node.style.cssText = style;
+	if (text) node.textContent = text;
+	return node;
+};
+
+/** 不在这个聊天页时，按同样的标题栏 / 气泡 / 时间 / 头像拼一张长图，再走同一套导出。 */
+const syntheticHost = (conversationId: string, ids: string[]) => {
+	const profiles = getAllProfilesValueSnapshot();
+	const nameOf = (id: string) => profiles.find((p) => p.id === id);
+	const peer = nameOf(conversationId);
+	const me = nameOf(MYSELF_ID);
+	const title = peer?.remark || peer?.nickname || "聊天";
+	const want = new Set(ids);
+	const items = getConversationListValueSnapshot(conversationId).filter((v) => want.has(v.id));
+	const width = 390;
+	const host = document.createElement("div");
+	host.setAttribute("data-longshot", "1");
+	host.style.cssText = `position:fixed;left:-10000px;top:0;width:${width}px;background:#EDEDED;display:flex;flex-direction:column;pointer-events:none;`;
+	host.appendChild(el("div", "height:28px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:#EDEDED;font-size:14px;font-weight:600;", ""));
+	host.lastElementChild!.textContent = "";
+	const status = host.lastElementChild as HTMLElement;
+	status.appendChild(el("span", "", "9:41"));
+	status.appendChild(el("span", "", "●●●"));
+	const header = el("div", "height:44px;display:flex;align-items:center;justify-content:center;background:#EDEDED;border-bottom:1px solid rgba(0,0,0,.1);font-size:17px;font-weight:500;", title);
+	host.appendChild(header);
+	const body = el("div", "background:#EDEDED;padding:12px;display:flex;flex-direction:column;gap:16px;");
+	for (const item of items) {
+		const mine = item.role === "mine";
+		const who = mine ? me : nameOf((item as { senderId?: string }).senderId || conversationId);
+		const block = el("div", "display:flex;flex-direction:column;");
+		const time = item.upperText || (item.sendTimestamp ? formatWechatTime(item.sendTimestamp) : "");
+		if (time) block.appendChild(el("div", "text-align:center;color:rgba(0,0,0,.45);font-size:13px;margin-bottom:8px;", time));
+		const row = el("div", `display:flex;align-items:flex-start;gap:8px;${mine ? "flex-direction:row-reverse;" : ""}`);
+		const avatar = document.createElement("img");
+		avatar.src = who?.avatarInfo || "";
+		avatar.style.cssText = "width:40px;height:40px;border-radius:4px;object-fit:cover;background:#d8d8d8;flex:none;";
+		row.appendChild(avatar);
+		const bubble = el("div", `max-width:240px;border-radius:4px;padding:10px;font-size:16px;line-height:22px;white-space:pre-wrap;word-break:break-word;background:${mine ? "#8CE97F" : "#fff"};`);
+		if (item.type === EConversationType.image) {
+			const pic = document.createElement("img");
+			pic.src = item.imageInfo;
+			pic.style.cssText = "width:140px;border-radius:4px;display:block;";
+			bubble.appendChild(pic);
+		} else bubble.textContent = plainMessage(item);
+		row.appendChild(bubble);
+		block.appendChild(row);
+		body.appendChild(block);
 	}
+	host.appendChild(body);
+	return { host, width };
+};
+
+/** 按消息 id 导出长图。当前就在这个聊天页时直接截屏幕上的气泡，否则按数据重绘后再导出。 */
+export const exportConversationPng = async (conversationId: string, ids: string[]) => {
+	const here = location.hash.includes(`/conversation/${conversationId}`) && document.getElementById("conversation-list");
+	if (here) {
+		try {
+			return await captureChat(ids);
+		} catch {
+			/* 页面上没找到这些气泡时，改用数据重绘 */
+		}
+	}
+	const { host, width } = syntheticHost(conversationId, ids);
+	return paintHost(host, width);
 };
 
 const openInNewPage = (dataUrl: string) => {

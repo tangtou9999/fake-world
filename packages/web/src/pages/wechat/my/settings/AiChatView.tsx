@@ -23,6 +23,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
 import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
+import { applyPlan, describeStep, parsePlan } from "./aiPlan";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
 
@@ -348,7 +349,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				const mentioned = findMentioned([text, ...prior.slice(-6).map((m) => m.text)].join("\n"), contacts).map((c) => c.id);
 				ids = Array.from(new Set([conversationId as string, ...mentioned])).slice(0, 4);
 			} else {
-				ids = batch ? (mainStore.get(aiChatsAtom).sessions.find((s) => s.id === batch.sid)?.boundIds ?? []) : (session.boundIds ?? []);
+				const bound = batch ? (mainStore.get(aiChatsAtom).sessions.find((s) => s.id === batch.sid)?.boundIds ?? []) : (session.boundIds ?? []);
+				const mentioned = findMentioned(text, contacts).map((c) => c.id);
+				ids = Array.from(new Set([...bound, ...mentioned])).slice(0, 4);
 			}
 			let reply = "";
 			let usedLevel: Level = 0;
@@ -395,7 +398,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const callMinutes = cm ? Number((cm[1].match(/-?\d+(\.\d+)?/) ?? [])[0]) : Number.NaN;
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
 			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
-			const parsed = isChat ? parseAction(po.text) : { text: vm.text, action: undefined };
+			const planned = parsePlan(po.text);
+			const parsed = isChat ? parseAction(planned.text) : { text: planned.text, action: undefined };
+			const shownText = parsed.text || (planned.plan ? "先看下面这张卡片，点确认才写入。" : "");
 			// 目标锁定当前窗口：只有用户这一句话里明确点名了别的联系人，才听 AI 写的 target；
 			// 否则（比如之前对话里提过「老妈」，AI 就把 target 写成老妈）一律写进当前聊天
 			const curContact = isChat ? contacts.find((c) => c.id === conversationId) : undefined;
@@ -412,14 +417,15 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const replyMsg: AiChatMessage = {
 				id: nanoid(8),
 				role: "model",
-				text: parsed.text + extra,
+				text: shownText + extra,
+				plan: planned.plan,
 				voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 				action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 				ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
 				callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
 			};
 			if (batch && ctrl) {
-				const parts = splitPrivateReply(parsed.text + extra);
+				const parts = splitPrivateReply(shownText + extra);
 				const show = parts.length ? parts : [parsed.text + extra];
 				let anchor = batch.ids[batch.ids.length - 1] ?? "";
 				let shown = 0;
@@ -429,7 +435,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					if (ctrl.signal.aborted || batchStop.current.has(batch.sid)) break;
 					const id = nanoid(8);
 					const last = i === show.length - 1;
-					const bubble: AiChatMessage = { id, role: "model", text: show[i], voiceMake: last ? replyMsg.voiceMake : undefined, action: last ? replyMsg.action : undefined, ops: last ? replyMsg.ops : undefined, callMake: last ? replyMsg.callMake : undefined };
+					const bubble: AiChatMessage = { id, role: "model", text: show[i], voiceMake: last ? replyMsg.voiceMake : undefined, action: last ? replyMsg.action : undefined, ops: last ? replyMsg.ops : undefined, callMake: last ? replyMsg.callMake : undefined, plan: last ? replyMsg.plan : undefined };
 					const anchorId = anchor;
 					patchSession(batch.sid, (m) => insertAfterAnchor(m, anchorId, bubble));
 					anchor = id;
@@ -723,7 +729,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				<div className="mx-auto mb-3 max-w-[92%] text-center text-[12px] text-black/40 leading-5">
 					{isChat
 						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。对话只保存在这台手机上，每个聊天各有各的 AI。"
-						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。可以绑定聊天让它读取，但不会改动聊天。对话只保存在这台手机上。"}
+						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。对话只保存在这台手机上。"}
 				</div>
 				{!(gemini.apiKey || gemini.apiKey2) && (
 					<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-auto mb-3 block h-10 rounded-[6px] bg-[#07C160] px-6 text-[15px] text-white">
@@ -876,6 +882,38 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 										}}
 									>
 										应用修改
+									</button>
+								)}
+							</div>
+						)}
+						{m.plan && (
+							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
+								<div className="font-medium text-[14px]">变更预览（点确认后才写入）</div>
+								<div className="mt-2 max-h-[180px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
+									{m.plan.steps.map((step, i) => (
+										<div key={i}>{describeStep(step)}</div>
+									))}
+								</div>
+								{m.plan.shot && <img src={m.plan.shot} alt="AI 导出的长截图" className="mt-2 max-h-[360px] w-full rounded-[6px] object-contain object-top" />}
+								{m.plan.applied ? (
+									<div className="mt-2 text-[13px] text-[#07C160]">✓ {m.plan.applied}</div>
+								) : (
+									<button
+										type="button"
+										className="mt-2 h-10 w-full rounded-[6px] bg-[#07C160] text-[15px] text-white"
+										onClick={() => {
+											const plan = m.plan;
+											if (!plan || plan.applied) return;
+											updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "正在写入…" } } : x)));
+											void applyPlan(plan.steps)
+												.then((res) => updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x))))
+												.catch((e) => {
+													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "" } } : x)));
+													window.alert(e instanceof Error ? e.message : String(e));
+												});
+										}}
+									>
+										确认执行
 									</button>
 								)}
 							</div>

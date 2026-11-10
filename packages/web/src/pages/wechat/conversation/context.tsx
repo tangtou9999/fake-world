@@ -18,6 +18,7 @@ import {
 	getMyProfileValueSnapshot,
 	getProfileValueSnapshot,
 } from "@/stateV2/profile";
+import { replyAsFriend } from "./standIn";
 import { animateElement } from "@/utils";
 import type { CustomElementEmoji } from "@/vite-env";
 import { SLATE_INITIAL_VALUE, withInlines } from "@/wechatComponents/SlateText/utils";
@@ -125,6 +126,7 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 			},
 		});
 		scrollConversationListToBtm();
+		if (sendRole === "mine") replyAsFriend(conversationId);
 	}, [conversationId]);
 
 	const sendTickleText = useCallback(

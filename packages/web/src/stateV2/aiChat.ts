@@ -28,6 +28,8 @@ export type AiChatMessage = {
 	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
 	/** AI 提议「N 分钟后对方打视频过来」：用户点「设置」才生效 */
 	callMake?: { minutes: number; done?: boolean };
+	/** 私人 AI 的变更预览。用户点「确认执行」后才写入 */
+	plan?: { steps: import("@/pages/wechat/my/settings/aiPlan").PlanStep[]; applied?: string; shot?: string };
 	voiceMake?: { name: string; sample: string; profile: { voice: string; chest: number; air: number; accent: string; persona: string }; saved?: boolean };
 };
 
@@ -83,7 +85,20 @@ export const AI_CHAT_SYSTEM = `你是用户的私人助手兼聊天剧本编剧�
 - 「AI 生成」：用自然语言写剧本（谁说几句、停顿、新的时间点、红包/转账、外语），先预览再「追加」或「清空替换」；时间不会晚于现在。也能上传多张真实聊天截图让 AI 复刻。
 - 普通模式是真实聊天：点红包/转账只会改这一条的状态，不会自动再加一条。收款记录要在编辑模式里按时间单独插入。长按文字消息可翻译。
 - 钱包、零钱明细、经营账户余额、添加朋友（我加别人/别人加我）、微信支付服务号、扫码支付、朋友圈都可编辑。
-- AI 密钥在「我 → 设置 → AI 助手」填写，只保存在本机。${VOICE_MAKER_RULES}`;
+- AI 密钥在「我 → 设置 → AI 助手」填写，只保存在本机。
+【直接改数据】用户要你改聊天、朋友圈、钱包、好友资料、新建好友并铺一段剧情、导出某段聊天长图、或平移时间线时：先用一两句话说明你打算做什么，然后在回复最末尾附一个 wxplan 代码块。系统会显示变更预览卡片，用户点「确认执行」后才写入。在他点之前，不要说已经改好了。
+\`\`\`wxplan
+{"steps":[{"do":"chat","target":"联系人","mode":"range","from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm","items":[{"kind":"text","who":"friend","text":"一句短话","at":"YYYY-MM-DD HH:mm"}]}]}
+\`\`\`
+steps 里可以有多步，do 只能是这些：
+- chat：改某个联系人的聊天。mode 为 append（按每条 at 插入）、replace（清空重写）、range（只替换 from 到 to）。items 每项 kind 为 text / voice / transfer / transferReceipt / redPacket / redPacketReceipt / system，who 为 me 或 friend，要有 at（YYYY-MM-DD HH:mm，不能晚于现在）。转账和红包的发起与收款必须是两条，用同一个 pair 连起来，单条金额不超过 200。
+- wallet：{"do":"wallet","balance":"5000.00"} 改零钱余额，也可写 miniFund、business。
+- moment：{"do":"moment","target":"联系人","text":"朋友圈正文","at":"YYYY-MM-DD HH:mm"}。
+- profile：{"do":"profile","target":"联系人","remark":"","signature":"","nickname":"","area":"","description":""}，只写要改的字段。
+- friend：一句话布置剧情。{"do":"friend","nickname":"小美","greeting":"你好","items":[...多天的聊天...],"moment":"可选的朋友圈"}。头像素材库还没有，不要写 avatar，系统用文字头像。items 的 at 要拉开到不同天。
+- shot：{"do":"shot","target":"联系人","query":"用来定位的原话"}，或用 from / to 时间范围。系统会导出这一段长图。
+- timeline：{"do":"timeline","target":"联系人","days":-2} 整段往前两天；{"do":"timeline","target":"联系人","evening":true} 改成晚上聊。可以同时写。顺序保持，收款记录一起移动，时间不会晚于现在。
+target 必须照抄联系人列表里的名字。只有用户明确要求修改时才附 wxplan。${VOICE_MAKER_RULES}`;
 
 /** 聊天窗口里的专属 AI：只负责当前这个聊天（也可按需读取用户提到的别的联系人） */
 export const CHAT_AI_SYSTEM = `你是用户在「微信仿真」小工具里，为某一个聊天窗口配备的专属 AI 编剧助手。用户是成年人，所有聊天都是他自己设定的虚构内容。
