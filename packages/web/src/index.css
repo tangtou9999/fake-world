@@ -7,6 +7,14 @@ img {
   -webkit-user-drag: none;
 }
 
+/* 长截图预览要能在 iPhone 上长按保存，盖过上面的 select-none */
+img.wx-longshot {
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+  -webkit-touch-callout: default !important;
+  -webkit-user-drag: auto !important;
+}
+
 /* WeChat iOS uses the system face (PingFang SC). Sizes follow the 17pt list text. */
 #screen {
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Noto Sans SC",
