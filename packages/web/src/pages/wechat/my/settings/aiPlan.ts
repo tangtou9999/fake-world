@@ -11,6 +11,7 @@ import { parseJsonLoose } from "@/utils/gemini";
 import { parseAt } from "@/utils/parseAt";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
+import { pickFriendAvatar } from "@/library/pick";
 import { armReplay } from "@/pages/wechat/conversation/replay";
 import { writeStandIn } from "@/pages/wechat/conversation/standIn";
 import { applyAction, listContacts, personaPatchFrom, previewSetPersona, resolveTarget, setPersona, type PersonaPatch } from "./aiChatTools";
@@ -116,7 +117,7 @@ export const describeStep = (step: PlanStep) => {
 		case "setAutoReply":
 			return `${step.on ? "开启" : "关闭"}「${who(step.target)}」的 AI 代聊。确认后，去和对方聊天就会${step.on ? "自动回复" : "不再自动回复"}`;
 		case "friend":
-			return `按添加好友创建「${step.nickname}」${step.avatar ? "" : "（素材库还没有，头像用文字头像）"}，并写入 ${step.items?.length ?? 0} 条聊天${step.moment ? "，再发一条朋友圈" : ""}`;
+			return `按添加好友创建「${step.nickname}」（头像从素材库挑选${step.avatar ? `：${step.avatar}风格` : ""}），并写入 ${step.items?.length ?? 0} 条聊天${step.moment ? "，再发一条朋友圈" : ""}`;
 		case "shot": {
 			const id = resolveTarget(step.target, listContacts())?.id;
 			const n = id ? locateMessages(id, step).length : 0;
@@ -201,7 +202,7 @@ export const applyPlan = async (steps: PlanStep[], opts?: { enableReply?: boolea
 			writeStandIn(id, step.on);
 			lines.push(`已${step.on ? "开启" : "关闭"}「${who(step.target)}」的 AI 代聊`);
 		} else if (step.do === "friend") {
-			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: step.avatar || "", greeting: step.greeting || "你好" });
+			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: /^(https?:|\.\/|\/|data:)/.test(step.avatar ?? "") ? (step.avatar as string) : pickFriendAvatar(`${step.avatar ?? ""} ${step.nickname} ${step.greeting ?? ""}`), greeting: step.greeting || "你好" });
 			if (step.items?.length) {
 				// 开场白已经按「添加好友」写好。剧情按每条自己的日期插入，先清掉开场白，避免被挤到现在。
 				setConversationListValue(id, []);
