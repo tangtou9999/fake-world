@@ -1,4 +1,6 @@
 import { fromLastGenerateUpperText, setConversationListValue, type TConversationItem, EConversationType } from "@/stateV2/conversation";
+import { getDialogueListValueSnapshot, setDialogueListValue } from "@/stateV2/dialogueList";
+import { touchDialogue } from "@/stateV2/fileHelper";
 import { isGroupId } from "@/stateV2/group";
 import atomWithStorage from "@/stateV2/atomWithStorage";
 import { mainStore } from "@/stateV2/store";
@@ -18,12 +20,14 @@ export const standInTypingAtom = atom<Record<string, boolean>>({});
 
 /** 代回节奏（毫秒）。私人 AI 不走这里。 */
 const PACE = {
-	readMin: 2000,
-	readMax: 6000,
-	perCharMin: 250,
-	perCharMax: 400,
-	typeMax: 12000,
-	burstGapMin: 1500,
+	readMin: 1000,
+	readMax: 3000,
+	perCharMin: 120,
+	perCharMax: 200,
+	typeMax: 6000,
+	burstGapMin: 800,
+	/** 连发间隔在打字时间上再乘这一档，避免每条停得一样久 */
+	gapJitter: 0.3,
 } as const;
 
 const chain = new Map<string, Promise<void>>();
@@ -36,6 +40,28 @@ const span = (min: number, max: number) => min + Math.random() * (max - min);
 const typeMs = (text: string) => {
 	const chars = Math.max(1, Array.from(text).length);
 	return Math.min(PACE.typeMax, Math.round(chars * span(PACE.perCharMin, PACE.perCharMax)));
+};
+
+/** 连发间隔：这条的打字时间，至少 burstGapMin，再 ±gapJitter。 */
+const gapMs = (text: string) => {
+	const base = Math.max(typeMs(text), PACE.burstGapMin);
+	return Math.max(1, Math.round(base * (1 + span(-PACE.gapJitter, PACE.gapJitter))));
+};
+
+const viewingChat = (id: string) => {
+	const path = (window.location.hash.replace(/^#/, "") || window.location.pathname).split("?")[0].replace(/\/$/, "");
+	return path === `/wechat/conversation/${id}`;
+};
+
+/** 和自己发消息一样更新首页预览、时间、排序；人不在这个聊天里时再加一条未读。 */
+const noteHome = (conversationId: string, preview: string) => {
+	const here = viewingChat(conversationId);
+	const prevN = getDialogueListValueSnapshot().find((v) => v.friendId === conversationId)?.unreadMarkNumber ?? 0;
+	touchDialogue(conversationId, preview);
+	if (here) return;
+	setDialogueListValue((prev) =>
+		prev.map((v) => (v.friendId === conversationId ? { ...v, unreadMarkNumber: prevN + 1, unreadDisplayType: "number" } : v)),
+	);
 };
 
 const stopped = (e: unknown, signal: AbortSignal) => signal.aborted || (e instanceof Error && e.name === "AbortError");
@@ -91,8 +117,7 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 			.slice(0, 3);
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-			const gap = i === 0 ? typeMs(line) : Math.max(typeMs(line), PACE.burstGapMin);
-			await sleep(gap, signal);
+			await sleep(i === 0 ? typeMs(line) : gapMs(line), signal);
 			if (signal.aborted || typingOwner.get(conversationId) !== token) return;
 			if (!mainStore.get(standInAtom)[conversationId]) return;
 			setConversationListValue(conversationId, (prev) => [
@@ -106,6 +131,7 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 					upperText: fromLastGenerateUpperText(prev),
 				} as TConversationItem,
 			]);
+			noteHome(conversationId, line);
 		}
 	} catch (e) {
 		if (stopped(e, signal)) return;
