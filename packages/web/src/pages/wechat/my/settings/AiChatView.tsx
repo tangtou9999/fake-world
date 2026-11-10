@@ -625,6 +625,21 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		else void send(t || "请看这张图片。", p);
 	};
 
+	const confirmPlan = (msg: AiChatMessage, enableReply = false) => {
+		const plan = msg.plan;
+		if (!plan || plan.applied) return;
+		updateMessages((all) => all.map((x) => (x.id === msg.id && x.plan ? { ...x, plan: { ...x.plan, applied: "正在写入…" } } : x)));
+		void applyPlan(plan.steps, enableReply ? { enableReply: true } : undefined)
+			.then((res) => {
+				updateMessages((all) => all.map((x) => (x.id === msg.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x)));
+				if (res.goto) navigate(`/wechat/conversation/${res.goto}`);
+			})
+			.catch((e) => {
+				updateMessages((all) => all.map((x) => (x.id === msg.id && x.plan ? { ...x, plan: { ...x.plan, applied: "" } } : x)));
+				window.alert(e instanceof Error ? e.message : String(e));
+			});
+	};
+
 	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range", place: "time" | "end" = "time") => {
 		const a = msg.action;
 		if (!a) return;
@@ -929,26 +944,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 								{m.plan.applied ? (
 									<div className="mt-2 text-[13px] text-[#07C160]">✓ {m.plan.applied}</div>
 								) : (
-									<button
-										type="button"
-										className="mt-2 h-10 w-full rounded-[6px] bg-[#07C160] text-[15px] text-white"
-										onClick={() => {
-											const plan = m.plan;
-											if (!plan || plan.applied) return;
-											updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "正在写入…" } } : x)));
-											void applyPlan(plan.steps)
-												.then((res) => {
-													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x)));
-													if (res.goto) navigate(`/wechat/conversation/${res.goto}`);
-												})
-												.catch((e) => {
-													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "" } } : x)));
-													window.alert(e instanceof Error ? e.message : String(e));
-												});
-										}}
-									>
-										{m.plan.steps.every((s) => s.do === "replay") ? "去聊天确认" : "确认执行"}
-									</button>
+									<div className="mt-2 space-y-2">
+										<button type="button" className="h-10 w-full rounded-[6px] bg-[#07C160] text-[15px] text-white" onClick={() => confirmPlan(m)}>
+											{m.plan.steps.every((s) => s.do === "replay") ? "去聊天确认" : "确认执行"}
+										</button>
+										{m.plan.steps.some((s) => s.do === "setPersona") && (
+											<button type="button" className="h-10 w-full rounded-[6px] border border-[#07C160] text-[15px] text-[#07C160]" onClick={() => confirmPlan(m, true)}>
+												保存并开启代聊
+											</button>
+										)}
+									</div>
 								)}
 							</div>
 						)}

@@ -12,6 +12,7 @@ import { parseAt } from "@/utils/parseAt";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
 import { armReplay } from "@/pages/wechat/conversation/replay";
+import { writeStandIn } from "@/pages/wechat/conversation/standIn";
 import { applyAction, listContacts, personaPatchFrom, previewSetPersona, resolveTarget, setPersona, type PersonaPatch } from "./aiChatTools";
 import { shiftTimes } from "./chatOps";
 
@@ -21,6 +22,7 @@ export type PlanStep =
 	| { do: "moment"; target: string; text: string; at?: string }
 	| { do: "profile"; target: string; remark?: string; nickname?: string; signature?: string; area?: string; description?: string }
 	| { do: "setPersona"; target: string; patch: PersonaPatch }
+	| { do: "setAutoReply"; target: string; on: boolean }
 	| { do: "friend"; nickname: string; avatar?: string; greeting?: string; items?: ParsedItem[]; moment?: string }
 	| { do: "shot"; target: string; query?: string; from?: string; to?: string }
 	| { do: "timeline"; target: string; days?: number; hours?: number; minutes?: number; evening?: boolean }
@@ -52,6 +54,11 @@ export const parsePlan = (raw: string): { text: string; plan?: { steps: PlanStep
 			} else if (s.do === "setPersona" && target) {
 				const patch = personaPatchFrom(s);
 				if (patch) steps.push({ do: "setPersona", target, patch });
+			} else if (s.do === "setAutoReply" && target && s.on !== undefined && s.on !== null) {
+				const v = s.on;
+				const on = v === true || v === 1 || v === "1" || v === "true" || v === "on" || v === "开启";
+				const off = v === false || v === 0 || v === "0" || v === "false" || v === "off" || v === "关闭";
+				if (on || off) steps.push({ do: "setAutoReply", target, on });
 			} else if (s.do === "friend" && s.nickname) {
 				steps.push({ do: "friend", nickname: String(s.nickname), avatar: s.avatar ? String(s.avatar) : undefined, greeting: s.greeting ? String(s.greeting) : undefined, items: asItems(s.items), moment: s.moment ? String(s.moment) : undefined });
 			} else if (s.do === "shot" && target) {
@@ -106,6 +113,8 @@ export const describeStep = (step: PlanStep) => {
 			return `改「${who(step.target)}」的资料${step.remark ? `，备注「${step.remark}」` : ""}${step.signature ? `，签名「${step.signature}」` : ""}${step.nickname ? `，昵称「${step.nickname}」` : ""}`;
 		case "setPersona":
 			return previewSetPersona(who(step.target), resolveTarget(step.target, listContacts())?.id, step.patch);
+		case "setAutoReply":
+			return `${step.on ? "开启" : "关闭"}「${who(step.target)}」的 AI 代聊。确认后，去和对方聊天就会${step.on ? "自动回复" : "不再自动回复"}`;
 		case "friend":
 			return `按添加好友创建「${step.nickname}」${step.avatar ? "" : "（素材库还没有，头像用文字头像）"}，并写入 ${step.items?.length ?? 0} 条聊天${step.moment ? "，再发一条朋友圈" : ""}`;
 		case "shot": {
@@ -148,9 +157,10 @@ const needId = (target: string) => {
 	return hit.id;
 };
 
-/** 点「确认执行」后才调用。聊天、转账红包走原来的写入；钱包和朋友圈走手动编辑同一套存储。 */
-export const applyPlan = async (steps: PlanStep[]) => {
+/** 点「确认执行」后才调用。聊天、转账红包走原来的写入；钱包和朋友圈走手动编辑同一套存储。enableReply 会在人设写入后打开代聊。 */
+export const applyPlan = async (steps: PlanStep[], opts?: { enableReply?: boolean }) => {
 	const lines: string[] = [];
+	const enableIds: string[] = [];
 	let shot = "";
 	let goto = "";
 	for (const step of steps) {
@@ -184,7 +194,12 @@ export const applyPlan = async (steps: PlanStep[]) => {
 		} else if (step.do === "setPersona") {
 			const id = needId(step.target);
 			await setPersona(id, step.patch);
-			lines.push(`已更新「${who(step.target)}」的人设卡`);
+			if (opts?.enableReply) enableIds.push(id);
+			lines.push(`已更新「${who(step.target)}」的人设卡${opts?.enableReply ? "，并开启代聊" : ""}`);
+		} else if (step.do === "setAutoReply") {
+			const id = needId(step.target);
+			writeStandIn(id, step.on);
+			lines.push(`已${step.on ? "开启" : "关闭"}「${who(step.target)}」的 AI 代聊`);
 		} else if (step.do === "friend") {
 			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: step.avatar || "", greeting: step.greeting || "你好" });
 			if (step.items?.length) {
@@ -219,5 +234,6 @@ export const applyPlan = async (steps: PlanStep[]) => {
 			lines.push(`已标出「${who(step.target)}」的 ${ids.length} 条，到聊天里确认后再播放`);
 		}
 	}
+	for (const id of enableIds) writeStandIn(id, true);
 	return { summary: lines.join("；"), shot, goto };
 };
