@@ -29,6 +29,7 @@ const SVG_COMPONENT_MAP: Record<
 	awaiting: Transfer2SVG,
 	accepted: Done2SVG,
 	rejected: Previous2SVG,
+	returned: Previous2SVG,
 	expired: ErrorSVG,
 };
 
@@ -50,6 +51,7 @@ const Transfer = ({
 		if (transferTo && targetName) {
 			if (transferStatus === "awaiting") return isEmpty(note) ? `转账给${targetName}` : note;
 			if (transferStatus === "accepted") return `${targetName}已收款`;
+			if (transferStatus === "returned" || transferStatus === "rejected") return "已退回";
 		}
 		if (transferStatus === "awaiting") {
 			return isEmpty(note)
@@ -67,7 +69,7 @@ const Transfer = ({
 			innerBlockClassName={twJoin(
 				"h-[83px] w-[243px] max-w-none rounded-[6px] p-0",
 				transferStatus === "awaiting" && "bg-wechatOrange-3 before:bg-wechatOrange-3",
-				(transferStatus === "accepted" || transferStatus === "rejected") &&
+				(transferStatus === "accepted" || transferStatus === "rejected" || transferStatus === "returned") &&
 					"bg-[#FACE9C] before:bg-[#FACE9C]",
 				transferStatus === "expired" && "bg-[#FACE9C] before:bg-[#FACE9C] saturate-60",
 			)}

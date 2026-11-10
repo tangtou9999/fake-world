@@ -13,31 +13,39 @@ import { useConversationAPI } from "../../context";
 type Props = {
 	redPacketId: IConversationTypeRedPacketAcceptedReply["redPacketId"];
 	upperText: IConversationTypeRedPacketAcceptedReply["upperText"];
-	id: IConversationTypeRedPacketAcceptedReply["id"];
 	claimerId?: string;
+	receiver?: IConversationTypeRedPacketAcceptedReply["receiver"];
 };
 
-const RedPacketAcceptedReply = ({ redPacketId, upperText, id, claimerId }: Props) => {
+const RedPacketAcceptedReply = ({ redPacketId, upperText, claimerId, receiver }: Props) => {
 	const { conversationId } = useConversationAPI();
-	const [conversationList, setConversationList] = useAtom(conversationListAtom(conversationId));
-	const redPacket = conversationList.find((v) => v.id === redPacketId);
+	const [conversationList] = useAtom(conversationListAtom(conversationId));
+	const redPacket = conversationList.find((v) => v.id === redPacketId) as IConversationTypeRedPacket | undefined;
 
-	if (!redPacket) {
-		setConversationList((prev) => prev.filter((v) => v.id !== id));
-		return null;
-	}
-
-	const { originalSender } = redPacket as IConversationTypeRedPacket;
+	// 收款记录单独存在：发起那条被删了也不要把这条清掉
 	const peerId = isGroupId(conversationId)
-		? ((redPacket as { senderId?: string }).senderId ?? groupDefaultSender(conversationId) ?? conversationId)
+		? ((redPacket as { senderId?: string } | undefined)?.senderId ?? groupDefaultSender(conversationId) ?? conversationId)
 		: conversationId;
+	const who = receiver ?? (redPacket ? (redPacket.originalSender === "friend" ? "mine" : "friend") : undefined);
 	const left = claimerId ? (
 		<UserName id={claimerId} className="text-black/50" />
-	) : originalSender === "friend" ? (
+	) : who === "mine" ? (
 		"你"
-	) : <UserName id={peerId} className="text-black/50" />;
+	) : who === "friend" ? (
+		<UserName id={peerId} className="text-black/50" />
+	) : (
+		"有人"
+	);
 	const right =
-		claimerId && claimerId === peerId ? "自己" : originalSender === "friend" ? <UserName id={peerId} className="text-black/50" /> : "你";
+		claimerId && claimerId === peerId
+			? "自己"
+			: redPacket
+				? redPacket.originalSender === "friend"
+					? <UserName id={peerId} className="text-black/50" />
+					: "你"
+				: who === "mine"
+					? <UserName id={peerId} className="text-black/50" />
+					: "你";
 
 	return (
 		<>

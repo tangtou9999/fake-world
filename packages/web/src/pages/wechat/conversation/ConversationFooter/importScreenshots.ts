@@ -15,17 +15,17 @@ import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValue
 import { EMOJI_NAME_LIST, slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
-import { dripClaims, instantClaims, planGroupPacket } from "@/stateV2/groupRedPacket";
+import { MONEY_MAX, insertByTime, makeRedPacketReceipt, makeTransferReceipt, moneyOverLimit, stampInserted } from "@/stateV2/conversation/records";
 
 export type ParsedItem = {
-	kind: "text" | "time" | "system" | "redPacket" | "transfer" | "voice" | "image" | "call" | "other";
+	kind: "text" | "time" | "system" | "redPacket" | "redPacketReceipt" | "transfer" | "transferReceipt" | "voice" | "image" | "call" | "other";
 	who?: "friend" | "me";
 	text?: string;
 	amount?: string;
 	/** 群红包份数（默认群里所有人） */
 	count?: number;
 	note?: string;
-	status?: "accepted" | "awaiting" | "expired" | "rejected" | "cancelled";
+	status?: "accepted" | "awaiting" | "expired" | "rejected" | "returned" | "cancelled";
 	seconds?: number;
 	/** 剧本模式：消息发生的时间 "YYYY-MM-DD HH:mm" */
 	at?: string;
@@ -37,14 +37,16 @@ export type ParsedItem = {
 	tone?: string;
 	/** 群聊：这条消息是哪位群成员发的（成员名字，照抄群成员列表） */
 	sender?: string;
+	/** 发起和收款共用的短标记，用来把两条连上。不会写进聊天记录 */
+	pair?: string;
+	/** 超时未领自动退回的小时数，如 24。不写就不会自动退 */
+	autoReturnHours?: number;
+	/** 语音：false = 未播放（红点）。不写则视为已播放 */
+	read?: boolean;
 };
 
-/** 单个红包最高 200 元 */
-export const MAX_RED_PACKET = 200;
-export const clampPacket = (v: string) => {
-	const n = Number(v);
-	return Number.isFinite(n) && n > MAX_RED_PACKET ? MAX_RED_PACKET.toFixed(2) : v;
-};
+/** 单条红包 / 转账最高 200 元。超了就拒绝这一条，不悄悄改小 */
+export const MAX_RED_PACKET = MONEY_MAX;
 
 const mmss = (sec: number) => `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
 /** 视频通话记录文字：who 是「谁打的」 */
@@ -104,53 +106,92 @@ const groupRotate = (conversationId: string, n: number) => {
 
 const paragraph = (text: string) => [{ type: "paragraph", children: textToSlateChildren(text) }] as never;
 
-/** 把识别结果写入聊天；replace=true 时先清空原有记录 */
+const hoursOf = (v: unknown) => {
+	const n = Number(v);
+	return Number.isFinite(n) && n > 0 ? n : undefined;
+};
+
+const transferStatusOf = (status?: string) =>
+	status === "awaiting" ? "awaiting" : status === "rejected" ? "rejected" : status === "returned" ? "returned" : status === "expired" ? "expired" : "accepted";
+
+const packetStatusOf = (status?: string) =>
+	status === "awaiting" ? "awaiting" : status === "expired" ? "expired" : status === "returned" || status === "rejected" ? "returned" : "accepted";
+
+/** 每条用自己的 at。不把整批挤到最后一条后面，也不为了单调把早的时间往后推。未来的时间压到现在。 */
+function ownStamps(list: ParsedItem[]) {
+	const now = Date.now();
+	let prev = 0;
+	return list.map((it) => {
+		const parsed = parseAt(it.at);
+		let t = parsed ?? (prev || now - 60_000) + 30_000;
+		if (t > now) t = now;
+		prev = t;
+		return t;
+	});
+}
+
+export type ApplyParsedResult = { applied: number; notes: string[] };
+
+/**
+ * 把识别结果写入聊天。
+ * replace：清空后替换。
+ * range：只换该时间段。
+ * appendToEnd：用户明确选择追加到末尾。
+ * 其余在 timed 时按每条自己的时间插入，不覆盖、不打乱已有消息。
+ */
 export function applyParsedItems(
 	conversationId: string,
 	list: ParsedItem[],
 	replace: boolean,
 	timed = false,
 	range?: { from: number; to: number },
-) {
+	appendToEnd = false,
+): ApplyParsedResult {
+	const notes: string[] = [];
 	const base = Date.now() - list.length * 60_000;
 	const existing = getConversationListValueSnapshot(conversationId);
 	const before = range ? existing.filter((v) => (v.sendTimestamp ?? 0) < range.from) : [];
 	const after = range ? existing.filter((v) => (v.sendTimestamp ?? 0) > range.to) : [];
 	const lastBefore = range ? (before.at(-1)?.sendTimestamp ?? 0) : undefined;
-	// 追加「很久以前」的聊天（一个月前、半年前……）：不挤到最后一条后面，而是按时间插进原有记录中间
-	const firstAtTs = list.map((v) => parseAt(v.at)).find((t): t is number => t !== null) ?? 0;
-	const lastExistingTs = existing.at(-1)?.sendTimestamp ?? 0;
-	const past = timed && !replace && !range && firstAtTs > 0 && firstAtTs < lastExistingTs - 60_000;
-	const insertAt = past ? existing.findIndex((v) => (v.sendTimestamp ?? 0) > firstAtTs) : -1;
-	const nextAfterPast = past && insertAt >= 0 ? existing[insertAt] : undefined;
+	const placeAtTime = timed && !replace && !range && !appendToEnd;
 	const stamps = timed
-		? computeStamps(conversationId, list, replace, {
-				last: past ? 0 : lastBefore,
-				cap: past ? nextAfterPast?.sendTimestamp : after[0]?.sendTimestamp,
-				fromZero: past,
-			})
+		? placeAtTime
+			? ownStamps(list)
+			: computeStamps(conversationId, list, replace, {
+					last: lastBefore,
+					cap: after[0]?.sendTimestamp,
+				})
 		: [];
-	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : past ? (insertAt > 0 ? (existing[insertAt - 1].sendTimestamp ?? 0) : 0) : (existing.at(-1)?.sendTimestamp ?? 0);
+	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : (existing.at(-1)?.sendTimestamp ?? 0);
 	let pendingTime: string | undefined;
 	const items: TConversationItem[] = [];
-	const dripJobs: { packetId: string; claimers: string[] }[] = [];
+	const pairOf = new Map<string, { pair: string; kind: "init" | "receipt" }>();
 	let lastPreview = "";
+	let newestTs = 0;
 	let rotate = 0;
+	const rejectMoney = (it: ParsedItem) => {
+		if (!moneyOverLimit(it.amount)) return false;
+		notes.push(`¥${it.amount} 超过 ${MAX_RED_PACKET}，这条没有写入`);
+		return true;
+	};
 	list.forEach((it, i) => {
 		const role = it.who === "me" ? "mine" : "friend";
 		const ts = timed ? stamps[i] : base + i * 60_000;
-		const inGroup = isGroupId(conversationId) && role === "friend" && it.kind !== "system";
+		const inGroup = isGroupId(conversationId) && role === "friend" && it.kind !== "system" && it.kind !== "redPacketReceipt" && it.kind !== "transferReceipt";
 		const sid = inGroup ? (resolveMember(conversationId, it.sender) ?? groupRotate(conversationId, ++rotate)) : undefined;
 		const common = { id: nanoid(8), sendTimestamp: ts, ...(sid ? { senderId: sid } : {}) } as const;
 		let upper = pendingTime;
 		if (timed) {
 			pendingTime = undefined;
-			upper = !prevStamp || ts - prevStamp >= 5 * 60_000 ? formatWechatTime(ts) : undefined;
+			upper = !placeAtTime && (!prevStamp || ts - prevStamp >= 5 * 60_000) ? formatWechatTime(ts) : undefined;
 		}
 		if (it.kind !== "time") prevStamp = ts;
 		const takeUpper = () => {
 			pendingTime = undefined;
 			return upper;
+		};
+		const rememberPair = (kind: "init" | "receipt") => {
+			if (it.pair) pairOf.set(common.id, { pair: String(it.pair), kind });
 		};
 		switch (it.kind) {
 			case "time":
@@ -159,42 +200,58 @@ export function applyParsedItems(
 				return;
 			case "system":
 				items.push({ ...common, type: EConversationType.centerText, role: "friend", simpleContent: it.text ?? "", upperText: takeUpper() } as TConversationItem);
+				lastPreview = it.text ?? "";
+				newestTs = Math.max(newestTs, ts);
 				return;
 			case "redPacket": {
-				const packetId = common.id;
-				let amount = clampPacket(it.amount || "0.00");
-				let status: "awaiting" | "accepted" | "expired" = it.status === "awaiting" ? "awaiting" : it.status === "expired" ? "expired" : "accepted";
-				let claimers: string[] = [];
-				if (isGroupId(conversationId) && Number(amount) > 0) {
-					const plan = planGroupPacket(conversationId, role === "mine", Number(amount), it.count);
-					amount = plan.amount;
-					claimers = plan.claimers;
-					status = "awaiting";
-				}
+				if (rejectMoney(it)) return;
+				rememberPair("init");
 				items.push({
 					...common,
 					type: EConversationType.redPacket,
 					role,
 					originalSender: role,
-					amount,
+					amount: it.amount || "0.00",
 					note: it.note || undefined,
-					redPacketStatus: status,
+					redPacketStatus: packetStatusOf(it.status),
+					autoReturnHours: hoursOf(it.autoReturnHours),
 					upperText: takeUpper(),
 				} as TConversationItem);
-				if (claimers.length) {
-					if (!past && !replace && !range) dripJobs.push({ packetId, claimers });
-					else items.push(...instantClaims(packetId, claimers, ts));
-				}
 				lastPreview = "[微信红包]";
+				newestTs = Math.max(newestTs, ts);
+				return;
+			}
+			case "redPacketReceipt": {
+				rememberPair("receipt");
+				const member = resolveMember(conversationId, it.sender);
+				const receipt = makeRedPacketReceipt({
+					sendTimestamp: ts,
+					receiver: role,
+					receiverId: member,
+					senderId: member,
+				});
+				items.push({ ...receipt, id: common.id, upperText: takeUpper() } as TConversationItem);
+				lastPreview = "[领取红包]";
+				newestTs = Math.max(newestTs, ts);
 				return;
 			}
 			case "call": {
-				const text = callText(role, it.status, it.seconds);
-				items.push({ ...common, type: EConversationType.text, role, textContent: paragraph(`📹 ${text}`), upperText: takeUpper() } as TConversationItem);
-				lastPreview = `[视频通话] ${text}`;
+				const status = it.status === "rejected" || it.status === "cancelled" || it.status === "accepted" ? it.status : "accepted";
+				items.push({
+					...common,
+					type: EConversationType.call,
+					role,
+					callStatus: status,
+					seconds: status === "accepted" ? Math.max(1, Math.round(it.seconds || 30)) : undefined,
+					upperText: takeUpper(),
+				} as TConversationItem);
+				lastPreview = `[视频通话] ${callText(role, status, it.seconds)}`;
+				newestTs = Math.max(newestTs, ts);
 				return;
 			}
-			case "transfer":
+			case "transfer": {
+				if (rejectMoney(it)) return;
+				rememberPair("init");
 				items.push({
 					...common,
 					type: EConversationType.transfer,
@@ -202,41 +259,63 @@ export function applyParsedItems(
 					originalSender: role,
 					amount: it.amount || "0.00",
 					note: it.note || undefined,
-					transferStatus: it.status === "awaiting" ? "awaiting" : it.status === "rejected" ? "rejected" : it.status === "expired" ? "expired" : "accepted",
+					transferStatus: transferStatusOf(it.status),
+					autoReturnHours: hoursOf(it.autoReturnHours),
 					upperText: takeUpper(),
 				} as TConversationItem);
 				lastPreview = "[转账]";
+				newestTs = Math.max(newestTs, ts);
 				return;
+			}
+			case "transferReceipt": {
+				rememberPair("receipt");
+				const member = resolveMember(conversationId, it.sender);
+				const receipt = makeTransferReceipt({
+					sendTimestamp: ts,
+					receiver: role,
+					receiverId: member,
+					amount: it.amount,
+					senderId: member,
+				});
+				items.push({ ...receipt, id: common.id, upperText: takeUpper() } as TConversationItem);
+				lastPreview = "[转账收款]";
+				newestTs = Math.max(newestTs, ts);
+				return;
+			}
 			case "voice":
-				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: false, stt: it.text, isRead: true, scene: it.scene, pace: it.pace, tone: it.tone, upperText: takeUpper() } as TConversationItem);
+				items.push({ ...common, type: EConversationType.voice, role, duration: Math.max(1, Math.round(it.seconds || 3)), showStt: false, stt: it.text, isRead: it.read === false ? false : true, scene: it.scene, pace: it.pace, tone: it.tone, upperText: takeUpper() } as TConversationItem);
 				lastPreview = "[语音]";
+				newestTs = Math.max(newestTs, ts);
 				return;
 			default: {
 				const text = it.text || (it.kind === "image" ? "[图片]" : "");
 				if (!text) return;
 				items.push({ ...common, type: EConversationType.text, role, textContent: paragraph(text), translation: it.translation || undefined, upperText: takeUpper() } as TConversationItem);
 				lastPreview = text;
+				newestTs = Math.max(newestTs, ts);
 			}
 		}
 	});
+	for (const [id, info] of pairOf) {
+		if (info.kind !== "receipt") continue;
+		const init = [...pairOf].find(([, o]) => o.kind === "init" && o.pair === info.pair);
+		if (!init) continue;
+		const msg = items.find((v) => v.id === id);
+		if (!msg) continue;
+		if (msg.type === EConversationType.transferReceipt) msg.transferId = init[0];
+		if (msg.type === EConversationType.redPacketAcceptedReply) msg.redPacketId = init[0];
+	}
+	const newIds = new Set(items.map((v) => v.id));
 	setConversationListValue(conversationId, (prev) => {
 		if (range) {
 			return [...prev.filter((v) => (v.sendTimestamp ?? 0) < range.from), ...items, ...prev.filter((v) => (v.sendTimestamp ?? 0) > range.to)];
 		}
-		if (past) {
-			const idx = prev.findIndex((v) => (v.sendTimestamp ?? 0) > firstAtTs);
-			if (idx < 0) return [...prev, ...items];
-			const lastNew = items.at(-1)?.sendTimestamp ?? 0;
-			const next = prev[idx];
-			const fixedNext = { ...next, upperText: (next.sendTimestamp ?? 0) - lastNew >= 5 * 60_000 ? formatWechatTime(next.sendTimestamp ?? 0) : undefined } as TConversationItem;
-			return [...prev.slice(0, idx), ...items, fixedNext, ...prev.slice(idx + 1)];
-		}
+		if (placeAtTime) return stampInserted(insertByTime(prev, items), newIds);
 		return replace ? items : [...prev, ...items];
 	});
-	dripJobs.forEach((j) => dripClaims(conversationId, j.packetId, j.claimers));
-	// 往过去插入的消息不算「最新消息」，不要改首页那一行的预览和排序
-	if (lastPreview && !past && !(range && after.length)) touchDialogue(conversationId, lastPreview);
-	return items.length;
+	const lastOld = existing.at(-1)?.sendTimestamp ?? 0;
+	if (lastPreview && newestTs >= lastOld && !(range && after.length)) touchDialogue(conversationId, lastPreview);
+	return { applied: items.length, notes };
 }
 
 /** 为剧本里的每条消息算出合法时间：单调递增，且不晚于现在、不早于已有最后一条 */
@@ -291,12 +370,14 @@ ${ctx.script}
 2. 每个元素都必须有 at（"YYYY-MM-DD HH:mm"）。at 必须单调递增、且绝对不能晚于现在的真实时间 ${ctx.now}。默认接在最后一条已有消息之后；但如果用户明确要求生成「很久以前」的聊天（如「一个月前」「两个月前」「半年前」「去年」「上个月那几天」），at 必须真的写成那段过去的日期（以现在的真实时间往前推算，系统会按时间把它插到聊天记录的正确位置），不要写成今天或最近几天。「第二天」「一小时后」等如果会超过现在，就把整段剧本整体往前挪（例如挪到昨天或前天），保证最后一条仍不晚于现在。同一段连续对话间隔 5 秒到 2 分钟；「停顿」「新的时间节点」间隔至少 10 分钟，通常几十分钟到几小时。
 3. kind 只能是：
    text（who, text, 可选 translation：若这条是外语，translation 填中文译文）
-   redPacket（who, amount 数字字符串, note 祝福语, status：awaiting）
-   transfer（who, amount, note, status：awaiting）
-   voice（who, seconds, text 为转文字）
-   call（视频通话记录：who 是谁打的；status：rejected 被拒绝 / cancelled 已取消 / accepted 接通（接通要写 seconds 通话秒数））
+   redPacket（发起那条：who, amount 数字字符串, note 祝福语, status：awaiting 待领取 / accepted 已领取 / returned 已退回, 可选 pair, 可选 autoReturnHours）
+   redPacketReceipt（收款那条：who 是谁领的, at, pair 与发起那条相同。群聊再加 sender）
+   transfer（发起那条：who, amount, note, status：awaiting 待收款 / accepted 已收款 / returned 已退回, 可选 pair, 可选 autoReturnHours）
+   transferReceipt（收款那条：who 是谁收的, at, 可选 amount, pair 与发起那条相同）
+   voice（who, seconds, text 为转文字, 可选 scene：clean/bed/room/crowd/rain/mall/street, pace：normal/fast/slow, tone 口气, read：false 表示还没播放）
+   call（视频通话记录，不要写成文字：who 是谁打的；status：rejected 被拒绝 / cancelled 已取消 / accepted 接通（接通要写 seconds 通话秒数））
    system（text，居中的灰色系统提示）
-4. 「发红包/转账」由谁发就用谁的 who；金额没说就按场景给合理金额。
+4. 转账和红包的「发起」和「收款」必须是数组里的两条，各自带自己的 at，禁止合并成一条，也不要用 status 代替收款那条。status 只描述发起那条长什么样。pair 是你编的短标记（如 "a"），两条用同一个。金额单条不能超过 200，超过就不要写这条。只有用户明确要求「超时未领自动退回」时才写 autoReturnHours（小时，如 24）。收款那条的时间可以落在聊天中间，不要为了它把所有时间都写成最后。
 5. 口语化、简短，符合各自身份，不要旁白、编号。不要输出 time 类元素。
 6. 文字里可以用微信表情，写成 [名字]，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；真人聊天表情不要太多，不要用其他方括号表情，也不要用 Unicode 小黄脸。只输出 JSON 数组，如 [{"kind":"text","who":"friend",${ctx.group ? '"sender":"成员名",' : ""}"text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
 
@@ -357,8 +438,10 @@ export const previewLine = (it: ParsedItem) => {
 	const at = parseAt(it.at);
 	const tm = at !== null ? dayjs(at).format("YYYY/M/D HH:mm") : it.at ? `⚠️${it.at}` : "";
 	switch (it.kind) {
-		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}`;
-		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}`;
+		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}${moneyOverLimit(it.amount) ? "（超过200，不会写入）" : ""}`;
+		case "redPacketReceipt": return `${tm} ${who}领取红包`;
+		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}${moneyOverLimit(it.amount) ? "（超过200，不会写入）" : ""}`;
+		case "transferReceipt": return `${tm} ${who}收款${it.amount ? ` ¥${it.amount}` : ""}`;
 		case "call": return `${tm} ${who}发起视频通话：${callText(it.who === "me" ? "mine" : "friend", it.status, it.seconds)}`;
 		case "voice": return `${tm} ${who}语音 ${it.seconds ?? 3}″ ${it.text ?? ""}`;
 		case "system": return `${tm} [系统] ${it.text ?? ""}`;

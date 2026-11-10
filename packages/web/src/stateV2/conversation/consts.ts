@@ -5,11 +5,13 @@ export const ConversationTypeLabel = {
 	[EConversationType.image]: "图片",
 	[EConversationType.transfer]: "转账",
 	[EConversationType.redPacket]: "红包",
+	[EConversationType.transferReceipt]: "转账收款",
 	[EConversationType.personalCard]: "个人名片",
 	[EConversationType.voice]: "语音消息",
 	[EConversationType.video]: "视频",
+	[EConversationType.call]: "视频通话",
 	[EConversationType.centerText]: "居中文本",
-	[EConversationType.redPacketAcceptedReply]: "红包领取成功消息",
+	[EConversationType.redPacketAcceptedReply]: "红包收款",
 };
 
 export const MOCK_INIT_CONVERSATION_LIST: TConversationItem[] = [
