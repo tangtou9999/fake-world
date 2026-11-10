@@ -13,10 +13,10 @@ import { nanoid } from "nanoid";
 import { chatLog, listContacts } from "@/pages/wechat/my/settings/aiChatTools";
 import { personaSystemExtra, readPersona } from "./persona";
 
-/** 哪些单聊开启了 AI 代回。编辑模式开关和私人 AI 共用，持久化。聊天页不因此多出标识。 */
+/** 哪些单聊开启了 AI 代聊。编辑模式开关和私人 AI 共用，持久化。聊天页不因此多出标识。 */
 export const standInAtom = atomWithStorage<Record<string, boolean>>("ai-stand-in", {});
 
-/** 编辑模式「AI代回」和私人 AI 的 setAutoReply 都走这里。 */
+/** 编辑模式「AI代聊」和私人 AI 的 setAutoReply 都走这里。 */
 export const writeStandIn = (conversationId: string, on: boolean) => {
 	if (isGroupId(conversationId)) throw new Error("群聊不能开代聊");
 	const cur = mainStore.get(standInAtom);
@@ -24,10 +24,10 @@ export const writeStandIn = (conversationId: string, on: boolean) => {
 	mainStore.set(standInAtom, { ...cur, [conversationId]: on });
 };
 
-/** 代回等待时，标题栏复用「对方正在输入…」 */
+/** 代聊等待时，标题栏复用「对方正在输入…」 */
 export const standInTypingAtom = atom<Record<string, boolean>>({});
 
-/** 代回节奏（毫秒）。私人 AI 不走这里。 */
+/** 代聊节奏（毫秒）。私人 AI 不走这里。 */
 const PACE = {
 	readMin: 500,
 	readMax: 1500,
@@ -173,7 +173,7 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 		}
 	} catch (e) {
 		if (stopped(e, signal)) return;
-		showToast({ content: e instanceof Error ? e.message : "AI 代回失败" });
+		showToast({ content: e instanceof Error ? e.message : "AI 代聊失败" });
 	} finally {
 		if (controllers.get(conversationId)?.signal === signal) controllers.delete(conversationId);
 		if (typingOwner.get(conversationId) === token) {

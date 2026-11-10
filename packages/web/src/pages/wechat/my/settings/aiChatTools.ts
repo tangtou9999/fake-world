@@ -179,6 +179,11 @@ export const buildSystem = (
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
 	const COPY_RULE = "\n【可复制内容】回复里如果有需要用户单独复制走的文本（需求说明、代码、文案、提示词等），把它单独放进 ```copy 代码块里，正文放在块外面；一条回复可以有多个 ```copy 块，每块只放一份完整内容，块里不要夹带解释。普通聊天回复不要滥用。";
 	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}\n当前联系人：${names || "（暂无）"}`) + COPY_RULE + SCREEN_EDIT_RULES;
+	if (chatMode && !isGroupId(chatMode.currentId)) {
+		const pc = peekPersona(chatMode.currentId);
+		const filled = pc ? PERSONA_KEYS.filter((k) => pc[k].trim()).map((k) => `${PERSONA_LABEL[k]}：${pc[k].trim()}`) : [];
+		s += `\n\n【「${cur ?? "当前联系人"}」现有的 AI 代聊人设卡】${filled.length ? `\n${filled.join("\n")}` : "（还是空的）"}`;
+	}
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);

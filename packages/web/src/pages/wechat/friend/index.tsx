@@ -16,6 +16,7 @@ import dayjs from "dayjs";
 import { useAtomValue, useSetAtom } from "jotai";
 import { isEmpty, isString } from "lodash-es";
 import { nanoid } from "nanoid";
+import { userFeedListAtom } from "@/stateV2/moments";
 import { useState } from "react";
 import { FriendSheet } from "@/components/PhoneSheets";
 import { inEditMode, useLongPress } from "@/components/SheetKit";
@@ -37,6 +38,12 @@ const Friend = () => {
 
 	const isMyself = userId === MYSELF_ID;
 	const [editing, setEditing] = useState(false);
+	// 朋友圈缩略图实时取该好友最新几条动态里的图片；没有图片动态时才用资料里手动设置的
+	const userFeeds = useAtomValue(userFeedListAtom(userId ?? ""));
+	const feedThumbs = [...userFeeds]
+		.sort((a, b) => b.sendTimestamp - a.sendTimestamp)
+		.flatMap((f) => (f.content.type === "textWithImages" ? f.content.imagesInfo : []))
+		.slice(0, 4);
 	const lp = useLongPress(() => setEditing(true));
 
 	if (!profile) return <></>;
@@ -56,6 +63,7 @@ const Friend = () => {
 		hideThumbnail,
 		description,
 	} = profile;
+	const thumbs = feedThumbs.length ? feedThumbs : thumbnailInfo;
 
 	const getMetaData = (): StaticMetaData.InjectMetaData => {
 		const treeItemDisplayName = (data: IStateProfile) => `信息编辑（${data.nickname}）`;
@@ -187,8 +195,8 @@ const Friend = () => {
 								<div className="w-20">{t("wechatPage.friend.moments")}</div>
 								<div className="flex flex-1 items-center pr-3">
 									<div className="mr-5 grid flex-1 grid-cols-5 gap-1">
-										{thumbnailInfo.length === 0 && <div className="aspect-h-1 aspect-w-1" />}
-										{thumbnailInfo.map((v, i) => (
+										{thumbs.length === 0 && <div className="aspect-h-1 aspect-w-1" />}
+										{thumbs.map((v, i) => (
 											<div key={i} className="aspect-h-1 aspect-w-1">
 												<h.img src={v} className="rounded-sm object-cover object-center" />
 											</div>

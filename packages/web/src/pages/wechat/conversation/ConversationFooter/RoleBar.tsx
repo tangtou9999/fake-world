@@ -250,7 +250,7 @@ const RoleBar = () => {
 							onClick={() => writeStandIn(conversationId, !standIn[conversationId])}
 							className={`h-7 rounded-full px-3 text-[14px] ${standIn[conversationId] ? "bg-[#07C160] text-white" : "bg-[#07C160]/10 text-[#07C160]"}`}
 						>
-							AI代回
+							AI代聊
 						</button>
 					</>
 				)}
