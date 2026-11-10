@@ -1,12 +1,15 @@
+import { h } from "@/components/HashAssets";
 import { MYSELF_ID } from "@/faker/wechat/user";
+import { pickMomentImages } from "@/library/pick";
 import { geminiConfigAtom } from "@/stateV2/gemini";
-import { type IFeedComment, type IStateFeed, setFeedListValue } from "@/stateV2/moments";
+import { type IFeedComment, type IStateFeed, getFeedListValueSnapshot, setFeedListValue } from "@/stateV2/moments";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
 import { callGemini, parseJsonLoose } from "@/utils/gemini";
+import { prepareImageAsset } from "@/utils/media";
 import dayjs from "dayjs";
 import { useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 type Raw = {
@@ -20,7 +23,7 @@ type Raw = {
 
 const para = (text: string) => [{ type: "paragraph", children: [{ text }] }] as never;
 
-export async function generateMoments(wish: string) {
+export async function generateMoments(wish: string, uploaded?: string[]) {
 	const profiles = getAllProfilesValueSnapshot();
 	const names = profiles
 		.slice(0, 60)
@@ -47,6 +50,12 @@ ${names}
 	if (!Array.isArray(list) || list.length === 0) throw new Error("没有生成出内容，换个说法再试一次");
 	const valid = new Set(profiles.map((p) => p.id));
 	const nowTs = Date.now();
+	const avoid = new Set<string>();
+	for (const feed of getFeedListValueSnapshot()) {
+		if (feed.content.type === "textWithImages") {
+			for (const image of feed.content.imagesInfo) avoid.add(image);
+		}
+	}
 	const feeds: IStateFeed[] = list
 		.filter((r) => r?.text)
 		.map((r, i) => {
@@ -62,11 +71,18 @@ ${names}
 					replyUserId: c.replyTo && valid.has(c.replyTo) ? c.replyTo : undefined,
 					sendTimestamp: Math.min(nowTs, ts + (j + 1) * 5 * 60_000),
 				}));
+			const imagesInfo = pickMomentImages({
+				text: String(r.text ?? ""),
+				hint: wish,
+				uploaded,
+				avoid,
+			});
+			for (const image of imagesInfo) avoid.add(image);
 			return {
 				id: nanoid(8),
 				userId: r.userId && valid.has(r.userId) ? r.userId : MYSELF_ID,
 				sendTimestamp: ts,
-				content: { type: "text", text: para(String(r.text)) },
+				content: { type: "textWithImages", text: para(String(r.text)), imagesInfo },
 				likeUserIds: (r.likes ?? []).filter((id) => valid.has(id)),
 				comments,
 				location: r.location || undefined,
@@ -81,8 +97,10 @@ const AiMoments = () => {
 	const navigate = useNavigate();
 	const [open, setOpen] = useState(false);
 	const [wish, setWish] = useState("");
+	const [uploads, setUploads] = useState<string[]>([]);
 	const [busy, setBusy] = useState(false);
 	const [err, setErr] = useState("");
+	const fileRef = useRef<HTMLInputElement>(null);
 
 	const run = async () => {
 		if (!wish.trim()) {
@@ -92,10 +110,11 @@ const AiMoments = () => {
 		setBusy(true);
 		setErr("");
 		try {
-			const feeds = await generateMoments(wish);
+			const feeds = await generateMoments(wish, uploads);
 			setFeedListValue((prev) => [...feeds, ...prev]);
 			setOpen(false);
 			setWish("");
+			setUploads([]);
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : String(e));
 		} finally {
@@ -121,7 +140,7 @@ const AiMoments = () => {
 						) : (
 							<>
 								<div className="mb-2 text-[12px] text-black/50 leading-5">
-									发布者、点赞和评论的人都从你现有的好友里选，时间不会晚于现在。目前只生成文字动态（不含图片）。
+									发布者、点赞和评论的人都从你现有的好友里选，时间不会晚于现在。没上传图片时，按内容主题从图库配 1～9 张；上传了就只用你的图。
 								</div>
 								<textarea
 									className="h-[110px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] outline-none"
@@ -129,6 +148,45 @@ const AiMoments = () => {
 									value={wish}
 									onChange={(e) => setWish(e.target.value)}
 								/>
+								<div className="mt-2 flex flex-wrap items-center gap-2">
+									{uploads.map((src, index) => (
+										<div key={`${src}-${index}`} className="relative h-12 w-12">
+											<h.img src={src} className="h-full w-full rounded-[4px] object-cover" />
+											<button
+												type="button"
+												aria-label="移除图片"
+												className="-top-1 -right-1 absolute h-4 w-4 rounded-full bg-black/70 text-[10px] text-white"
+												onClick={() => setUploads((prev) => prev.filter((_, i) => i !== index))}
+											>
+												×
+											</button>
+										</div>
+									))}
+									{uploads.length < 9 && (
+										<button type="button" className="h-8 rounded-full bg-black/5 px-3 text-[13px]" onClick={() => fileRef.current?.click()}>
+											上传配图
+										</button>
+									)}
+									<input
+										ref={fileRef}
+										type="file"
+										accept="image/*"
+										multiple
+										hidden
+										onChange={async (event) => {
+											const files = Array.from(event.target.files ?? []).slice(0, 9 - uploads.length);
+											event.target.value = "";
+											try {
+												const next: string[] = [];
+												for (const file of files) next.push((await prepareImageAsset(file)).imageInfo);
+												setUploads((prev) => [...prev, ...next].slice(0, 9));
+												setErr("");
+											} catch (e) {
+												setErr(e instanceof Error ? e.message : "图片读取失败");
+											}
+										}}
+									/>
+								</div>
 								{err && <div className="mt-3 rounded-[6px] bg-[#FBE9E9] p-2 text-[13px] text-[#C62828] leading-5">{err}</div>}
 								<div className="mt-3 flex gap-3">
 									<button type="button" disabled={busy} onClick={() => setOpen(false)} className="h-[44px] flex-1 rounded-[6px] bg-black/5 text-[16px]">取消</button>
