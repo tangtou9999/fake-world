@@ -154,13 +154,12 @@ const StatusBar = () => {
 	};
 
 	const renderContent = (isMount?: boolean) => {
+		if (hide) return null;
 		return (
 			<canBeDetected.div
 				innerRef={divRef}
 				className={twJoin(
 					"relative flex items-center justify-between pr-7 pl-8",
-					hide && !phoneEdit && "hidden",
-					hide && phoneEdit && "opacity-40",
 					isMount && "pointer-events-auto z-10",
 				)}
 				metaData={{
@@ -189,6 +188,23 @@ const StatusBar = () => {
 	};
 
 	const sheetNode = sheet ? createPortal(<StatusBarSheet onClose={() => setSheet(false)} />, document.body) : null;
+
+	if (hide) {
+		if (!isEdit) return sheetNode;
+		return (
+			<>
+				<canBeDetected.div
+					className="relative flex h-9 shrink-0 items-center justify-between border-black/10 border-b bg-[#F7F7F7] px-4 text-[13px] text-black/55"
+					metaData={{ type: EMetaDataType.StatusBar, treeItemDisplayName: "状态栏", operations }}
+				>
+					<span>仿真状态栏已隐藏</span>
+					<span className="text-[#576B95]">显示</span>
+					{phoneEdit && <PhoneEditHit label="编辑状态栏" onOpen={() => setSheet(true)} />}
+				</canBeDetected.div>
+				{sheetNode}
+			</>
+		);
+	}
 
 	if (mountNode) {
 		return (

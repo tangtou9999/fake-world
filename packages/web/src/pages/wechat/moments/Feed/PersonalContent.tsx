@@ -11,7 +11,9 @@ import { SLATE_EMPTY_VALUE } from "@/wechatComponents/SlateText/utils";
 import { Modal } from "antd";
 import dayjs from "dayjs";
 import { useAtomValue, useSetAtom } from "jotai";
+import { useState } from "react";
 import { twJoin } from "tailwind-merge";
+import { MomentImageViewer, MomentVideoViewer } from "../MomentViewer";
 
 type Props = {
 	id: IStateFeed["id"];
@@ -21,6 +23,12 @@ const PersonalContent = ({ id }: Props) => {
 	const { content, userId } = useAtomValue(feedAtom(id))!;
 	const setFeedList = useSetAtom(feedListAtom);
 	const navigate = useModeNavigate();
+	const [photoAt, setPhotoAt] = useState<number | null>(null);
+	const [videoOpen, setVideoOpen] = useState(false);
+	const openPhoto = (index: number) => (e: { stopPropagation: () => void }) => {
+		e.stopPropagation();
+		setPhotoAt(index);
+	};
 
 	const handleOperationDelete = () => {
 		Modal.confirm({
@@ -38,7 +46,7 @@ const PersonalContent = ({ id }: Props) => {
 				const length = content.imagesInfo.length;
 				if (length === 1) {
 					return (
-						<div className="h-18 w-18">
+						<div className="h-18 w-18" onClick={openPhoto(0)}>
 							<h.img
 								src={content.imagesInfo[0]}
 								className="h-18 w-full object-cover object-center"
@@ -49,23 +57,25 @@ const PersonalContent = ({ id }: Props) => {
 				if (length === 2) {
 					return (
 						<div className="grid h-18 w-18 grid-cols-2 gap-[2px]">
-							<h.img src={content.imagesInfo[0]} className="h-18 object-cover object-center" />
-							<h.img src={content.imagesInfo[1]} className="h-18 object-cover object-center" />
+							<h.img src={content.imagesInfo[0]} className="h-18 object-cover object-center" onClick={openPhoto(0)} />
+							<h.img src={content.imagesInfo[1]} className="h-18 object-cover object-center" onClick={openPhoto(1)} />
 						</div>
 					);
 				}
 				if (length === 3) {
 					return (
 						<div className="grid h-18 w-18 grid-cols-2 gap-[2px]">
-							<h.img src={content.imagesInfo[0]} className="h-18 object-cover object-center" />
+							<h.img src={content.imagesInfo[0]} className="h-18 object-cover object-center" onClick={openPhoto(0)} />
 							<div className="grid h-18 grid-rows-2 gap-[2px]">
 								<h.img
 									src={content.imagesInfo[1]}
 									className="h-full w-full object-cover object-center"
+									onClick={openPhoto(1)}
 								/>
 								<h.img
 									src={content.imagesInfo[2]}
 									className="h-full w-full object-cover object-center"
+									onClick={openPhoto(2)}
 								/>
 							</div>
 						</div>
@@ -75,7 +85,7 @@ const PersonalContent = ({ id }: Props) => {
 					return (
 						<div className="grid h-18 w-18 grid-cols-2 gap-[2px]">
 							{content.imagesInfo.slice(0, 4).map((v, i) => (
-								<div key={i} className="aspect-h-1 aspect-w-1">
+								<div key={i} className="aspect-h-1 aspect-w-1" onClick={openPhoto(i)}>
 									<h.img src={v} className="h-full object-cover object-center" />
 								</div>
 							))}
@@ -87,7 +97,13 @@ const PersonalContent = ({ id }: Props) => {
 			case "video":
 				if (content.videoInfo) {
 					return (
-						<div className="relative h-18 w-18">
+						<div
+							className="relative h-18 w-18"
+							onClick={(e) => {
+								e.stopPropagation();
+								setVideoOpen(true);
+							}}
+						>
 							<h.img src={content.videoInfo} className="h-full w-full object-cover object-center" />
 							<div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 flex h-auto w-auto origin-center scale-75 cursor-pointer items-center justify-center rounded-full border border-white">
 								<PlayFilledSVG fill="white" width={20} height={20} />
@@ -172,6 +188,12 @@ const PersonalContent = ({ id }: Props) => {
 		>
 			{renderFeedImages()}
 			{renderFeedPureText()}
+			{photoAt !== null && content.type === "textWithImages" && (
+				<MomentImageViewer images={content.imagesInfo} start={photoAt} onClose={() => setPhotoAt(null)} />
+			)}
+			{videoOpen && content.type === "video" && content.videoInfo && (
+				<MomentVideoViewer poster={content.videoInfo} file={content.videoFile} onClose={() => setVideoOpen(false)} />
+			)}
 		</canBeDetected.div>
 	);
 };

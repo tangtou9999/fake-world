@@ -12,7 +12,7 @@ import { parseAt } from "@/utils/parseAt";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
 import { armReplay } from "@/pages/wechat/conversation/replay";
-import { applyAction, listContacts, resolveTarget } from "./aiChatTools";
+import { applyAction, listContacts, personaPatchFrom, previewSetPersona, resolveTarget, setPersona, type PersonaPatch } from "./aiChatTools";
 import { shiftTimes } from "./chatOps";
 
 export type PlanStep =
@@ -20,6 +20,7 @@ export type PlanStep =
 	| { do: "wallet"; balance?: string; miniFund?: string; business?: string }
 	| { do: "moment"; target: string; text: string; at?: string }
 	| { do: "profile"; target: string; remark?: string; nickname?: string; signature?: string; area?: string; description?: string }
+	| { do: "setPersona"; target: string; patch: PersonaPatch }
 	| { do: "friend"; nickname: string; avatar?: string; greeting?: string; items?: ParsedItem[]; moment?: string }
 	| { do: "shot"; target: string; query?: string; from?: string; to?: string }
 	| { do: "timeline"; target: string; days?: number; hours?: number; minutes?: number; evening?: boolean }
@@ -48,6 +49,9 @@ export const parsePlan = (raw: string): { text: string; plan?: { steps: PlanStep
 				steps.push({ do: "moment", target, text: String(s.text), at: s.at ? String(s.at) : undefined });
 			} else if (s.do === "profile" && target) {
 				steps.push({ do: "profile", target, remark: s.remark as string, nickname: s.nickname as string, signature: s.signature as string, area: s.area as string, description: s.description as string });
+			} else if (s.do === "setPersona" && target) {
+				const patch = personaPatchFrom(s);
+				if (patch) steps.push({ do: "setPersona", target, patch });
 			} else if (s.do === "friend" && s.nickname) {
 				steps.push({ do: "friend", nickname: String(s.nickname), avatar: s.avatar ? String(s.avatar) : undefined, greeting: s.greeting ? String(s.greeting) : undefined, items: asItems(s.items), moment: s.moment ? String(s.moment) : undefined });
 			} else if (s.do === "shot" && target) {
@@ -100,6 +104,8 @@ export const describeStep = (step: PlanStep) => {
 			return `给「${who(step.target)}」发一条朋友圈：${step.text.slice(0, 40)}`;
 		case "profile":
 			return `改「${who(step.target)}」的资料${step.remark ? `，备注「${step.remark}」` : ""}${step.signature ? `，签名「${step.signature}」` : ""}${step.nickname ? `，昵称「${step.nickname}」` : ""}`;
+		case "setPersona":
+			return previewSetPersona(who(step.target), resolveTarget(step.target, listContacts())?.id, step.patch);
 		case "friend":
 			return `按添加好友创建「${step.nickname}」${step.avatar ? "" : "（素材库还没有，头像用文字头像）"}，并写入 ${step.items?.length ?? 0} 条聊天${step.moment ? "，再发一条朋友圈" : ""}`;
 		case "shot": {
@@ -175,6 +181,10 @@ export const applyPlan = async (steps: PlanStep[]) => {
 				...(step.description !== undefined ? { description: step.description } : {}),
 			});
 			lines.push(`已更新「${who(step.target)}」的资料`);
+		} else if (step.do === "setPersona") {
+			const id = needId(step.target);
+			await setPersona(id, step.patch);
+			lines.push(`已更新「${who(step.target)}」的人设卡`);
 		} else if (step.do === "friend") {
 			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: step.avatar || "", greeting: step.greeting || "你好" });
 			if (step.items?.length) {

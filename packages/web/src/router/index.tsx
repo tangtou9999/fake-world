@@ -8,6 +8,7 @@ import NewFriends from "@/pages/wechat/addFriend/NewFriends";
 import ChatSearch from "@/pages/wechat/search";
 import ChatAi from "@/pages/wechat/conversation/ChatAi";
 import GroupInfo from "@/pages/wechat/group/GroupInfo";
+import GroupList from "@/pages/wechat/group/GroupList";
 import NewGroup from "@/pages/wechat/group/NewGroup";
 import AiChat from "@/pages/wechat/my/settings/AiChat";
 import AiIntro from "@/pages/wechat/my/settings/AiIntro";
@@ -226,6 +227,10 @@ export const routes: RouteObject[] = [
 							{
 								index: true,
 								element: <Contacts />,
+							},
+							{
+								path: "groups",
+								element: <GroupList />,
 							},
 						],
 					},
