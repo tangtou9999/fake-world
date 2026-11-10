@@ -1,6 +1,7 @@
 import { PAY_ID } from "@/stateV2/payService";
 import MUTED_SVG from "@/assets/muted.svg";
 import Badge from "@/components/Badge";
+import ChatInfoSheet from "@/components/ChatInfoSheet";
 import { h } from "@/components/HashAssets";
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
@@ -43,6 +44,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 
 	const { nickname, avatarInfo, remark } = friendProfile ?? { nickname: group?.name ?? "", avatarInfo: "", remark: undefined };
 	const [sheet, setSheet] = useState(false);
+	const [info, setInfo] = useState(false);
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const pressed = useRef(false);
 	const startPress = () => {
@@ -140,6 +142,11 @@ const DialogueItem = ({ itemId, className }: Props) => {
 						<button type="button" className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px]" onClick={togglePin}>
 							{isPinned ? "取消置顶" : "置顶聊天"}
 						</button>
+						{!group && (
+							<button type="button" className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px]" onClick={() => { setSheet(false); setInfo(true); }}>
+								编辑聊天信息
+							</button>
+						)}
 						<button
 							type="button"
 							className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px] text-[#FA5151]"
@@ -156,6 +163,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 					</div>
 				</div>
 			)}
+			{info && <div onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}><ChatInfoSheet friendId={friendId} onClose={() => setInfo(false)} /></div>}
 			<Badge type={unreadDisplayType} text={unreadMarkNumber} hidden={badgeHide}>
 				{group ? <GroupAvatar memberIds={group.memberIds} /> : <h.img className="h-12 w-12 rounded-[6px] object-cover object-center" src={avatarInfo} />}
 			</Badge>

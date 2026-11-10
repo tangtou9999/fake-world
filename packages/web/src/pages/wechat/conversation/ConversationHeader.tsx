@@ -7,6 +7,8 @@ import { groupAtom, groupCount } from "@/stateV2/group";
 import { profileAtom } from "@/stateV2/profile";
 import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { useAtomValue } from "jotai";
+import ChatInfoSheet from "@/components/ChatInfoSheet";
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 
 const ConversationHeader = () => {
@@ -15,6 +17,13 @@ const ConversationHeader = () => {
 	const group = useAtomValue(groupAtom(id ?? ""));
 	const unreadCount = useAtomValue(unreadCountAtom);
 	const navigate = useModeNavigate();
+	const [info, setInfo] = useState(false);
+	const press = useRef<ReturnType<typeof setTimeout>>();
+	const startPress = () => {
+		clearTimeout(press.current);
+		press.current = setTimeout(() => !group && setInfo(true), 600);
+	};
+	const stopPress = () => clearTimeout(press.current);
 
 	return (
 		<div className="flex h-11 shrink-0 items-center border-black/10 border-b bg-[#EDEDED] px-4">
@@ -36,7 +45,7 @@ const ConversationHeader = () => {
 					{unreadCount.count > 0 ? unreadCount.count : ""}
 				</canBeDetected.div>
 			</div>
-			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90">
+			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90" onTouchStart={startPress} onTouchEnd={stopPress} onTouchMove={stopPress} onTouchCancel={stopPress}>
 				{group ? (
 					<>
 						<span className="truncate">{group.name}</span>
@@ -47,7 +56,8 @@ const ConversationHeader = () => {
 				)}
 			</div>
 			<div className="flex min-w-[72px] shrink-0 items-center justify-end">
-				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => group && navigate(`/wechat/conversation/${id}/info`)} />
+				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => (group ? navigate(`/wechat/conversation/${id}/info`) : setInfo(true))} />
+				{info && id && <ChatInfoSheet friendId={id} onClose={() => setInfo(false)} />}
 			</div>
 		</div>
 	);
