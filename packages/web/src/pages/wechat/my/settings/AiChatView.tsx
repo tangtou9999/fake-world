@@ -690,8 +690,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			)}
 			<div className="flex items-end gap-2 border-t-[0.5px] border-t-[#D6D6D6] bg-[#F7F7F7] px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
 					<>
-						<label aria-label="上传照片" className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[6px] bg-white text-[20px]">
-							📷
+						<label aria-label="上传图片" className="flex h-10 shrink-0 cursor-pointer items-center justify-center rounded-[6px] bg-white px-2.5 text-[14px] text-black/80">
+							上传图片
 							<input type="file" accept="image/*" multiple hidden onChange={(e) => { void addPics(e.target.files); e.target.value = ""; }} />
 						</label>
 						<textarea
