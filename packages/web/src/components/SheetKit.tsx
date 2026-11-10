@@ -1,6 +1,10 @@
 import { hashAssetsDB } from "@/db";
 import { getFileMD5 } from "@/utils";
+import { getModeValueSnapshot } from "@/stateV2/mode";
 import { type ReactNode, useRef } from "react";
+
+/** 只有编辑模式才允许改内容 */
+export const inEditMode = () => getModeValueSnapshot() === "edit";
 
 export const inputCls = "w-full rounded-[6px] bg-[#F5F5F5] px-3 py-[7px] text-[16px] outline-none";
 
@@ -21,12 +25,13 @@ export function useLongPress(cb: () => void, ms = 550) {
 	return {
 		onTouchStart: () => {
 			stop();
-			t.current = setTimeout(cb, ms);
+			t.current = setTimeout(() => inEditMode() && cb(), ms);
 		},
 		onTouchEnd: stop,
 		onTouchMove: stop,
 		onTouchCancel: stop,
 		onContextMenu: (e: { preventDefault: () => void }) => {
+			if (!inEditMode()) return;
 			e.preventDefault();
 			cb();
 		},

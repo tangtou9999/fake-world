@@ -7,6 +7,7 @@ import { groupAtom, groupCount } from "@/stateV2/group";
 import { profileAtom } from "@/stateV2/profile";
 import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { useAtomValue } from "jotai";
+import { inEditMode } from "@/components/SheetKit";
 import ChatInfoSheet from "@/components/ChatInfoSheet";
 import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -21,7 +22,7 @@ const ConversationHeader = () => {
 	const press = useRef<ReturnType<typeof setTimeout>>();
 	const startPress = () => {
 		clearTimeout(press.current);
-		press.current = setTimeout(() => !group && setInfo(true), 600);
+		press.current = setTimeout(() => !group && inEditMode() && setInfo(true), 600);
 	};
 	const stopPress = () => clearTimeout(press.current);
 
@@ -56,7 +57,7 @@ const ConversationHeader = () => {
 				)}
 			</div>
 			<div className="flex min-w-[72px] shrink-0 items-center justify-end">
-				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => (group ? navigate(`/wechat/conversation/${id}/info`) : setInfo(true))} />
+				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => (group ? navigate(`/wechat/conversation/${id}/info`) : inEditMode() && setInfo(true))} />
 				{info && id && <ChatInfoSheet friendId={id} onClose={() => setInfo(false)} />}
 			</div>
 		</div>

@@ -6,7 +6,7 @@ import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { RecordSheet } from "@/components/PhoneSheets";
-import { useLongPress } from "@/components/SheetKit";
+import { inEditMode, useLongPress } from "@/components/SheetKit";
 import type { ReactNode } from "react";
 import { centsToYuan } from "./money";
 
@@ -197,8 +197,8 @@ const BalanceRecords = () => {
 									<div
 										key={row.key}
 										className="flex h-[77px] items-center border-black/10 border-b px-[22px]"
-										onContextMenu={(e) => { e.preventDefault(); setSheet(baseId(row.key)); }}
-										onTouchStart={(e) => { const t = e.currentTarget as HTMLElement & { _t?: ReturnType<typeof setTimeout> }; t._t = setTimeout(() => setSheet(baseId(row.key)), 550); }}
+										onContextMenu={(e) => { if (!inEditMode()) return; e.preventDefault(); setSheet(baseId(row.key)); }}
+										onTouchStart={(e) => { const t = e.currentTarget as HTMLElement & { _t?: ReturnType<typeof setTimeout> }; t._t = setTimeout(() => inEditMode() && setSheet(baseId(row.key)), 550); }}
 										onTouchEnd={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
 										onTouchMove={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
 									>

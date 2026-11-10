@@ -1,5 +1,6 @@
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
+import { inEditMode } from "@/components/SheetKit";
 import useModeNavigate from "@/components/useModeNavigate";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { EMetaDataType } from "@/stateV2/detectedNode";
@@ -40,7 +41,7 @@ const Feed = ({
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const startPress = () => {
 		clearTimeout(pressTimer.current);
-		pressTimer.current = setTimeout(() => setEditing(true), 600);
+		pressTimer.current = setTimeout(() => inEditMode() && setEditing(true), 600);
 	};
 	const stopPress = () => clearTimeout(pressTimer.current);
 	const originalNavigate = useNavigate();
@@ -150,6 +151,7 @@ const Feed = ({
 			onTouchMove={stopPress}
 			onTouchCancel={stopPress}
 			onContextMenu={(e) => {
+				if (!inEditMode()) return;
 				e.preventDefault();
 				setEditing(true);
 			}}

@@ -147,7 +147,6 @@ const ConversationList = () => {
 	};
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const openTextMenu = (item: TConversationItem) => {
-		if (isEdit) return;
 		if (item.type === EConversationType.voice) {
 			setMenu({ id: item.id, text: "", kind: item.type, translated: false, voice: { shown: !!item.showStt, has: !!item.stt?.trim() } });
 			return;
@@ -480,6 +479,7 @@ const ConversationList = () => {
 						>
 							删除
 						</button>
+						{isEdit && <>
 						<button
 							type="button"
 							className="rounded-[6px] border border-black/20 px-3 py-[6px]"
@@ -508,6 +508,7 @@ const ConversationList = () => {
 								{dir < 0 ? "提前" : "推后"}
 							</button>
 						))}
+						</>}
 					</div>
 				</div>
 			)}
@@ -546,9 +547,11 @@ const ConversationList = () => {
 								</button>
 							</>
 						)}
-						<button type="button" disabled={busy} onClick={() => { setSheetId(menu.id); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
-							编辑
-						</button>
+						{isEdit && (
+							<button type="button" disabled={busy} onClick={() => { setSheetId(menu.id); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
+								编辑
+							</button>
+						)}
 						<button type="button" disabled={busy} onClick={() => { setSelected(new Set([menu.id])); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
 							多选
 						</button>

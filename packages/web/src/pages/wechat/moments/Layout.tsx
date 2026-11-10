@@ -1,3 +1,4 @@
+import { inEditMode } from "@/components/SheetKit";
 import FeedSheet from "./FeedSheet";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import CameraFilledSVG from "@/assets/camera-filled.svg?react";
@@ -205,7 +206,7 @@ const MomentsLayout = () => {
 				<div className="text-center font-medium text-[17px]">
 					{barUseBlack && t("wechatPage.moments.title")}
 				</div>
-				<div className="flex justify-end" onClick={() => setPosting(true)}>
+				<div className="flex justify-end" onClick={() => inEditMode() && setPosting(true)}>
 					{barUseBlack ? (
 						<CameraOutlinedSVG fill="currentColor" className="h-5 w-5" />
 					) : (

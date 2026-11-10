@@ -18,7 +18,7 @@ import { isEmpty, isString } from "lodash-es";
 import { nanoid } from "nanoid";
 import { useState } from "react";
 import { FriendSheet } from "@/components/PhoneSheets";
-import { useLongPress } from "@/components/SheetKit";
+import { inEditMode, useLongPress } from "@/components/SheetKit";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { twJoin } from "tailwind-merge";
@@ -91,7 +91,7 @@ const Friend = () => {
 					className="h-5 w-5 cursor-pointer"
 					onClick={() => navigate(-1)}
 				/>
-				<MoreFilledSVG fill="black" className="h-5 w-5 cursor-pointer" onClick={() => setEditing(true)} />
+				<MoreFilledSVG fill="black" className="h-5 w-5 cursor-pointer" onClick={() => inEditMode() && setEditing(true)} />
 			</div>
 			<div className="flex flex-1 flex-col overflow-auto bg-[rgba(237,237,237,1)]">
 				<div className={twJoin("flex bg-white py-6 pl-5", !isMyself && "border-black/5 border-b")}>

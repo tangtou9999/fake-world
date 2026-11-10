@@ -7,6 +7,9 @@ import { Outlet } from "react-router-dom";
 import { refreshMoments } from "@/stateV2/moments/autoRoll";
 import Fallback from "../Fallback";
 import DetectedOverall from "../NodeDetected/DetectedFloating";
+import { getModeValueSnapshot, modeAtom } from "@/stateV2/mode";
+import { mainStore } from "@/stateV2/store";
+import { showToast } from "@/wechatComponents/Toast";
 import StatusBar from "../StatusBar";
 import useDeviceConfig from "../useDeviceConfig";
 
@@ -15,6 +18,37 @@ const Screen = () => {
 
 	useEffect(() => {
 		refreshMoments();
+	}, []);
+
+	// 连点屏幕 3 下：进入 / 退出编辑模式（平时页面不出现任何编辑入口）
+	useEffect(() => {
+		let taps: { t: number; x: number; y: number }[] = [];
+		let swallow = 0;
+		const onUp = (e: PointerEvent) => {
+			const now = Date.now();
+			taps = taps.filter((k) => now - k.t < 650 && Math.hypot(k.x - e.clientX, k.y - e.clientY) < 40);
+			taps.push({ t: now, x: e.clientX, y: e.clientY });
+			if (taps.length >= 3) {
+				taps = [];
+				swallow = now;
+				const next = getModeValueSnapshot() === "edit" ? "preview" : "edit";
+				mainStore.set(modeAtom, next);
+				showToast({ content: next === "edit" ? "已进入编辑模式" : "已退出编辑模式" });
+			}
+		};
+		const onClick = (e: MouseEvent) => {
+			if (swallow && Date.now() - swallow < 400) {
+				e.stopPropagation();
+				e.preventDefault();
+				swallow = 0;
+			}
+		};
+		document.addEventListener("pointerup", onUp, true);
+		document.addEventListener("click", onClick, true);
+		return () => {
+			document.removeEventListener("pointerup", onUp, true);
+			document.removeEventListener("click", onClick, true);
+		};
 	}, []);
 
 	// 手机上把整页钉住：左右滑动不再带着页面晃
