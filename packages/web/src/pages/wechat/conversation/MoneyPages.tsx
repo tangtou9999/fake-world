@@ -12,6 +12,7 @@ import {
 import { groupAtom, groupDefaultSender, isGroupId } from "@/stateV2/group";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { profileAtom } from "@/stateV2/profile";
+import { settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { Chevron } from "@/wechatComponents/List";
 import dayjs from "dayjs";
@@ -58,7 +59,11 @@ function useSend(kind: Kind) {
 							transferStatus: params.done ? "accepted" : "awaiting",
 							upperText,
 						};
-			return [...prev, item as TConversationItem];
+			let list = [...prev, item as TConversationItem];
+			if (params.done) {
+				list = kind === "redPacket" ? settleRedPacket(list, base.id, "accepted") : settleTransfer(list, base.id, "accepted");
+			}
+			return list;
 		});
 		// 群红包：我发的，群友 5~10 秒内陆续领取
 		if (kind === "redPacket" && isGroupId(id) && params.sender === "mine" && !params.done) {

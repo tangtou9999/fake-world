@@ -1,7 +1,7 @@
 import { reflow } from "@/pages/wechat/my/settings/chatOps";
 import { groupAtom, isGroupId } from "@/stateV2/group";
 import { EConversationType, type TConversationItem, formatWechatTime, getConversationListValueSnapshot, setConversationListValue } from "@/stateV2/conversation";
-import { insertByTime, makeRedPacketReceipt, makeTransferReceipt, moneyOverLimit, stampInserted } from "@/stateV2/conversation/records";
+import { moneyOverLimit, settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import dayjs from "dayjs";
@@ -114,9 +114,15 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 			if (type === "transferReceipt" || type === "redPacketAcceptedReply") {
 				if (d.receiver === "mine" || d.receiver === "friend") it.receiver = d.receiver;
 			}
-			// 没改时间就不重排，避免只改状态时把消息挪走
-			if (!timeChanged) return list;
-			return reflow(list, new Set(upperChanged ? [] : [id]));
+			let out = list as TConversationItem[];
+			if (type === "transfer" && (d.status === "accepted" || d.status === "returned" || d.status === "rejected" || d.status === "awaiting")) {
+				out = settleTransfer(out, id, d.status);
+			}
+			if (type === "redPacket" && (d.status === "accepted" || d.status === "awaiting")) {
+				out = settleRedPacket(out, id, d.status);
+			}
+			if (!timeChanged) return out as R[];
+			return reflow(out as R[], new Set(upperChanged ? [] : [id]));
 		});
 		onClose();
 	};
@@ -134,12 +140,16 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 			window.alert("收款时间不能晚于现在");
 			return;
 		}
-		const receiver = d.receiptWho === "mine" ? "mine" : "friend";
-		const member = isGroup && receiver === "friend" ? d.receiptMember || undefined : undefined;
-		const fresh = type === "transfer"
-			? makeTransferReceipt({ sendTimestamp: ts, receiver, receiverId: member, transferId: id, amount: d.amount || undefined, senderId: member })
-			: makeRedPacketReceipt({ sendTimestamp: ts, receiver, receiverId: member, redPacketId: id, senderId: member });
-		mutate((list) => stampInserted(insertByTime(list as TConversationItem[], [fresh]), new Set([fresh.id])) as R[]);
+		mutate((list) =>
+			(type === "transfer"
+				? settleTransfer(list as TConversationItem[], id, "accepted", ts)
+				: settleRedPacket(list as TConversationItem[], id, "accepted", ts)) as R[],
+		);
+		onClose();
+	};
+
+	const giveBack = () => {
+		mutate((list) => settleTransfer(list as TConversationItem[], id, "returned", Date.now()) as R[]);
 		onClose();
 	};
 
@@ -288,7 +298,10 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 									{type === "transfer" && d.status === "rejected" && <option value="rejected">已退还</option>}
 									<option value="expired">已过期</option>
 								</select>
-								<div className="mt-1 text-[12px] text-black/40">只改这一条的样子，不会另加消息，也不会挪位置。</div>
+								<div className="mt-1 text-[12px] text-black/40">改成已收款或已退回时，会在对方那边补上同样的一条，和手动点领取一样。改回待收款会把那一条删掉。红包只有领取，没有退回。</div>
+								{type === "transfer" && (
+									<button type="button" className="mt-2 rounded-[6px] border border-[#FA5151] px-3 py-2 text-[14px] text-[#FA5151]" onClick={giveBack}>退回</button>
+								)}
 							</Row>
 							<Row label="超时退回">
 								<input aria-label="超时小时" inputMode="decimal" value={d.autoReturn} onChange={(e) => set({ autoReturn: e.target.value })} placeholder="空 = 不自动，如 24" className={inputCls} />

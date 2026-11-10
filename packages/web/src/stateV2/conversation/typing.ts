@@ -54,6 +54,8 @@ export interface IConversationTypeTransfer extends IConversationItemBase {
 	transferTo?: string;
 	/** 超时未收款自动退回的小时数。没有这个字段的旧消息不会自动改 */
 	autoReturnHours?: number;
+	/** 这条是某笔发起转账的配对收款/退回。发起那条没有这个字段 */
+	pairOf?: string;
 }
 
 export type TRedPacketStatus = "awaiting" | "accepted" | "expired" | "returned";

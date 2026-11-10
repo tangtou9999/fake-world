@@ -1,5 +1,5 @@
 import { EConversationType, type TConversationItem, formatWechatTime, getConversationListValueSnapshot, setConversationListValue } from "@/stateV2/conversation";
-import { moneyOverLimit } from "@/stateV2/conversation/records";
+import { moneyOverLimit, settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
@@ -112,6 +112,7 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 	const missingIds: string[] = [];
 	const warnings: string[] = [];
 	const touched = new Set<string>();
+	const settle: { id: string; kind: "transfer" | "redPacket"; status: string }[] = [];
 	setConversationListValue(conversationId, (prev) => {
 		let list = prev.map((v) => ({ ...v })) as Record<string, any>[];
 		const find = (id: string) => list.find((v) => v.id === id);
@@ -154,15 +155,28 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 					else if (Number.isFinite(n) && n > 0) it.amount = n.toFixed(2);
 				}
 				if (o.note !== undefined && (it.type === EConversationType.redPacket || it.type === EConversationType.transfer)) it.note = o.note || undefined;
-				if (o.status && it.type === EConversationType.redPacket && ["awaiting", "accepted", "expired", "returned"].includes(o.status)) it.redPacketStatus = o.status;
-				if (o.status && it.type === EConversationType.transfer && ["awaiting", "accepted", "rejected", "expired", "returned"].includes(o.status)) it.transferStatus = o.status;
+				if (o.status && it.type === EConversationType.redPacket && ["awaiting", "accepted", "expired", "returned"].includes(o.status)) {
+					it.redPacketStatus = o.status;
+					if (o.status === "accepted" || o.status === "awaiting") settle.push({ id: it.id, kind: "redPacket", status: o.status });
+				}
+				if (o.status && it.type === EConversationType.transfer && ["awaiting", "accepted", "rejected", "expired", "returned"].includes(o.status)) {
+					it.transferStatus = o.status;
+					if (o.status === "accepted" || o.status === "returned" || o.status === "rejected" || o.status === "awaiting") settle.push({ id: it.id, kind: "transfer", status: o.status });
+				}
 				if (o.status && it.type === EConversationType.call && ["rejected", "cancelled", "accepted"].includes(o.status)) it.callStatus = o.status;
 				edited++;
 			} else edited++;
 		}
-		// 只有改了时间才按时间重排。只改状态、只删消息，都不挪动其它消息。
-		if (touched.size) list = reflow(list, touched);
-		return list as TConversationItem[];
+		let typed = list as TConversationItem[];
+		for (const s of settle) {
+			if (s.kind === "transfer" && (s.status === "accepted" || s.status === "returned" || s.status === "rejected" || s.status === "awaiting")) {
+				typed = settleTransfer(typed, s.id, s.status);
+			}
+			if (s.kind === "redPacket" && (s.status === "accepted" || s.status === "awaiting")) typed = settleRedPacket(typed, s.id, s.status);
+		}
+		// 只有改了时间才整表重排。配对消息按自己的时间插进去，不把别的消息挪走。
+		if (touched.size) typed = reflow(typed as Record<string, any>[], touched) as TConversationItem[];
+		return typed;
 	});
 	const miss = missingIds.length ? `，找不到这些 id（已跳过，其余已执行）：${missingIds.map((id) => `#${id}`).join("、")}` : "";
 	const warn = warnings.length ? `。${warnings.join("；")}` : "";

@@ -11,6 +11,7 @@ import { App, Button, Form, Input, InputNumber, Radio, Select, Switch, message }
 import dayjs from "dayjs";
 import { useAtom } from "jotai";
 import { RESET } from "jotai/utils";
+import { settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 import { nanoid } from "nanoid";
 import { useCallback } from "react";
 import LocalImageUploadWithPreview from "../LocalImageUpload";
@@ -42,15 +43,24 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 			message.warning("单条金额不能超过 200，没有添加");
 			return;
 		}
+		const id = nanoid(8);
 		setConversationList((prev) => {
-			return [
+			let list = [
 				...prev,
 				{
 					...values,
-					id: nanoid(8),
+					id,
 					sendTimestamp: dayjs().valueOf(),
 				},
 			] as TConversationItem[];
+			if (values.type === EConversationType.transfer && "transferStatus" in values) {
+				const st = values.transferStatus;
+				if (st === "accepted" || st === "returned" || st === "rejected" || st === "awaiting") list = settleTransfer(list, id, st);
+			}
+			if (values.type === EConversationType.redPacket && "redPacketStatus" in values && (values.redPacketStatus === "accepted" || values.redPacketStatus === "awaiting")) {
+				list = settleRedPacket(list, id, values.redPacketStatus);
+			}
+			return list;
 		});
 		form.resetFields();
 		scrollToBtm();
