@@ -7,10 +7,12 @@ import { useParams } from "react-router-dom";
 import CenterText from "./CenterText";
 import Image from "./Image";
 import PersonalCard from "./PersonalCard";
+import CallRecord from "./Call";
 import RedPacket from "./RedPacket";
 import RedPacketAcceptedReply from "./RedPacketAcceptedReply";
 import Text from "./Text";
 import Transfer from "./Transfer";
+import TransferReceipt from "./TransferReceipt";
 import Voice from "./Voice";
 
 type Props = {
@@ -56,6 +58,25 @@ const ConversationItem = ({ data }: Props) => {
 					transferTo={data.transferTo}
 				/>
 			);
+		case EConversationType.transferReceipt:
+			return (
+				<TransferReceipt
+					upperText={upperText}
+					receiver={data.receiver}
+					receiverId={data.receiverId}
+					amount={data.amount}
+				/>
+			);
+		case EConversationType.call:
+			return (
+				<CallRecord
+					role={role}
+					upperText={upperText}
+					senderId={senderId}
+					callStatus={data.callStatus}
+					seconds={data.seconds}
+				/>
+			);
 		case EConversationType.redPacket:
 			return (
 				<RedPacket
@@ -99,7 +120,7 @@ const ConversationItem = ({ data }: Props) => {
 			);
 		case EConversationType.redPacketAcceptedReply:
 			return (
-				<RedPacketAcceptedReply id={data.id} redPacketId={data.redPacketId} upperText={upperText} claimerId={data.claimerId} />
+				<RedPacketAcceptedReply redPacketId={data.redPacketId} upperText={upperText} claimerId={data.claimerId} receiver={data.receiver} />
 			);
 		case EConversationType.personalCard:
 			return (

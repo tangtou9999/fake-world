@@ -298,7 +298,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		void send(t || "请看这张图片。", p);
 	};
 
-	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range") => {
+	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range", place: "time" | "end" = "time") => {
 		const a = msg.action;
 		if (!a) return;
 		const contacts = listContacts();
@@ -307,10 +307,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			window.alert(`找不到联系人「${a.target}」，请让 AI 用联系人列表里的名字重新输出。`);
 			return;
 		}
-		const n = applyAction(c.id, { ...a, mode: applyMode });
-		const verb = applyMode === "append" ? "追加" : applyMode === "range" ? "替换该时间段为" : "整个替换为";
+		const res = applyAction(c.id, { ...a, mode: applyMode }, place);
+		const verb = applyMode === "append" ? (place === "end" ? "追加到末尾" : "按时间插入") : applyMode === "range" ? "替换该时间段为" : "整个替换为";
+		const extra = res.notes.length ? `。${res.notes.join("；")}` : "";
 		updateMessages((m) =>
-			m.map((x) => (x.id === msg.id && x.action ? { ...x, action: { ...x.action, applied: `已${verb} ${n} 条，放进「${c.name}」的聊天了` } } : x)),
+			m.map((x) => (x.id === msg.id && x.action ? { ...x, action: { ...x.action, applied: `已${verb} ${res.applied} 条，放进「${c.name}」的聊天了${extra}` } } : x)),
 		);
 	};
 
@@ -571,7 +572,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 								<div className="text-[14px] font-medium">
 									{m.action.mode === "range"
 										? `准备修改「${m.action.target}」${m.action.from} ~ ${m.action.to} 这一段（替换为 ${m.action.items.length} 条）`
-										: `准备放进「${m.action.target}」的聊天（${m.action.mode === "replace" ? "清空整个聊天并替换" : "追加 / 按日期插入"}，共 ${m.action.items.length} 条）`}
+										: `准备放进「${m.action.target}」的聊天（${m.action.mode === "replace" ? "清空整个聊天并替换" : "按每条自己的时间插入"}，共 ${m.action.items.length} 条）`}
 								</div>
 								<div className="mt-2 max-h-[160px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
 									{m.action.items.map((it, i) => (
@@ -586,14 +587,17 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											应用修改（只改这一段）
 										</button>
 									) : (
+									<>
 									<div className="mt-2 grid grid-cols-2 gap-2">
 										<button type="button" onClick={() => applyCard(m, "replace")} className={`h-10 rounded-[6px] text-[15px] ${m.action.mode === "replace" ? "bg-[#07C160] text-white" : "bg-black/5"}`}>
 											清空替换
 										</button>
-										<button type="button" onClick={() => applyCard(m, "append")} className={`h-10 rounded-[6px] text-[15px] ${m.action.mode === "append" ? "bg-[#07C160] text-white" : "bg-black/5"}`}>
-											追加 / 按日期插入（过去的日期会插到对应位置）
+										<button type="button" onClick={() => applyCard(m, "append", "time")} className="h-10 rounded-[6px] bg-[#07C160] text-[15px] text-white">
+											按时间插入
 										</button>
 									</div>
+									<button type="button" onClick={() => applyCard(m, "append", "end")} className="mt-2 w-full text-[13px] text-black/45">追加到末尾</button>
+									</>
 									)
 								)}
 							</div>

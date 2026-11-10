@@ -46,10 +46,10 @@ import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { groupDefaultSender, isGroupId } from "@/stateV2/group";
+import { applyAutoReturn } from "@/stateV2/conversation/records";
 
 const ConversationList = () => {
-	const { listRef, conversationId, sendTransfer, sendRedPacketAcceptedReply } =
-		useConversationAPI();
+	const { listRef, conversationId } = useConversationAPI();
 	const [conversationList, setConversationList] = useAtom(conversationListAtom(conversationId));
 	const { isEdit } = useMode();
 	const rebuildTree = useSetAtom(allNodesTreeAtom);
@@ -58,6 +58,17 @@ const ConversationList = () => {
 	useEffect(() => {
 		void pruneClips(`${conversationId}:`, new Set(conversationList.map((i) => `${conversationId}:${i.id}`)));
 	}, [conversationList, conversationId]);
+
+	// 带了「超时未领自动退回」的转账/红包，到点改成已退回，并在那个时间插入系统提示。没有这个字段的旧消息不动。
+	useEffect(() => {
+		const tick = () => {
+			const { list, changed } = applyAutoReturn(getConversationListValueSnapshot(conversationId));
+			if (changed) setConversationList(list);
+		};
+		tick();
+		const timer = window.setInterval(tick, 30_000);
+		return () => window.clearInterval(timer);
+	}, [conversationId, conversationList, setConversationList]);
 
 	const mappedSortableListData = useMemo(() => {
 		return conversationList.map((item) => ({
@@ -82,10 +93,11 @@ const ConversationList = () => {
 		const item = getConversationListValueSnapshot(conversationId).find(
 			(v) => v.id === conversationItemId,
 		);
-		const { amount, originalSender, role } = item as IConversationTypeTransfer;
+		const { amount, originalSender } = item as IConversationTypeTransfer;
 		if (originalSender === "friend") {
 			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item as TConversationItem), amount });
 		}
+		// 只改这一条的状态，不另加收款消息，也不挪位置
 		setConversationList((prev) =>
 			prev.map((item) =>
 				item.id === conversationItemId
@@ -93,12 +105,6 @@ const ConversationList = () => {
 					: item,
 			),
 		);
-		sendTransfer({
-			amount,
-			transferStatus: "accepted",
-			originalSender,
-			role: role === "mine" ? "friend" : "mine",
-		});
 	};
 
 	const generateRedPacketAcceptedReplyConversation = (
@@ -122,7 +128,6 @@ const ConversationList = () => {
 					: item,
 			),
 		);
-		sendRedPacketAcceptedReply(conversationItemId);
 	};
 
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
@@ -276,9 +281,7 @@ const ConversationList = () => {
 			lastTap.current = { id: "", t: 0 };
 			setDlg({
 				title: `模拟对方领取${label}？`,
-				content: isPacket
-					? "红包会变成「已被领取」，聊天里出现「xx领取了你的红包」"
-					: "转账会变成「已被接收」",
+				content: "只会把这一条改成已收款，不会另加消息。收款记录请在编辑里按时间单独插入。",
 				okText: "对方已领取",
 				onOk: run,
 			});
@@ -329,7 +332,7 @@ const ConversationList = () => {
 							key: "transferReply",
 							onClick: () => generateTransferReplyConversation(item.id),
 							element: (
-								<Tooltip title="回应转账消息">
+								<Tooltip title="只把这一条标成已收款，不另加消息">
 									<SubnodeOutlined />
 								</Tooltip>
 							),
@@ -340,7 +343,7 @@ const ConversationList = () => {
 							key: "RedPacketAcceptedReply",
 							onClick: () => generateRedPacketAcceptedReplyConversation(item.id),
 							element: (
-								<Tooltip title="回应红包消息">
+								<Tooltip title="只把这一条标成已领取，不另加消息">
 									<SubnodeOutlined />
 								</Tooltip>
 							),
@@ -474,7 +477,7 @@ const ConversationList = () => {
 							className="rounded-[6px] border border-[#FA5151] px-3 py-[6px] text-[#FA5151]"
 							onClick={() => {
 								if (!selected.size || !window.confirm(`删除选中的 ${selected.size} 条消息？`)) return;
-								batch((list) => list.filter((v) => !selected.has(v.id) && !(v.type === EConversationType.redPacketAcceptedReply && selected.has(v.redPacketId))));
+								batch((list) => list.filter((v) => !selected.has(v.id)));
 							}}
 						>
 							删除
@@ -561,7 +564,7 @@ const ConversationList = () => {
 							onClick={() => {
 								const id = menu.id;
 								setMenu(null);
-								if (window.confirm("删除这条消息？")) setConversationList((prev) => prev.filter((v) => v.id !== id && !(v.type === EConversationType.redPacketAcceptedReply && v.redPacketId === id)));
+								if (window.confirm("删除这条消息？")) setConversationList((prev) => prev.filter((v) => v.id !== id));
 							}}
 							className="h-[54px] w-full text-[17px] text-[#FA5151]"
 						>

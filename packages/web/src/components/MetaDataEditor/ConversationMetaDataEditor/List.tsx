@@ -7,7 +7,7 @@ import {
 import type { IStateProfile } from "@/stateV2/profile";
 import { IMAGE_MAX_BYTES } from "@/utils/media";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
-import { App, Button, Form, Input, InputNumber, Radio, Select, Switch } from "antd";
+import { App, Button, Form, Input, InputNumber, Radio, Select, Switch, message } from "antd";
 import dayjs from "dayjs";
 import { useAtom } from "jotai";
 import { RESET } from "jotai/utils";
@@ -34,6 +34,14 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 	}, []);
 
 	const onFinish = (values: TConversationItem) => {
+		if (
+			(values.type === EConversationType.transfer || values.type === EConversationType.redPacket) &&
+			"amount" in values &&
+			Number(values.amount) > 200
+		) {
+			message.warning("单条金额不能超过 200，没有添加");
+			return;
+		}
 		setConversationList((prev) => {
 			return [
 				...prev,
@@ -242,9 +250,13 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 										<Radio.Group>
 											<Radio value="awaiting">等待领取</Radio>
 											<Radio value="accepted">已接受</Radio>
+											<Radio value="returned">已退回</Radio>
 											<Radio value="rejected">已退还</Radio>
-											<Radio value="exexpired">已过期</Radio>
+											<Radio value="expired">已过期</Radio>
 										</Radio.Group>
+									</Form.Item>
+									<Form.Item name="autoReturnHours" label="超时未领自动退回（小时）">
+										<InputNumber min={0} placeholder="如 24，留空不自动" />
 									</Form.Item>
 								</>
 							);
@@ -266,7 +278,7 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 									<Form.Item<TConversationItem>
 										name="amount"
 										label="红包金额"
-										tooltip="并不会直接展示出来"
+										tooltip="并不会直接展示出来。超过 200 不会添加"
 									>
 										<Input addonBefore="¥" />
 									</Form.Item>
@@ -286,8 +298,12 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 										<Radio.Group>
 											<Radio value="awaiting">等待领取</Radio>
 											<Radio value="accepted">已接受</Radio>
+											<Radio value="returned">已退回</Radio>
 											<Radio value="expired">已过期</Radio>
 										</Radio.Group>
+									</Form.Item>
+									<Form.Item name="autoReturnHours" label="超时未领自动退回（小时）">
+										<InputNumber min={0} placeholder="如 24，留空不自动" />
 									</Form.Item>
 								</>
 							);

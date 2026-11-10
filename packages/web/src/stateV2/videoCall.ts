@@ -22,15 +22,17 @@ export const addCallRecord = (conversationId: string, role: "mine" | "friend", s
 					: "对方已拒绝"
 				: `通话时长 ${mmss(seconds)}`;
 	touchDialogue(conversationId, `[视频通话] ${text}`);
+	const callStatus = seconds < 0 ? "cancelled" : seconds === 0 ? "rejected" : "accepted";
 	setConversationListValue(conversationId, (prev) => [
 		...prev,
 		{
-			type: EConversationType.text,
+			type: EConversationType.call,
 			role,
 			id: nanoid(8),
 			sendTimestamp: dayjs().valueOf(),
 			upperText: fromLastGenerateUpperText(prev),
-			textContent: [{ type: "paragraph", children: [{ text: `📹 ${text}` }] }],
+			callStatus,
+			seconds: seconds > 0 ? seconds : undefined,
 		} as (typeof prev)[number],
 	]);
 };

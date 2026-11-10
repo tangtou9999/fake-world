@@ -72,10 +72,14 @@ const describe = (v: Record<string, any>, name: string, groupId?: string) => {
 		case EConversationType.transfer:
 			body = `[转账 ¥${v.amount} ${v.note ?? ""} 状态：${v.transferStatus ?? ""} 发起人：${v.originalSender === "mine" ? "我" : friendName}]`;
 			break;
+		case EConversationType.transferReceipt:
+			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （转账收款，可单独删除）${v.receiver === "mine" ? "我" : friendName}已收款${v.amount ? ` ¥${v.amount}` : ""}${v.transferId ? ` 对应#${v.transferId}` : ""}`;
+		case EConversationType.call:
+			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] ${who}视频通话 ${v.callStatus ?? ""}${v.seconds ? ` ${v.seconds}秒` : ""}`;
 		case EConversationType.centerText:
 			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.simpleContent ?? ""}`;
 		case EConversationType.redPacketAcceptedReply:
-			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （系统提示）${v.claimerId ? nameOf(v.claimerId) : "有人"}领取了红包 #${v.redPacketId}`;
+			return `${tag}[${dayjs(v.sendTimestamp).format("YYYY-MM-DD HH:mm")}] （红包收款，可单独删除）${v.claimerId ? nameOf(v.claimerId) : v.receiver === "mine" ? "我" : "对方"}领取了红包${v.redPacketId ? ` #${v.redPacketId}` : ""}`;
 		case EConversationType.personalCard:
 			body = "[名片]";
 			break;
@@ -127,9 +131,12 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
   append = 追加到该聊天末尾；
   replace = 清空整个聊天后用 items 整个替换（用户说「重写整个聊天」才用，items 要包含全部记录）；
   range = 只修改某个时间段：额外写 "from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm"，该时间段内（含两端）的旧消息会被 items 替换，时间段之外的聊天保持不动。用户说「把昨天某一段改成……」「把这几句改掉」就用 range，items 只写这一段修改后的内容，at 必须落在 from 到 to 之间。
-- items 每项：kind 为 text / redPacket / transfer / voice / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是这句话说的内容，必须填写，播放时就用它读出声音，聊天里默认不显示，用户长按「转文字」才会看到；system 是居中灰色提示）；redPacket、transfer 需要 amount（数字字符串）、note、status（awaiting 或 accepted）；voice 需要 seconds，并且要按这一句话「当时所处的真实场景」带上 scene、pace，可选 tone：scene 只能是 clean（安静/普通）、bed（家里被窝）、room（夜晚客厅房间）、crowd（嘈杂餐厅夜宵摊）、rain（雨夜车内）、mall（商场超市）、street（户外马路街头）之一；pace 只能是 normal（自然闲聊）、fast（快节奏互怼）、slow（深夜走心）之一；tone 是这一句的口气，如「奶声奶气撒娇，稍微提高音量」。同一个人今天在车里、明天在家里，scene 就要不同，别全用一个；外语消息可加 translation（中文译文）；每项都要有 at。
+- items 每项：kind 为 text / redPacket / redPacketReceipt / transfer / transferReceipt / voice / call / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是这句话说的内容，必须填写，播放时就用它读出声音，聊天里默认不显示，用户长按「转文字」才会看到；system 是居中灰色提示）。
+- 转账、红包的「发起」和「收款」是两条，禁止合并。发起用 redPacket 或 transfer：amount（数字字符串，单条不能超过 200，超过就不要写）、note、status（awaiting 待领取 / accepted 已收款 / returned 已退回）。status 只改变这一条气泡的样子，系统不会因为 status 再自动加一条。收款用 redPacketReceipt 或 transferReceipt：who 是谁收的，可选 amount，必须有自己的 at。两条用同一个 "pair"（你编的短标记，如 "a"）连起来。只有用户要求「超时未领自动退回」时，才在发起那条写 autoReturnHours（小时，如 24）。
+- 视频通话用 kind call，不要写成文字：who 是谁打的，status 为 rejected / cancelled / accepted，接通再写 seconds。
+- voice 需要 seconds，可选 read（false 表示未播放、会显示红点），并且要按这一句话「当时所处的真实场景」带上 scene、pace，可选 tone：scene 只能是 clean（安静/普通）、bed（家里被窝）、room（夜晚客厅房间）、crowd（嘈杂餐厅夜宵摊）、rain（雨夜车内）、mall（商场超市）、street（户外马路街头）之一；pace 只能是 normal（自然闲聊）、fast（快节奏互怼）、slow（深夜走心）之一；tone 是这一句的口气，如「奶声奶气撒娇，稍微提高音量」。同一个人今天在车里、明天在家里，scene 就要不同，别全用一个；外语消息可加 translation（中文译文）；每项都要有 at。
 - at 的格式只能是 "YYYY-MM-DD HH:mm"：半角、必须带四位年份、24 小时制，例如 "2026-01-06 12:00"；不要写「2026年1月6日」「1/6」「下午三点」这类写法，也不要省略年份或时间。
-- at 单调递增，不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现；默认追加到最后一条之后；但用户要求生成「一个月前、两个月前、半年前、去年」这类更早的聊天时，mode 仍用 append，at 必须真的写成那段过去的日期（按现在往前推算，系统会按时间插到聊天记录的正确位置），千万不要写成今天。
+- at 不能晚于现在（现在是 ${now}）；停顿、第二天等用 at 的间隔表现。mode 为 append 时，系统按每条自己的 at 插到对应位置：过去的日期会进到中间，不会覆盖、不会打乱更晚的消息，也不会一律丢到末尾。用户要求生成「一个月前、两个月前、半年前、去年」时，at 必须真的写成那段过去的日期。只有用户明确说「追加到末尾」时，才在说明里告诉他去点「追加到末尾」。
 - 只有用户明确要求生成/修改聊天内容时才附代码块；普通聊天、咨询不要附。
 ${groupMembers ? `
 【这是群聊】当前聊天是微信群，群成员（不含我）：
@@ -137,7 +144,7 @@ ${groupMembers}
 - 群里 who 为 friend 的每一项都必须加 "sender":"成员名"（照抄上面名字，不要写「对方」）；who 为 me 是「我」，不需要 sender。
 - 生成群聊要像真实群：多个成员轮流发言、插话、接梗、互相回应，每人风格不同（参考他们的人设和已有记录里的说话方式），不要让一个人连着说太多条；红包、转账也要标明是哪个成员发的（sender）；用户没点名谁说时由你合理安排。
 - 群里的 target 照抄「当前聊天」的名字。
-- 群红包：kind 为 redPacket，amount 是红包总额，who/sender 指明谁发；可选 "count":份数（默认=群里所有人含我）。系统会自动把总额随机拆成 count 份：对方发的红包，其余成员会在 5~10 秒内陆续领取，并留一份给我；我发的红包，群友同样陆续领取。不需要你另外写「某某领取了红包」的系统消息，也不要把 status 写成 accepted。` : ""}
+- 群红包、群转账的领取/收款也要单独写 redPacketReceipt 或 transferReceipt，每条自己的 at 和 sender（谁领的）。不要和发起合并，系统不会自动补收款消息。` : ""}
 微信表情：文字里可以写 [名字] 表示表情，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；不要用其他方括号表情或 Unicode 小黄脸，数量像真人聊天一样适度。读取聊天记录时表情也显示成 [名字]。
 【表情包】这里做不到发真正的表情图片，只能用上面的 [名字] 文字表情。用户要「发表情包/测试表情」时，就生成一批带这些 [名字] 的 text 消息放进 wxchat 代码块，并在说明里直说是文字表情；不要说「已经发了表情图」。
 【必须执行】用户要你生成、放进、重写、补上聊天内容时，回复里必须带完整的 wxchat 代码块；说明文字只写一句话，不要以冒号结尾，也不要在没附代码块的情况下说「已经放进去了」。附不了就直接说做不到。
@@ -146,8 +153,8 @@ ${groupMembers}
 \`\`\`wxops
 {"target":"联系人名字","ops":[{"op":"delete","ids":["id1","id2"]},{"op":"setTime","id":"id3","at":"YYYY-MM-DD HH:mm"},{"op":"edit","id":"id4","text":"新内容"},{"op":"edit","id":"id5","amount":"88","note":"备注","status":"accepted"}]}
 \`\`\`
-- delete 可批量；setTime 改单条时间（系统会按时间自动重新排序、重算「昨天/今天」等时间标签，不用你管）；edit 可改文字 text、红包/转账的 amount note status、语音的 text seconds。
-- id 必须照抄聊天记录里的 #后面的内容，不要编造；找不到就先告诉用户。红包金额单个最高 200。
+- delete 可批量，按每条自己的 id。删收款记录就只写收款那条的 id，不要连发起那条一起删。setTime 改单条时间（系统会按时间重排、重算「昨天/今天」等时间标签，不会把它丢到末尾，除非那个时间本来就是最后）。edit 可改文字 text、红包/转账的 amount（超过 200 会被拒绝）note status（awaiting/accepted/returned）、语音的 text seconds scene pace tone read、通话的 status seconds。只改 status 不会新增消息，也不会挪位置。
+- id 必须照抄聊天记录里的 #后面的内容，不要编造。某条找不到时，系统会指出是哪条，其它照常执行，不会整批失败。
 - 同一个回复里 wxops 和 wxchat 可以都带，但改已有消息时优先 wxops。
 当前所有联系人：${contactNames || "（暂无）"}`;
 
@@ -232,12 +239,12 @@ export const resolveTarget = (target: string, contacts: Contact[], fallbackId?: 
 	return fallbackId ? contacts.find((c) => c.id === fallbackId) : undefined;
 };
 
-export const applyAction = (conversationId: string, action: AiChatAction) => {
+export const applyAction = (conversationId: string, action: AiChatAction, place: "time" | "end" = "time") => {
 	const fromTs = parseAt(action.from);
 	const toTs = parseAt(action.to);
 	const range =
 		action.mode === "range" && fromTs !== null && toTs !== null
 			? { from: dayjs(fromTs).startOf("minute").valueOf(), to: dayjs(toTs).endOf("minute").valueOf() }
 			: undefined;
-	return applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true, range);
+	return applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true, range, place === "end");
 };

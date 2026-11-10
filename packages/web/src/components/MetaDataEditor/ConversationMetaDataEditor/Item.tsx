@@ -8,7 +8,7 @@ import type { IStateProfile } from "@/stateV2/profile";
 import { IMAGE_MAX_BYTES } from "@/utils/media";
 import { Global, css } from "@emotion/react";
 import { useUpdateEffect } from "ahooks";
-import { Button, Form, Input, InputNumber, Radio, Select, Switch } from "antd";
+import { Button, Form, Input, InputNumber, Radio, Select, Switch, message } from "antd";
 import dayjs from "dayjs";
 import { useAtom } from "jotai";
 import LocalImageUploadWithPreview from "../LocalImageUpload";
@@ -24,6 +24,16 @@ const ConversationItemMetaDataEditor = ({
 	const [conversationList, setConversationList] = useAtom(conversationListAtom(index[0]));
 
 	const onFinish = (values: TConversationItem) => {
+		const prevAmount = "amount" in data ? data.amount : undefined;
+		const nextAmount = "amount" in values ? values.amount : undefined;
+		if (
+			(values.type === EConversationType.transfer || values.type === EConversationType.redPacket) &&
+			String(nextAmount ?? "") !== String(prevAmount ?? "") &&
+			Number(nextAmount) > 200
+		) {
+			message.warning("单条金额不能超过 200，这次没有保存");
+			return;
+		}
 		setConversationList((prev) =>
 			prev.map((item) => (item.id === data.id ? { ...item, ...values } : item)),
 		);
@@ -239,9 +249,13 @@ const ConversationItemMetaDataEditor = ({
 									<Radio.Group>
 										<Radio value="awaiting">等待领取</Radio>
 										<Radio value="accepted">已接受</Radio>
+										<Radio value="returned">已退回</Radio>
 										<Radio value="rejected">已退还</Radio>
 										<Radio value="expired">已过期</Radio>
 									</Radio.Group>
+								</Form.Item>
+								<Form.Item name="autoReturnHours" label="超时未领自动退回（小时）" tooltip="留空不自动。到点后这一条变成已退回，并在那个时间插入系统提示">
+									<InputNumber min={0} placeholder="如 24" />
 								</Form.Item>
 							</>
 						);
@@ -263,7 +277,7 @@ const ConversationItemMetaDataEditor = ({
 								<Form.Item<TConversationItem>
 									name="amount"
 									label="红包金额"
-									tooltip="并不会直接展示出来"
+									tooltip="并不会直接展示出来。改成超过 200 会被拒绝"
 								>
 									<Input addonBefore="¥" />
 								</Form.Item>
@@ -283,8 +297,12 @@ const ConversationItemMetaDataEditor = ({
 									<Radio.Group>
 										<Radio value="awaiting">等待领取</Radio>
 										<Radio value="accepted">已接受</Radio>
+										<Radio value="returned">已退回</Radio>
 										<Radio value="expired">已过期</Radio>
 									</Radio.Group>
+								</Form.Item>
+								<Form.Item name="autoReturnHours" label="超时未领自动退回（小时）" tooltip="留空不自动。到点后这一条变成已退回，并在那个时间插入系统提示">
+									<InputNumber min={0} placeholder="如 24" />
 								</Form.Item>
 							</>
 						);

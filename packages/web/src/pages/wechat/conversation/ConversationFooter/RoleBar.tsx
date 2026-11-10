@@ -14,6 +14,8 @@ import { touchDialogue } from "@/stateV2/fileHelper";
 import { geminiConfigAtom } from "@/stateV2/gemini";
 import { fileToGeminiImage } from "@/utils/gemini";
 import { type ParsedItem, applyParsedItems, generateScript, parseScreenshots, previewLine } from "./importScreenshots";
+import { rangeReplace, stampInserted } from "@/stateV2/conversation/records";
+import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import dayjs from "dayjs";
@@ -49,6 +51,9 @@ const RoleBar = () => {
 	const [replace, setReplace] = useState(false);
 	const [aiDone, setAiDone] = useState("");
 	const [preview, setPreview] = useState<ParsedItem[] | null>(null);
+	const [rangeFrom, setRangeFrom] = useState("");
+	const [rangeTo, setRangeTo] = useState("");
+	const [rangeText, setRangeText] = useState("");
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -69,8 +74,8 @@ const RoleBar = () => {
 		try {
 			const images = await Promise.all(shots.map((f) => fileToGeminiImage(f)));
 			const list = await parseScreenshots(images);
-			const n = applyParsedItems(conversationId, list, replace);
-			setAiDone(`已复刻 ${n} 条消息${replace ? "（已替换原聊天）" : "（已追加到聊天末尾）"}`);
+			const { applied, notes } = applyParsedItems(conversationId, list, replace);
+			setAiDone(`已复刻 ${applied} 条消息${replace ? "（已替换原聊天）" : "（已追加到聊天末尾）"}${notes.length ? `。${notes.join("；")}` : ""}`);
 			setShots([]);
 			scrollConversationListToBtm();
 		} catch (e) {
@@ -96,15 +101,46 @@ const RoleBar = () => {
 		}
 	};
 
-	const applyPreview = (rep: boolean) => {
+	const applyPreview = (rep: boolean, end = false) => {
 		if (!preview) return;
-		const n = applyParsedItems(conversationId, preview, rep, true);
-		setAiDone(`已${rep ? "替换为" : "追加"} ${n} 条消息`);
+		const { applied, notes } = applyParsedItems(conversationId, preview, rep, true, undefined, end);
+		setAiDone(`已${rep ? "替换为" : end ? "追加到末尾" : "按时间插入"} ${applied} 条消息${notes.length ? `。${notes.join("；")}` : ""}`);
 		setPreview(null);
 		setScene("");
 		setAiErr("");
 		setAiOpen(false);
-		scrollConversationListToBtm();
+		if (end) scrollConversationListToBtm();
+	};
+
+	const applyRange = () => {
+		const from = dayjs(rangeFrom).valueOf();
+		const to = dayjs(rangeTo).endOf("minute").valueOf();
+		if (!rangeFrom || !rangeTo || !Number.isFinite(from) || !Number.isFinite(to)) return;
+		let role: TConversationRole = config.sendRole;
+		const lines: { role: TConversationRole; text: string }[] = [];
+		for (const raw of rangeText.split("\n")) {
+			if (!raw.trim()) continue;
+			const m = raw.match(PREFIX);
+			if (m) role = /^(我|me)$/i.test(m[1]) ? "mine" : "friend";
+			const body = raw.replace(PREFIX, "").trim();
+			if (body) lines.push({ role, text: body });
+		}
+		if (!lines.length && !window.confirm("没有新内容，这一段里的消息会被清掉。继续？")) return;
+		const span = Math.max(to - from, 60_000);
+		const fresh = lines.map((it, i) => {
+			const ts = lines.length === 1 ? from : from + Math.round(((i + 1) * span) / (lines.length + 1));
+			return {
+				type: EConversationType.text,
+				role: it.role,
+				...(it.role === "friend" && isGroupId(conversationId) ? { senderId: currentSenderId(conversationId) } : {}),
+				id: nanoid(8),
+				textContent: [{ type: "paragraph", children: textToSlateChildren(it.text) }],
+				sendTimestamp: Math.min(ts, Date.now()),
+			} as unknown as TConversationItem;
+		});
+		setConversationListValue(conversationId, (prev) => stampInserted(rangeReplace(prev, from, to, fresh), new Set(fresh.map((v) => v.id))));
+		setOpen(false);
+		setRangeText("");
 	};
 
 	const sendAll = () => {
@@ -255,8 +291,9 @@ const RoleBar = () => {
 										<div className="mt-3 grid grid-cols-3 gap-2">
 											<button type="button" onClick={generate} disabled={aiBusy} className="h-[44px] rounded-[6px] bg-black/5 text-[15px] disabled:opacity-50">{aiBusy ? "生成中…" : "重新生成"}</button>
 											<button type="button" onClick={() => applyPreview(true)} className="h-[44px] rounded-[6px] bg-black/5 text-[15px]">清空替换</button>
-											<button type="button" onClick={() => applyPreview(false)} className="h-[44px] rounded-[6px] bg-[#07C160] text-[15px] text-white">追加到末尾</button>
+											<button type="button" onClick={() => applyPreview(false, false)} className="h-[44px] rounded-[6px] bg-[#07C160] text-[15px] text-white">按时间插入</button>
 										</div>
+										<button type="button" onClick={() => applyPreview(false, true)} className="mt-2 w-full text-[13px] text-black/50">追加到末尾</button>
 										<button type="button" className="mt-2 w-full text-[13px] text-black/50" onClick={() => setPreview(null)}>返回修改剧本</button>
 									</>
 								) : (
@@ -313,6 +350,22 @@ const RoleBar = () => {
 							<button type="button" onClick={sendAll} className="h-[44px] flex-1 rounded-[6px] bg-[#07C160] text-[16px] text-white">
 								发送全部
 							</button>
+						</div>
+						<div className="mt-4 border-black/10 border-t pt-3">
+							<div className="mb-1 font-medium text-[15px]">替换一段时间</div>
+							<div className="mb-2 text-[12px] text-black/50 leading-5">from 到 to 之间的旧消息会被换成下面这些，时间段外面的不动。一行一条，行首可写「我：」「对方：」。</div>
+							<div className="flex gap-2">
+								<input aria-label="开始时间" type="datetime-local" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)} className="h-9 min-w-0 flex-1 rounded-[6px] bg-[#F5F5F5] px-2 text-[13px]" />
+								<input aria-label="结束时间" type="datetime-local" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)} className="h-9 min-w-0 flex-1 rounded-[6px] bg-[#F5F5F5] px-2 text-[13px]" />
+							</div>
+							<textarea
+								aria-label="替换内容"
+								className="mt-2 h-[88px] w-full resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[15px] outline-none"
+								placeholder={"对方：改成这句\n我：好"}
+								value={rangeText}
+								onChange={(e) => setRangeText(e.target.value)}
+							/>
+							<button type="button" onClick={applyRange} className="mt-2 h-10 w-full rounded-[6px] bg-black/5 text-[15px]">替换这一段</button>
 						</div>
 					</div>
 				</div>

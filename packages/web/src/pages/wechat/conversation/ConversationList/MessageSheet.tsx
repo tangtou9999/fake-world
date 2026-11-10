@@ -1,6 +1,7 @@
 import { reflow } from "@/pages/wechat/my/settings/chatOps";
 import { groupAtom, isGroupId } from "@/stateV2/group";
 import { EConversationType, type TConversationItem, formatWechatTime, getConversationListValueSnapshot, setConversationListValue } from "@/stateV2/conversation";
+import { insertByTime, makeRedPacketReceipt, makeTransferReceipt, moneyOverLimit, stampInserted } from "@/stateV2/conversation/records";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import dayjs from "dayjs";
@@ -16,7 +17,7 @@ const nameOf = (id: string) => {
 };
 
 const TYPE_NAME: Record<string, string> = {
-	text: "文字", image: "图片", video: "视频", voice: "语音", centerText: "居中提示", transfer: "转账", redPacket: "红包", redPacketAcceptedReply: "领取红包提示", personalCard: "名片",
+	text: "文字", image: "图片", video: "视频", voice: "语音", centerText: "居中提示", transfer: "转账", transferReceipt: "转账收款", redPacket: "红包", redPacketAcceptedReply: "红包收款", call: "视频通话", personalCard: "名片",
 };
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -39,15 +40,23 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 			at: r.sendTimestamp ? dayjs(r.sendTimestamp).format(FMT) : "",
 			upper: r.upperText ?? "",
 			text: r.type === EConversationType.text ? (r.textContent ?? []).map((n: never) => slateToPlain(n)).join("\n") : r.type === EConversationType.centerText ? (r.simpleContent ?? "") : "",
-			duration: String(r.duration ?? ""),
+			duration: String(r.duration ?? r.seconds ?? ""),
 			isRead: !!r.isRead,
 			showStt: !!r.showStt,
 			stt: r.stt ?? "",
 			amount: r.amount ?? "",
 			note: r.note ?? "",
-			status: r.transferStatus ?? r.redPacketStatus ?? "",
+			status: r.transferStatus ?? r.redPacketStatus ?? r.callStatus ?? "",
 			originalSender: r.originalSender ?? "friend",
 			referenceId: r.referenceId ?? "",
+			scene: r.scene ?? "",
+			pace: r.pace ?? "",
+			tone: r.tone ?? "",
+			autoReturn: r.autoReturnHours ? String(r.autoReturnHours) : "",
+			receiptAt: dayjs().format(FMT),
+			receiptWho: r.originalSender === "mine" ? "friend" : "mine",
+			receiptMember: "",
+			receiver: r.receiver ?? "",
 		};
 	});
 	if (!item) return null;
@@ -58,6 +67,11 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 	const mutate = (fn: (list: R[]) => R[]) => setConversationListValue(conversationId, (prev) => fn(prev.map((v) => ({ ...v }))) as TConversationItem[]);
 
 	const save = () => {
+		const amountChanged = String(d.amount) !== String(item.amount ?? "");
+		if ((type === "transfer" || type === "redPacket") && amountChanged && moneyOverLimit(d.amount)) {
+			window.alert("单条金额不能超过 200 元，这次没有保存。原来的金额还在。");
+			return;
+		}
 		const ts = d.at ? dayjs(d.at).valueOf() : undefined;
 		const timeChanged = !!ts && ts !== item.sendTimestamp;
 		const upperChanged = d.upper !== (item.upperText ?? "");
@@ -79,22 +93,53 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 				it.isRead = d.isRead;
 				it.showStt = d.showStt;
 				it.stt = d.stt;
+				it.scene = d.scene || undefined;
+				it.pace = d.pace || undefined;
+				it.tone = d.tone || undefined;
+			}
+			if (type === "call") {
+				if (["rejected", "cancelled", "accepted"].includes(d.status)) it.callStatus = d.status;
+				const n = Number(d.duration);
+				it.seconds = d.status === "accepted" && n > 0 ? Math.round(n) : undefined;
 			}
 			if (type === "transfer" || type === "redPacket") {
 				const n = Number(d.amount);
-				if (Number.isFinite(n) && n > 0) it.amount = (type === "redPacket" ? Math.min(n, 200) : n).toFixed(2);
+				if (Number.isFinite(n) && n > 0) it.amount = n.toFixed(2);
 				it.note = d.note || undefined;
 				it.originalSender = d.originalSender;
 				if (d.status) (type === "transfer" ? (it.transferStatus = d.status) : (it.redPacketStatus = d.status));
+				const hours = Number(d.autoReturn);
+				it.autoReturnHours = Number.isFinite(hours) && hours > 0 ? hours : undefined;
 			}
-			return reflow(list, new Set(timeChanged && !upperChanged ? [id] : []));
+			if (type === "transferReceipt" || type === "redPacketAcceptedReply") {
+				if (d.receiver === "mine" || d.receiver === "friend") it.receiver = d.receiver;
+			}
+			// 没改时间就不重排，避免只改状态时把消息挪走
+			if (!timeChanged) return list;
+			return reflow(list, new Set(upperChanged ? [] : [id]));
 		});
 		onClose();
 	};
 
 	const remove = () => {
 		if (!window.confirm("删除这条消息？")) return;
-		mutate((list) => list.filter((v) => v.id !== id && !(v.type === EConversationType.redPacketAcceptedReply && v.redPacketId === id)));
+		mutate((list) => list.filter((v) => v.id !== id));
+		onClose();
+	};
+
+	const insertReceipt = () => {
+		const ts = d.receiptAt ? dayjs(d.receiptAt).valueOf() : Date.now();
+		if (!Number.isFinite(ts)) return;
+		if (ts > Date.now() + 30_000) {
+			window.alert("收款时间不能晚于现在");
+			return;
+		}
+		const receiver = d.receiptWho === "mine" ? "mine" : "friend";
+		const member = isGroup && receiver === "friend" ? d.receiptMember || undefined : undefined;
+		const fresh = type === "transfer"
+			? makeTransferReceipt({ sendTimestamp: ts, receiver, receiverId: member, transferId: id, amount: d.amount || undefined, senderId: member })
+			: makeRedPacketReceipt({ sendTimestamp: ts, receiver, receiverId: member, redPacketId: id, senderId: member });
+		mutate((list) => stampInserted(insertByTime(list as TConversationItem[], [fresh]), new Set([fresh.id])) as R[]);
 		onClose();
 	};
 
@@ -184,10 +229,44 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 						<>
 							<Row label="时长(秒)"><input aria-label="语音时长" type="number" value={d.duration} onChange={(e) => set({ duration: e.target.value })} className={inputCls} /></Row>
 							<Row label="状态">
-								<label className="mr-4 text-[15px]"><input type="checkbox" checked={d.isRead} onChange={(e) => set({ isRead: e.target.checked })} /> 已读</label>
+								<label className="mr-4 text-[15px]"><input type="checkbox" checked={d.isRead} onChange={(e) => set({ isRead: e.target.checked })} /> 已播放</label>
 								<label className="text-[15px]"><input type="checkbox" checked={d.showStt} onChange={(e) => set({ showStt: e.target.checked })} /> 显示转文字</label>
 							</Row>
 							<Row label="转文字"><textarea aria-label="转文字内容" value={d.stt} onChange={(e) => set({ stt: e.target.value })} className={`${inputCls} h-[80px] resize-none`} /></Row>
+							<Row label="场景">
+								<select aria-label="语音场景" value={d.scene} onChange={(e) => set({ scene: e.target.value })} className={inputCls}>
+									<option value="">不指定</option>
+									<option value="clean">安静</option>
+									<option value="bed">被窝</option>
+									<option value="room">房间</option>
+									<option value="crowd">嘈杂</option>
+									<option value="rain">雨夜</option>
+									<option value="mall">商场</option>
+									<option value="street">街头</option>
+								</select>
+							</Row>
+							<Row label="语速">
+								<select aria-label="语音语速" value={d.pace} onChange={(e) => set({ pace: e.target.value })} className={inputCls}>
+									<option value="">不指定</option>
+									<option value="normal">自然</option>
+									<option value="fast">快</option>
+									<option value="slow">慢</option>
+								</select>
+							</Row>
+							<Row label="口气"><input aria-label="口气" value={d.tone} onChange={(e) => set({ tone: e.target.value })} placeholder="如：奶声奶气" className={inputCls} /></Row>
+						</>
+					)}
+					{type === "call" && (
+						<>
+							<Row label="谁打的"><div className="pt-[7px] text-[15px] text-black/60">上面的「发送人」就是谁打的</div></Row>
+							<Row label="结果">
+								<select aria-label="通话结果" value={d.status} onChange={(e) => set({ status: e.target.value })} className={inputCls}>
+									<option value="accepted">已接通</option>
+									<option value="rejected">已拒绝</option>
+									<option value="cancelled">已取消</option>
+								</select>
+							</Row>
+							<Row label="时长(秒)"><input aria-label="通话秒数" type="number" value={d.duration} onChange={(e) => set({ duration: e.target.value })} className={inputCls} /></Row>
 						</>
 					)}
 					{(type === "transfer" || type === "redPacket") && (
@@ -205,11 +284,45 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 								<select aria-label="状态" value={d.status} onChange={(e) => set({ status: e.target.value })} className={inputCls}>
 									<option value="awaiting">待领取/待收款</option>
 									<option value="accepted">已领取/已收款</option>
-									{type === "transfer" && <option value="rejected">已退还</option>}
+									<option value="returned">已退回</option>
+									{type === "transfer" && d.status === "rejected" && <option value="rejected">已退还</option>}
 									<option value="expired">已过期</option>
 								</select>
+								<div className="mt-1 text-[12px] text-black/40">只改这一条的样子，不会另加消息，也不会挪位置。</div>
+							</Row>
+							<Row label="超时退回">
+								<input aria-label="超时小时" inputMode="decimal" value={d.autoReturn} onChange={(e) => set({ autoReturn: e.target.value })} placeholder="空 = 不自动，如 24" className={inputCls} />
+								<div className="mt-1 text-[12px] text-black/40">到点后这一条变成已退回，并在那个时间插入一条系统提示。</div>
+							</Row>
+							<Row label="收款记录">
+								<div className="text-[12px] text-black/40">单独一条，按下面的时间插入，不改这一条的状态。</div>
+								<input aria-label="收款时间" type="datetime-local" value={d.receiptAt} onChange={(e) => set({ receiptAt: e.target.value })} className={`${inputCls} mt-2`} />
+								<div className="mt-2 flex flex-wrap gap-2">
+									{(["mine", "friend"] as const).map((r) => (
+										<button key={r} type="button" onClick={() => set({ receiptWho: r })} className={`rounded-full px-4 py-[6px] text-[15px] ${d.receiptWho === r ? "bg-[#07C160] text-white" : "bg-[#F5F5F5]"}`}>{r === "mine" ? "我收的" : "对方收的"}</button>
+									))}
+								</div>
+								{isGroup && d.receiptWho === "friend" && (
+									<select aria-label="收款成员" value={d.receiptMember} onChange={(e) => set({ receiptMember: e.target.value })} className={`${inputCls} mt-2`}>
+										<option value="">默认成员</option>
+										{(group?.memberIds ?? []).map((m) => (
+											<option key={m} value={m}>{nameOf(m)}</option>
+										))}
+									</select>
+								)}
+								<button type="button" className="mt-2 rounded-[6px] border border-[#07C160] px-3 py-2 text-[14px] text-[#07C160]" onClick={insertReceipt}>按这个时间插入收款记录</button>
 							</Row>
 						</>
+					)}
+					{(type === "transferReceipt" || type === "redPacketAcceptedReply") && (
+						<Row label="谁收的">
+							<div className="flex gap-2">
+								{(["mine", "friend"] as const).map((r) => (
+									<button key={r} type="button" onClick={() => set({ receiver: r })} className={`rounded-full px-4 py-[6px] text-[15px] ${d.receiver === r ? "bg-[#07C160] text-white" : "bg-[#F5F5F5]"}`}>{r === "mine" ? "我" : "对方"}</button>
+								))}
+							</div>
+							<div className="mt-1 text-[12px] text-black/40">这是收款记录，删掉它不会影响发起那条。</div>
+						</Row>
 					)}
 					{(type === "image" || type === "video" || type === "personalCard") && <div className="py-3 text-[13px] text-black/40">图片、视频本身不能在这里替换，要换请删除后从「+」重新发送。</div>}
 					<div className="flex flex-wrap gap-2 pt-3">

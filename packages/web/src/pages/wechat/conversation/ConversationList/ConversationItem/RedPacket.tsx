@@ -22,6 +22,7 @@ const IMAGE_MAP: Record<IConversationTypeRedPacket["redPacketStatus"], string> =
 	awaiting: RedPacketCloseIMG,
 	accepted: RedPacketOpenIMG,
 	expired: RedPacketCloseIMG,
+	returned: RedPacketCloseIMG,
 };
 
 const RedPacket = ({ role, upperText, senderId, redPacketStatus, note, originalSender }: Props) => {
@@ -37,7 +38,7 @@ const RedPacket = ({ role, upperText, senderId, redPacketStatus, note, originalS
 			innerBlockClassName={twJoin(
 				"h-[83px] w-[243px] max-w-none rounded-[6px] p-0",
 				redPacketStatus === "awaiting" && "bg-wechatOrange-3 before:bg-wechatOrange-3",
-				(redPacketStatus === "accepted" || redPacketStatus === "expired") &&
+				(redPacketStatus === "accepted" || redPacketStatus === "expired" || redPacketStatus === "returned") &&
 					"bg-[#FACE9C] before:bg-[#FACE9C]",
 			)}
 		>
