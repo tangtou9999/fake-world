@@ -128,12 +128,12 @@ const ConversationList = () => {
 	const [busy, setBusy] = useState(false);
 	// 编辑模式下快速点两下某条消息：直接改里面的文字
 	const [quickEdit, setQuickEdit] = useState<{ id: string; text: string } | null>(null);
-	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
+	const editTapRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const onEditTap = (item: TConversationItem) => {
 		if (!isEdit) return;
 		const now = Date.now();
-		const twice = lastTap.current.id === item.id && now - lastTap.current.t < 380;
-		lastTap.current = { id: item.id, t: twice ? 0 : now };
+		const twice = editTapRef.current.id === item.id && now - editTapRef.current.t < 380;
+		editTapRef.current = { id: item.id, t: twice ? 0 : now };
 		if (!twice) return;
 		const r = item as unknown as Record<string, any>;
 		if (item.type === EConversationType.text) setQuickEdit({ id: item.id, text: item.textContent.map((n) => slateToPlain(n as never)).join("\n") });
