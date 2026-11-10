@@ -8,7 +8,9 @@ import { parseAt } from "@/utils/parseAt";
 export type ChatOp =
 	| { op: "delete"; ids: string[] }
 	| { op: "setTime"; id: string; at: string }
-	| { op: "edit"; id: string; text?: string; amount?: string; note?: string; status?: string; seconds?: number; at?: string; scene?: string; pace?: string; tone?: string; read?: boolean };
+	| { op: "edit"; id: string; text?: string; amount?: string; note?: string; status?: string; seconds?: number; at?: string; scene?: string; pace?: string; tone?: string; read?: boolean }
+	| { op: "shift"; days?: number; hours?: number; minutes?: number; evening?: boolean; ids?: string[] }
+	| { op: "replay"; query?: string; from?: string; to?: string };
 
 export type OpsAction = { target: string; targetId?: string; ops: ChatOp[]; applied?: string };
 
@@ -28,6 +30,16 @@ export const parseOps = (raw: string): { text: string; ops?: OpsAction } => {
 				ops.push({ op: "setTime", id: String(o.id).replace(/^#/, ""), at: String(o.at) });
 			} else if (o?.op === "edit" && o.id) {
 				ops.push({ op: "edit", id: String(o.id).replace(/^#/, ""), text: o.text as string, amount: o.amount as string, note: o.note as string, status: o.status as string, seconds: o.seconds as number, at: o.at as string, scene: o.scene as string, pace: o.pace as string, tone: o.tone as string, read: typeof o.read === "boolean" ? o.read : undefined });
+			} else if (o?.op === "shift") {
+				const ids = (Array.isArray(o.ids) ? o.ids : []).map((v) => String(v ?? "").replace(/^#/, "")).filter(Boolean);
+				const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+				const evening = o.evening === true;
+				const days = num(o.days);
+				const hours = num(o.hours);
+				const minutes = num(o.minutes);
+				if (evening || days || hours || minutes) ops.push({ op: "shift", days, hours, minutes, evening, ...(ids.length ? { ids } : {}) });
+			} else if (o?.op === "replay") {
+				ops.push({ op: "replay", query: o.query ? String(o.query) : undefined, from: o.from ? String(o.from) : undefined, to: o.to ? String(o.to) : undefined });
 			}
 		}
 		if (!ops.length) return { text: `${text}\n\n（AI 附上的修改指令里没有可执行的内容，请让它重新输出）` };
@@ -74,6 +86,17 @@ export const describeOp = (conversationId: string, o: ChatOp) => {
 			return `删除 ${o.ids.length} 条：${o.ids.slice(0, 3).map((i) => describeId(conversationId, i)).join("；")}${o.ids.length > 3 ? "……" : ""}`;
 		case "setTime":
 			return `改时间 → ${o.at}：${describeId(conversationId, o.id)}`;
+		case "shift": {
+			const bits = [
+				o.days ? `${o.days > 0 ? "推后" : "提前"} ${Math.abs(o.days)} 天` : "",
+				o.hours ? `${o.hours > 0 ? "推后" : "提前"} ${Math.abs(o.hours)} 小时` : "",
+				o.minutes ? `${o.minutes > 0 ? "推后" : "提前"} ${Math.abs(o.minutes)} 分钟` : "",
+				o.evening ? "改到当天晚上" : "",
+			].filter(Boolean);
+			return `时间线：${bits.join("，") || "调整时间"}${o.ids?.length ? `（${o.ids.length} 条）` : "（整段一起移动，收款记录也跟着走）"}`;
+		}
+		case "replay":
+			return `回放${o.query ? `「${o.query}」` : o.from ? ` ${o.from} ~ ${o.to ?? ""}` : "这一段"}。到聊天里确认首尾后再播，不改记录`;
 		default: {
 			const f = [o.text !== undefined && `内容「${o.text.slice(0, 20)}」`, o.amount && `金额 ¥${o.amount}`, o.note !== undefined && `备注「${o.note}」`, o.status && `状态 ${o.status}`, o.seconds && `${o.seconds} 秒`, o.scene && `场景 ${o.scene}`, o.pace && `语速 ${o.pace}`, o.at && `时间 ${o.at}`].filter(Boolean).join("，");
 			return `修改 ${f}：${describeId(conversationId, o.id)}`;
@@ -105,6 +128,39 @@ export const reflow = (input: Record<string, any>[], touched: Set<string>) => {
 	return list;
 };
 
+/** 整段（或指定 id）平移 / 改到晚上。顺序不变，转账和收款各自的时间一起动，不晚于现在，并重算时间标签。 */
+export const shiftTimes = (list: Record<string, any>[], shift: Extract<ChatOp, { op: "shift" }>) => {
+	const ids = new Set(shift.ids?.length ? shift.ids : list.map((v) => v.id as string));
+	const touched = new Set<string>();
+	const now = Date.now();
+	if (shift.evening) {
+		const chosen = list.filter((v) => ids.has(v.id) && v.sendTimestamp).sort((a, b) => a.sendTimestamp - b.sendTimestamp);
+		const byDay = new Map<string, typeof chosen>();
+		for (const v of chosen) {
+			const key = dayjs(v.sendTimestamp).format("YYYY-MM-DD");
+			byDay.set(key, [...(byDay.get(key) ?? []), v]);
+		}
+		for (const arr of byDay.values()) {
+			const day = dayjs(arr[0].sendTimestamp).startOf("day");
+			let cursor = Math.min(day.hour(19).minute(Math.min(arr.length - 1, 20) * 8).valueOf(), now);
+			for (let i = arr.length - 1; i >= 0; i--) {
+				arr[i].sendTimestamp = cursor;
+				touched.add(arr[i].id);
+				cursor = Math.max(day.valueOf(), cursor - 8 * 60_000);
+			}
+		}
+	}
+	const delta = (shift.days ?? 0) * 86400000 + (shift.hours ?? 0) * 3600000 + (shift.minutes ?? 0) * 60000;
+	if (delta) {
+		for (const v of list) {
+			if (!ids.has(v.id) || !v.sendTimestamp) continue;
+			v.sendTimestamp = Math.min(v.sendTimestamp + delta, now);
+			touched.add(v.id);
+		}
+	}
+	return touched.size ? reflow(list, touched) : list;
+};
+
 /** 执行修改；返回结果说明。改完按时间重新排序，并重算受影响消息的时间标签 */
 export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 	let deleted = 0;
@@ -116,6 +172,12 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 		let list = prev.map((v) => ({ ...v })) as Record<string, any>[];
 		const find = (id: string) => list.find((v) => v.id === id);
 		for (const o of ops) {
+			if (o.op === "shift") {
+				list = shiftTimes(list, o);
+				edited++;
+				continue;
+			}
+			if (o.op === "replay") continue;
 			if (o.op === "delete") {
 				// 收款记录和发起那条各自独立，删一条不连带另一条
 				for (const id of o.ids) {

@@ -10,7 +10,11 @@ const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 export type GeminiImage = { mime: string; data: string };
 
 export type GeminiTurn = { role: "user" | "model"; text: string };
-type Extra = { history?: GeminiTurn[]; system?: string; audio?: GeminiImage };
+type Extra = { history?: GeminiTurn[]; system?: string; audio?: GeminiImage; signal?: AbortSignal };
+
+const isAbort = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
+
+const stopError = () => new DOMException("已停止", "AbortError");
 
 /** 被 Gemini 的内容过滤拦截（不是网络问题，不用重试） */
 export class GeminiBlockedError extends Error {
@@ -21,6 +25,11 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	const adult = getGeminiConfig().adultMode !== false;
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), 40_000);
+	const onStop = () => ctrl.abort();
+	if (extra.signal) {
+		if (extra.signal.aborted) ctrl.abort();
+		else extra.signal.addEventListener("abort", onStop, { once: true });
+	}
 	let res: Response;
 	let data: { error?: { message?: string }; candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[]; promptFeedback?: { blockReason?: string } };
 	try {
@@ -68,10 +77,12 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 	});
 	data = await res.json().catch(() => ({}));
 	} catch (e) {
+		if (extra.signal?.aborted || isAbort(e)) throw stopError();
 		if (ctrl.signal.aborted) throw { status: 408, message: "请求超时：Gemini 40 秒没有回应，请重试" } as GeminiError;
 		throw e;
 	} finally {
 		clearTimeout(timer);
+		extra.signal?.removeEventListener("abort", onStop);
 	}
 	if (!res.ok) {
 		const err: GeminiError = {
@@ -92,7 +103,7 @@ async function callOnce(model: string, apiKey: string, prompt: string, json: boo
 }
 
 /** 调用 Gemini；遇到繁忙 / 限流会自动换备用模型重试 */
-type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string; /** 哪个 AI 窗口在调用（用来读取这个窗口选的模型） */ windowKey?: string };
+type CallOptions = { json?: boolean; images?: GeminiImage[]; history?: GeminiTurn[]; system?: string; audio?: GeminiImage; model?: string; signal?: AbortSignal; /** 哪个 AI 窗口在调用（用来读取这个窗口选的模型） */ windowKey?: string };
 
 /** DeepSeek API Key 只保留原始 token：去掉首尾/内部空白及误粘贴的 Bearer 前缀。 */
 export const normalizeDeepSeekApiKey = (value?: string) =>
@@ -114,6 +125,7 @@ export async function testDeepSeekConnection(apiKey = getGeminiConfig().deepseek
 
 /** 先用主密钥；主密钥出错（额度用完、繁忙、密钥失效等）且填了备用密钥时，自动改用备用密钥。被内容拦截不换密钥。 */
 export async function callGemini(prompt: string, options: CallOptions = {}) {
+	if (options.signal?.aborted) throw stopError();
 	const config = getGeminiConfig();
 	// 这个窗口手动选了 DeepSeek：纯文字请求直接走 DeepSeek（图片/音频仍用 Gemini）
 	const provider = getAiProvider(options.windowKey);
@@ -142,6 +154,7 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 			recordKeyUse("text", k.id, true, failed || undefined);
 			return r;
 		} catch (e) {
+			if (isAbort(e)) throw e;
 			if (e instanceof GeminiBlockedError) {
 				recordKeyUse("text", k.id, true, "内容被拦截（不换密钥）");
 				throw e;
@@ -186,6 +199,11 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 	];
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), limit);
+	const onStop = () => ctrl.abort();
+	if (options.signal) {
+		if (options.signal.aborted) ctrl.abort();
+		else options.signal.addEventListener("abort", onStop, { once: true });
+	}
 	let res: Response;
 	let data: { error?: { message?: string }; choices?: { message?: { content?: string | null } }[] };
 	try {
@@ -203,10 +221,12 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 		});
 		data = await res.json().catch(() => ({}));
 	} catch (e) {
+		if (options.signal?.aborted || isAbort(e)) throw stopError();
 		if (ctrl.signal.aborted) throw new Error(`DeepSeek 请求超时：${limit / 1000} 秒没有回应`);
 		throw e;
 	} finally {
 		clearTimeout(timer);
+		options.signal?.removeEventListener("abort", onStop);
 	}
 	if (!res.ok) throw new Error(data?.error?.message || `DeepSeek HTTP ${res.status}`);
 	const content = data?.choices?.[0]?.message?.content;
@@ -225,6 +245,7 @@ async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOp
 			try {
 				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
+				if (isAbort(e)) throw e;
 				if (e instanceof GeminiBlockedError) throw e;
 				last = e as GeminiError;
 				if (last.status === 400 || last.status === 403 || last.status === 401) {
@@ -247,12 +268,13 @@ async function callGeminiWithKey(apiKey: string, prompt: string, options: CallOp
 			try {
 				return await callOnce(m, apiKey, prompt, !!options.json, options.images, options);
 			} catch (e) {
+				if (isAbort(e)) throw e;
 				if (e instanceof GeminiBlockedError) throw e;
 				last = e as GeminiError;
 			}
 		}
 	} catch (e) {
-		if (e instanceof GeminiBlockedError) throw e;
+		if (isAbort(e) || e instanceof GeminiBlockedError) throw e;
 		// ignore
 	}
 	throw new Error(`Gemini 暂时不可用（${last.status ?? "网络"}）：${last.message}`);

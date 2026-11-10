@@ -98,6 +98,7 @@ const CommonBlock = <P extends AnyObject>({
 			>
 				<h.img
 					src={avatarInfo}
+					data-replay-avatar=""
 					className={twJoin(
 						"h-10 w-10 min-w-10 cursor-pointer rounded object-cover object-center",
 						hideAvatar && "invisible",
@@ -106,7 +107,7 @@ const CommonBlock = <P extends AnyObject>({
 				/>
 				{showName ? (
 					<div className="flex min-w-0 flex-col items-start">
-						<div className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>
+						<div data-replay-name="" className="mb-[3px] max-w-full truncate text-[12.5px] text-black/45 leading-4">{remark || nickname}</div>
 						{inner}
 					</div>
 				) : (

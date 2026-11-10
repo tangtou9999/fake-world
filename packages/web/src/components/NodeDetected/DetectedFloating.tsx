@@ -10,6 +10,7 @@ import {
 	useFloating,
 } from "@floating-ui/react";
 import { useAtomValue } from "jotai";
+import { replayAtom } from "@/pages/wechat/conversation/replay";
 import { useMemo } from "react";
 import { twJoin } from "tailwind-merge";
 
@@ -112,6 +113,7 @@ const DetectedOverlay = ({ element, type, nodeId }: ActivatedBorderProps) => {
 const DetectedOverall = () => {
 	const activatedNode = useAtomValue(activatedNodeAtom);
 	const hoveredNode = useAtomValue(hoveredNodeAtom);
+	const replay = useAtomValue(replayAtom);
 
 	const activatedBorder = useMemo(() => {
 		if (activatedNode) {
@@ -129,6 +131,7 @@ const DetectedOverall = () => {
 		}
 	}, [hoveredNode]);
 
+	if (replay && replay.phase !== "setup") return null;
 	return (
 		<>
 			{activatedBorder}

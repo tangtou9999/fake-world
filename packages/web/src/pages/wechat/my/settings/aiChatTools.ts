@@ -155,7 +155,9 @@ ${groupMembers}
 \`\`\`
 - delete 可批量，按每条自己的 id。删收款记录就只写收款那条的 id，不要连发起那条一起删。setTime 改单条时间（系统会按时间重排、重算「昨天/今天」等时间标签，不会把它丢到末尾，除非那个时间本来就是最后）。edit 可改文字 text、红包/转账的 amount（超过 200 会被拒绝）note status（awaiting/accepted/returned）、语音的 text seconds scene pace tone read、通话的 status seconds。只改 status 不会新增消息，也不会挪位置。
 - id 必须照抄聊天记录里的 #后面的内容，不要编造。某条找不到时，系统会指出是哪条，其它照常执行，不会整批失败。
+- 整段平移时间不要逐条 setTime，用 {"op":"shift","days":-2}（负数往前、正数往后）或 {"op":"shift","hours":-3}。改成晚上聊用 {"op":"shift","evening":true}，可以和 days 写在一起。不写 ids 就是整段一起移动（转账、红包和对应的收款都跟着走），保持原来的先后顺序，并重算「昨天 / 星期X」，时间不会晚于现在。
 - 同一个回复里 wxops 和 wxchat 可以都带，但改已有消息时优先 wxops。
+- 用户要回放某一段（给手机录屏看，例如「她怎么约我、我怎么发红包那段」「10 点到 12 点」）时，不要改聊天，在回复末尾附 {"op":"replay","query":"聊天里能对上的原话"}，或 {"op":"replay","from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm"}。系统会高亮这段让用户确认，点开始才播放。
 当前所有联系人：${contactNames || "（暂无）"}`;
 
 export type Level = 0 | 1 | 2 | 3;
@@ -174,7 +176,7 @@ export const buildSystem = (
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
 	const COPY_RULE = "\n【可复制内容】回复里如果有需要用户单独复制走的文本（需求说明、代码、文案、提示词等），把它单独放进 ```copy 代码块里，正文放在块外面；一条回复可以有多个 ```copy 块，每块只放一份完整内容，块里不要夹带解释。普通聊天回复不要滥用。";
-	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`) + COPY_RULE;
+	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}\n当前联系人：${names || "（暂无）"}`) + COPY_RULE;
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);
