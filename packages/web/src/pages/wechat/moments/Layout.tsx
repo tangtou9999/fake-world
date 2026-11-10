@@ -194,7 +194,7 @@ const MomentsLayout = () => {
 			<div className="pointer-events-none absolute z-20 w-full bg-transparent" ref={portalRef} />
 			<div
 				className={twJoin(
-					"absolute z-20 grid w-full grid-cols-3 px-4 py-2 text-white",
+					"absolute z-30 grid w-full grid-cols-3 px-4 py-2 text-white",
 					!hide && isDesktop && "mt-10",
 					bgExpand && "transition-all duration-300",
 				)}
@@ -215,7 +215,10 @@ const MomentsLayout = () => {
 					role="button"
 					aria-label="发朋友圈"
 					className="flex justify-end"
-					onClick={() => inEditMode() && setPosting(true)}
+					onClick={(e) => {
+						e.stopPropagation();
+						if (inEditMode()) setPosting(true);
+					}}
 				>
 					{barUseBlack ? (
 						<CameraOutlinedSVG fill="currentColor" className="h-5 w-5" />
@@ -247,7 +250,11 @@ const MomentsLayout = () => {
 					}}
 				>
 					{momentsBackgroundElement}
-					{compact && isEdit && <PhoneEditHit label="编辑朋友圈封面" onOpen={() => setCoverOpen(true)} />}
+					{compact && isEdit && (
+						<div className="absolute inset-x-0 bottom-0 top-12">
+							<PhoneEditHit label="编辑朋友圈封面" onOpen={() => setCoverOpen(true)} />
+						</div>
+					)}
 				</canBeDetected.div>
 				<div className="relative flex flex-col">
 					<SwitchTransition>

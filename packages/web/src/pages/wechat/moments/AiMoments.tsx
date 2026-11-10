@@ -17,6 +17,7 @@ import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import dayjs from "dayjs";
 import { useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
+import { isMobileOnly } from "react-device-detect";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -391,15 +392,17 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 
 	const host = typeof document !== "undefined" ? document.getElementById("screen") : null;
 	const page = (
-		<div className="absolute inset-0 z-[40] flex flex-col bg-[#EDEDED]">
-			<div className="flex h-11 shrink-0 items-center justify-between bg-[#EDEDED] px-4">
-				<button type="button" className="text-[16px] text-black/60" onClick={onClose}>
-					取消
-				</button>
-				<div className="font-medium text-[17px]">发朋友圈</div>
-				<button type="button" className="font-medium text-[#07C160] text-[16px]" onClick={publish}>
-					发布
-				</button>
+		<div className={`${isMobileOnly ? "fixed" : "absolute"} inset-0 z-[40] flex flex-col bg-[#EDEDED]`}>
+			<div className="shrink-0 bg-[#EDEDED] pt-[max(env(safe-area-inset-top),44px)]">
+				<div className="flex h-11 items-center justify-between px-4">
+					<button type="button" className="text-[16px] text-black/60" onClick={onClose}>
+						取消
+					</button>
+					<div className="font-medium text-[17px]">发朋友圈</div>
+					<button type="button" className="font-medium text-[#07C160] text-[16px]" onClick={publish}>
+						发布
+					</button>
+				</div>
 			</div>
 			<div className="shrink-0 border-black/5 border-b bg-white px-3 py-2">
 				<div className="mb-1 text-[12px] text-black/40">图片 {images.length}/9</div>

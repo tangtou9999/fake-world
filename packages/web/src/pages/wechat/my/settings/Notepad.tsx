@@ -31,26 +31,28 @@ const Notepad = ({ onClose, onSend }: { onClose: () => void; onSend?: (text: str
 
 	return (
 		<div className="fixed inset-0 z-50 flex flex-col bg-[#EDEDED]">
-			<div className="flex h-11 shrink-0 items-center justify-between bg-[#EDEDED] px-4 pt-[env(safe-area-inset-top)]">
-				{editing ? (
-					<button type="button" className="text-[16px] text-[#576B95]" onClick={() => setEditing(null)}>
-						取消
-					</button>
-				) : (
-					<button type="button" className="text-[16px] text-[#576B95]" onClick={onClose}>
-						返回
-					</button>
-				)}
-				<div className="font-medium text-[17px]">{editing ? "编辑记事" : "记事本"}</div>
-				{editing ? (
-					<button type="button" className="text-[16px] text-[#07C160]" onClick={save}>
-						保存
-					</button>
-				) : (
-					<button type="button" className="text-[16px] text-[#07C160]" onClick={() => setEditing({ id: nanoid(8), title: "", content: "", at: Date.now() })}>
-						新建
-					</button>
-				)}
+			<div className="shrink-0 bg-[#EDEDED] pt-[max(env(safe-area-inset-top),44px)]">
+				<div className="flex h-11 items-center justify-between px-4">
+					{editing ? (
+						<button type="button" className="text-[16px] text-[#576B95]" onClick={() => setEditing(null)}>
+							取消
+						</button>
+					) : (
+						<button type="button" className="text-[16px] text-[#576B95]" onClick={onClose}>
+							返回
+						</button>
+					)}
+					<div className="font-medium text-[17px]">{editing ? "编辑记事" : "记事本"}</div>
+					{editing ? (
+						<button type="button" className="text-[16px] text-[#07C160]" onClick={save}>
+							保存
+						</button>
+					) : (
+						<button type="button" className="text-[16px] text-[#07C160]" onClick={() => setEditing({ id: nanoid(8), title: "", content: "", at: Date.now() })}>
+							新建
+						</button>
+					)}
+				</div>
 			</div>
 			{editing ? (
 				<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
