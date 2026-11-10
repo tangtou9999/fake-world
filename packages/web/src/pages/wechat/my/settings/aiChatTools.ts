@@ -12,6 +12,7 @@ import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
 import { parseAt } from "@/utils/parseAt";
 import { SCREEN_EDIT_RULES } from "./screenOps";
+import { PERSONA_KEYS, type PersonaCard, peekPersona, writePersona } from "@/pages/wechat/conversation/persona";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
@@ -250,4 +251,37 @@ export const applyAction = (conversationId: string, action: AiChatAction, place:
 			? { from: dayjs(fromTs).startOf("minute").valueOf(), to: dayjs(toTs).endOf("minute").valueOf() }
 			: undefined;
 	return applyParsedItems(conversationId, action.items as ParsedItem[], action.mode === "replace", true, range, place === "end");
+};
+
+const PERSONA_LABEL: Record<keyof PersonaCard, string> = {
+	role: "角色",
+	origin: "籍贯",
+	age: "年龄",
+	style: "性格",
+	relation: "关系",
+	story: "背景",
+	scene: "场景",
+	plot: "临时剧情",
+};
+
+export type PersonaPatch = Partial<PersonaCard>;
+
+/** 私人 AI 的 setPersona。和聊天页手动编辑走同一个 writePersona，不写聊天记录。 */
+export const setPersona = (contactId: string, patch: PersonaPatch) => writePersona(contactId, patch);
+
+export const personaPatchFrom = (raw: Record<string, unknown>): PersonaPatch | null => {
+	const patch: PersonaPatch = {};
+	for (const key of PERSONA_KEYS) {
+		if (raw[key] === undefined || raw[key] === null) continue;
+		patch[key] = String(raw[key]);
+	}
+	return Object.keys(patch).length ? patch : null;
+};
+
+export const previewSetPersona = (name: string, contactId: string | undefined, patch: PersonaPatch) => {
+	const cur = contactId ? peekPersona(contactId) : undefined;
+	const bits = PERSONA_KEYS.filter((key) => patch[key] !== undefined).map(
+		(key) => `${PERSONA_LABEL[key]}「${cur?.[key].trim() || "空"}」→「${(patch[key] ?? "").trim() || "空"}」`,
+	);
+	return `「${name}」人设卡：${bits.join("；") || "没有要改的字段"}（不写入聊天记录）`;
 };

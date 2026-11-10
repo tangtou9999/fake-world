@@ -45,8 +45,11 @@ export const StatusBarSheet = ({ onClose }: { onClose: () => void }) => {
 				onClose();
 			}}
 		>
-			<Row label="隐藏">
-				<input aria-label="隐藏状态栏" type="checkbox" className="h-5 w-5 accent-[#07C160]" checked={hide} onChange={(e) => setHide(e.target.checked)} />
+			<Row label="状态栏">
+				<div>
+					{choice("显示", "show", hide ? "hide" : "show", () => setHide(false))}
+					{choice("隐藏", "hide", hide ? "hide" : "show", () => setHide(true))}
+				</div>
 			</Row>
 			<Row label="信号">
 				<div>{choice("单卡", "single", signal, (v) => setSignal(v as never))}{choice("双卡", "double", signal, (v) => setSignal(v as never))}{choice("无", "none", signal, (v) => setSignal(v as never))}</div>

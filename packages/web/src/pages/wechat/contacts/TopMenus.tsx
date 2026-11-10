@@ -37,7 +37,7 @@ const TopMenus = () => {
 			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(ONLY_CHAT_ICON)}>
 				{t("wechatPage.contacts.chatsOnly")}
 			</List.Item>
-			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(GROUP_CHAT_ICON)}>
+			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(GROUP_CHAT_ICON)} onClick={() => navigate("/wechat/contacts/groups")}>
 				{t("wechatPage.contacts.group")}
 			</List.Item>
 			<List.Item textPrevClassName="ml-4" textPrev={imageIcon(TAG_ICON)}>

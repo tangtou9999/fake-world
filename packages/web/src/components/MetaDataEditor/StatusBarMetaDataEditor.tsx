@@ -23,8 +23,14 @@ const StatusBarMetaDataEditor = ({ data }: EditorProps<TStateStatusBarConfig>) =
 				});
 			}}
 		>
-			<Form.Item name="hide" label="是否隐藏" valuePropName="checked">
-				<Switch />
+			<Form.Item
+				name="hide"
+				label="显示状态栏"
+				valuePropName="checked"
+				getValueProps={(hidden: boolean) => ({ checked: !hidden })}
+				getValueFromEvent={(shown: boolean) => !shown}
+			>
+				<Switch checkedChildren="显示" unCheckedChildren="隐藏" />
 			</Form.Item>
 			<Form.Item name="signalIconType" label="信号类型">
 				<Radio.Group>

@@ -11,6 +11,7 @@ import dayjs from "dayjs";
 import { atom } from "jotai";
 import { nanoid } from "nanoid";
 import { chatLog, listContacts } from "@/pages/wechat/my/settings/aiChatTools";
+import { personaSystemExtra, readPersona } from "./persona";
 
 /** 编辑模式下，哪些聊天开启了「AI 代回」 */
 export const standInAtom = atomWithStorage<Record<string, boolean>>("ai-stand-in", {});
@@ -20,14 +21,19 @@ export const standInTypingAtom = atom<Record<string, boolean>>({});
 
 /** 代回节奏（毫秒）。私人 AI 不走这里。 */
 const PACE = {
-	readMin: 1000,
-	readMax: 3000,
-	perCharMin: 120,
-	perCharMax: 200,
-	typeMax: 6000,
-	burstGapMin: 800,
-	/** 连发间隔在打字时间上再乘这一档，避免每条停得一样久 */
+	readMin: 500,
+	readMax: 1500,
+	firstPerCharMin: 80,
+	firstPerCharMax: 120,
+	firstTypeMax: 3000,
+	laterPerCharMin: 180,
+	laterPerCharMax: 250,
+	laterMin: 1500,
+	laterMax: 7000,
+	/** 连发间隔在基准时间上再乘这一档 */
 	gapJitter: 0.3,
+	nameGapMin: 300,
+	nameGapMax: 800,
 } as const;
 
 const chain = new Map<string, Promise<void>>();
@@ -37,16 +43,25 @@ let seq = 0;
 
 const span = (min: number, max: number) => min + Math.random() * (max - min);
 
-const typeMs = (text: string) => {
-	const chars = Math.max(1, Array.from(text).length);
-	return Math.min(PACE.typeMax, Math.round(chars * span(PACE.perCharMin, PACE.perCharMax)));
+const charCount = (text: string) => Array.from(text).length;
+
+/** 第一条：按字数，上限 3 秒，不加抖动。 */
+const firstTypeMs = (text: string) => {
+	const chars = Math.max(1, charCount(text));
+	return Math.min(PACE.firstTypeMax, Math.round(chars * span(PACE.firstPerCharMin, PACE.firstPerCharMax)));
 };
 
-/** 连发间隔：这条的打字时间，至少 burstGapMin，再 ±gapJitter。 */
-const gapMs = (text: string) => {
-	const base = Math.max(typeMs(text), PACE.burstGapMin);
-	return Math.max(1, Math.round(base * (1 + span(-PACE.gapJitter, PACE.gapJitter))));
+/** 第二条起：按字数，至少 1.5 秒，最多约 7 秒，再 ±30%。 */
+const laterGapMs = (text: string) => {
+	const chars = Math.max(1, charCount(text));
+	const raw = chars * span(PACE.laterPerCharMin, PACE.laterPerCharMax);
+	const base = Math.min(PACE.laterMax, Math.max(PACE.laterMin, raw));
+	const jittered = base * (1 + span(-PACE.gapJitter, PACE.gapJitter));
+	return Math.round(Math.min(PACE.laterMax, Math.max(PACE.laterMin, jittered)));
 };
+
+/** 很短的消息大约一半不显示「正在输入」。 */
+const wantsTyping = (text: string) => charCount(text) > 6 || Math.random() >= 0.5;
 
 const viewingChat = (id: string) => {
 	const path = (window.location.hash.replace(/^#/, "") || window.location.pathname).split("?")[0].replace(/\/$/, "");
@@ -96,14 +111,16 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 	try {
 		if (signal.aborted || typingOwner.get(conversationId) !== token) return;
 		if (!mainStore.get(standInAtom)[conversationId] || isGroupId(conversationId)) return;
-		setTyping(conversationId, true);
+		setTyping(conversationId, false);
 		const contact = listContacts().find((c) => c.id === conversationId);
 		const name = contact?.name ?? "对方";
-		const log = chatLog(conversationId, name, 40);
 		const readFor = span(PACE.readMin, PACE.readMax);
 		const started = Date.now();
+		const card = await readPersona(conversationId);
+		const log = chatLog(conversationId, name, 40);
+		if (signal.aborted || typingOwner.get(conversationId) !== token) return;
 		const reply = await callGemini("我刚发来一条消息。请只用这个好友以往的语气回复，1 到 3 条，每条一行，不要解释，不要代码块。", {
-			system: `你在扮演微信好友「${name}」。下面是你们的聊天，最后几条是刚发生的。按这个人的口气回，短句，口语。\n${log.text}`,
+			system: `你在扮演微信好友「${name}」。下面是你们的聊天，最后几条是刚发生的。按这个人的口气回，短句，口语。\n${log.text}${personaSystemExtra(card)}`,
 			windowKey: `standin:${conversationId}`,
 			signal,
 		});
@@ -117,9 +134,22 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 			.slice(0, 3);
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-			await sleep(i === 0 ? typeMs(line) : gapMs(line), signal);
+			if (i === 0) {
+				if (wantsTyping(line)) setTyping(conversationId, true);
+				await sleep(firstTypeMs(line), signal);
+			} else {
+				setTyping(conversationId, false);
+				const gap = laterGapMs(line);
+				const pause = Math.min(gap, Math.round(span(PACE.nameGapMin, PACE.nameGapMax)));
+				await sleep(pause, signal);
+				if (signal.aborted || typingOwner.get(conversationId) !== token) return;
+				if (!mainStore.get(standInAtom)[conversationId]) return;
+				if (wantsTyping(line)) setTyping(conversationId, true);
+				await sleep(gap - pause, signal);
+			}
 			if (signal.aborted || typingOwner.get(conversationId) !== token) return;
 			if (!mainStore.get(standInAtom)[conversationId]) return;
+			setTyping(conversationId, false);
 			setConversationListValue(conversationId, (prev) => [
 				...prev,
 				{
@@ -153,7 +183,7 @@ export const replyAsFriend = (conversationId: string) => {
 	controllers.set(conversationId, ctrl);
 	const token = ++seq;
 	typingOwner.set(conversationId, token);
-	setTyping(conversationId, true);
+	setTyping(conversationId, false);
 	const prev = chain.get(conversationId) ?? Promise.resolve();
 	const next = prev.catch(() => undefined).then(() => run(conversationId, token, ctrl.signal));
 	chain.set(conversationId, next);

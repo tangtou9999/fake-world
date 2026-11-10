@@ -1,3 +1,4 @@
+import PlayFilledSVG from "@/assets/play-filled.svg?react";
 import { h } from "@/components/HashAssets";
 import { saveImage } from "@/components/SheetKit";
 import { MYSELF_ID } from "@/faker/wechat/user";
@@ -13,6 +14,7 @@ import {
 	normalizeDeepSeekApiKey,
 	parseJsonLoose,
 } from "@/utils/gemini";
+import { prepareVideoAsset } from "@/utils/media";
 import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import dayjs from "dayjs";
 import { useAtomValue } from "jotai";
@@ -213,6 +215,9 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 	const hasKey =
 		mock || !!(gemini.apiKey || gemini.apiKey2 || normalizeDeepSeekApiKey(gemini.deepseekApiKey));
 	const [images, setImages] = useState<MomentPhoto[]>([]);
+	const [video, setVideo] = useState<{ videoFile: string; videoInfo: string; duration: number } | null>(null);
+	const videoRef = useRef(video);
+	videoRef.current = video;
 	const [adding, setAdding] = useState(false);
 	const [text, setText] = useState("");
 	const [at, setAt] = useState(() => dayjs().format(AT_FMT));
@@ -290,7 +295,7 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 			})),
 		);
 		setImages((prev) => {
-			if (prev.length) return prev;
+			if (prev.length || videoRef.current) return prev;
 			const avoid = new Set<string>();
 			for (const feed of getFeedListValueSnapshot()) {
 				if (feed.content.type === "textWithImages") {
@@ -347,9 +352,25 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 		}
 	};
 
+	const addVideo = async (list: FileList | null) => {
+		const file = list?.[0];
+		if (!file || adding) return;
+		setAdding(true);
+		setErr("");
+		try {
+			const prepared = await prepareVideoAsset(file);
+			setVideo(prepared);
+			setImages([]);
+		} catch (e) {
+			setErr(e instanceof Error ? e.message : "视频读取失败");
+		} finally {
+			setAdding(false);
+		}
+	};
+
 	const publish = () => {
-		if (!text.trim() && images.length === 0) {
-			setErr("写点文案，或先加一张图片");
+		if (!text.trim() && images.length === 0 && !video) {
+			setErr("写点文案，或先加一张图片或一段视频");
 			return;
 		}
 		const ts = Math.min(dayjs(at).valueOf() || Date.now(), Date.now());
@@ -367,9 +388,11 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 			id: nanoid(8),
 			userId: MYSELF_ID,
 			sendTimestamp: ts,
-			content: images.length
-				? { type: "textWithImages", text: slate, imagesInfo: images.map((p) => p.hash) }
-				: { type: "text", text: slate ?? toSlate("") },
+			content: video
+				? { type: "video", text: slate, videoInfo: video.videoInfo, videoFile: video.videoFile, duration: video.duration }
+				: images.length
+					? { type: "textWithImages", text: slate, imagesInfo: images.map((p) => p.hash) }
+					: { type: "text", text: slate ?? toSlate("") },
 			location: location.trim() || undefined,
 			likeUserIds: [...likes].filter((id) => people.some((p) => p.id === id)),
 			comments: saved,
@@ -405,8 +428,24 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 				</div>
 			</div>
 			<div className="shrink-0 border-black/5 border-b bg-white px-3 py-2">
-				<div className="mb-1 text-[12px] text-black/40">图片 {images.length}/9</div>
+				<div className="mb-1 text-[12px] text-black/40">{video ? "视频 1/1" : `图片 ${images.length}/9`}</div>
 				<div className="flex flex-wrap gap-2">
+					{video && (
+						<div className="relative h-16 w-16">
+							<h.img src={video.videoInfo} alt="" className="h-full w-full rounded-[4px] object-cover" />
+							<span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+								<PlayFilledSVG fill="white" width={22} height={22} />
+							</span>
+							<button
+								type="button"
+								aria-label="删除视频"
+								className="-top-1 -right-1 absolute flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[12px] text-white"
+								onClick={() => setVideo(null)}
+							>
+								×
+							</button>
+						</div>
+					)}
 					{images.map((p, i) => (
 						<div key={`${p.hash}-${i}`} className="relative h-16 w-16">
 							<h.img src={p.hash} alt="" className="h-full w-full rounded-[4px] object-cover" />
@@ -420,12 +459,12 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 							</button>
 						</div>
 					))}
-					{images.length < MAX_PHOTOS && (
+					{!video && images.length < MAX_PHOTOS && (
 						<label
 							aria-label="上传图片"
 							className={`flex h-16 w-16 items-center justify-center rounded-[4px] bg-[#F5F5F5] text-[13px] text-black/50 ${adding ? "pointer-events-none opacity-40" : "cursor-pointer"}`}
 						>
-							{adding ? "…" : "上传"}
+							{adding ? "…" : "图片"}
 							<input
 								type="file"
 								accept="image/*"
@@ -433,6 +472,23 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 								hidden
 								onChange={(e) => {
 									void addPhotos(e.target.files);
+									e.target.value = "";
+								}}
+							/>
+						</label>
+					)}
+					{!video && images.length === 0 && (
+						<label
+							aria-label="上传视频"
+							className={`flex h-16 w-16 items-center justify-center rounded-[4px] bg-[#F5F5F5] text-[13px] text-black/50 ${adding ? "pointer-events-none opacity-40" : "cursor-pointer"}`}
+						>
+							视频
+							<input
+								type="file"
+								accept="video/*"
+								hidden
+								onChange={(e) => {
+									void addVideo(e.target.files);
 									e.target.value = "";
 								}}
 							/>

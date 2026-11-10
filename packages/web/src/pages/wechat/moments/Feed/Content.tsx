@@ -24,6 +24,7 @@ import { memo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { twJoin } from "tailwind-merge";
 import { commentTargetAtom } from "../CommentComposer";
+import { MomentImageViewer, MomentVideoViewer } from "../MomentViewer";
 
 type Props = {
 	id: IStateFeed["id"];
@@ -34,6 +35,8 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 	const [feed, setFeed] = useAtom(feedAtom(id));
 	const setCommentTarget = useSetAtom(commentTargetAtom);
 	const [operationsVisible, setOperationsVisible] = useState(false);
+	const [photoAt, setPhotoAt] = useState<number | null>(null);
+	const [videoOpen, setVideoOpen] = useState(false);
 	const { refs, floatingStyles, context } = useFloating({
 		open: operationsVisible,
 		onOpenChange: (v) => {
@@ -93,7 +96,7 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 					return (
 						<div className={twJoin("mt-2 grid grid-cols-3 gap-1", fromDetail && "mr-[25%]")}>
 							{content.imagesInfo.map((img, i) => (
-								<div key={i} className="aspect-h-1 aspect-w-1">
+								<div key={i} className="aspect-h-1 aspect-w-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setPhotoAt(i); }}>
 									<h.img src={img} className="col-span-1 object-cover object-center" />
 								</div>
 							))}
@@ -103,7 +106,7 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 				if (length === 1) {
 					return (
 						<div className="mt-2 grid grid-cols-5 gap-1">
-							<div className="col-span-3 aspect-h-1 aspect-w-1">
+							<div className="col-span-3 aspect-h-1 aspect-w-1 cursor-pointer" onClick={(e) => { e.stopPropagation(); setPhotoAt(0); }}>
 								<h.img src={content.imagesInfo[0]} className="object-cover object-center" />
 							</div>
 						</div>
@@ -115,7 +118,7 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 				if (content.videoInfo) {
 					return (
 						<div className="mt-2 grid grid-cols-5 gap-1">
-							<div className="relative col-span-3">
+							<div className="relative col-span-3 cursor-pointer" onClick={(e) => { e.stopPropagation(); setVideoOpen(true); }}>
 								<h.img src={content.videoInfo} className="object-cover object-center" />
 								<div className="-translate-x-1/2 -translate-y-1/2 absolute top-1/2 left-1/2 cursor-pointer rounded-full border border-white p-1">
 									<PlayFilledSVG fill="white" width={32} height={32} />
@@ -149,6 +152,12 @@ const FeedContent = ({ id, fromDetail }: Props) => {
 		<>
 			{renderFeedPureText()}
 			{renderFeedImages()}
+			{photoAt !== null && content.type === "textWithImages" && (
+				<MomentImageViewer images={content.imagesInfo} start={photoAt} onClose={() => setPhotoAt(null)} />
+			)}
+			{videoOpen && content.type === "video" && content.videoInfo && (
+				<MomentVideoViewer poster={content.videoInfo} file={content.videoFile} onClose={() => setVideoOpen(false)} />
+			)}
 			<div className="mt-2 flex items-center justify-between">
 				<span className="min-w-0 text-[12px] text-black/30 leading-4">
 					{dayjs(sendTimestamp).fromNow()}

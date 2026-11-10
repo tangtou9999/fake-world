@@ -15,7 +15,11 @@ interface IFeedContentTextWithImages {
 interface IFeedContentVideo {
 	type: "video";
 	text?: Descendant[];
+	/** 首帧封面 */
 	videoInfo: string;
+	/** 视频文件，存在本地 Dexie */
+	videoFile?: string;
+	duration?: number;
 }
 
 type IFeedContent = IFeedContentText | IFeedContentTextWithImages | IFeedContentVideo;
