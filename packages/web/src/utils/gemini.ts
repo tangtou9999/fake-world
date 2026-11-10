@@ -117,11 +117,11 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 	const config = getGeminiConfig();
 	// 这个窗口手动选了 DeepSeek：纯文字请求直接走 DeepSeek（图片/音频仍用 Gemini）
 	const provider = getAiProvider(options.windowKey);
-	if (provider !== "gemini" && !options.images?.length && !options.audio) {
+	if (provider !== "gemini" && !options.audio) {
 		const dsKey = normalizeDeepSeekApiKey(config.deepseekApiKey);
 		if (!dsKey) throw new Error("这个窗口选了 DeepSeek，但还没填 DeepSeek 密钥：我 → 设置 → AI 模型与声音");
 		try {
-			const reply = await callDeepSeek(dsKey, prompt, options, provider === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-flash");
+			const reply = await callDeepSeek(dsKey, prompt, options, provider === "deepseek-v4-pro" && !options.images?.length ? "deepseek-v4-pro" : "deepseek-flash");
 			recordKeyUse("text", "deepseek", true);
 			return reply;
 		} catch (e) {
@@ -152,7 +152,7 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 		}
 	}
 	// DeepSeek 仅接管自动模式下的纯文字请求；图片/音频请求仍只走 Gemini。
-	if (deepseekKey && !options.images?.length && !options.audio) {
+	if (deepseekKey && !options.audio) {
 		try {
 			const reply = await callDeepSeek(deepseekKey, prompt, options);
 			recordKeyUse("text", "deepseek", true, failed || undefined);
@@ -168,6 +168,8 @@ export async function callGemini(prompt: string, options: CallOptions = {}) {
 }
 
 async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions, modelId = "deepseek-flash"): Promise<string> {
+	// 带图片时只能用 deepseek-flash（pro 不支持图片），且图片只放在最后一条用户消息里
+	if (options.images?.length) modelId = "deepseek-flash";
 	const pro = modelId === "deepseek-v4-pro";
 	const limit = pro ? 150_000 : 25_000;
 	const config = getGeminiConfig();
@@ -175,7 +177,12 @@ async function callDeepSeek(apiKey: string, prompt: string, options: CallOptions
 	const messages = [
 		...(system ? [{ role: "system", content: system }] : []),
 		...(options.history ?? []).map((turn) => ({ role: turn.role === "model" ? "assistant" : "user", content: turn.text })),
-		{ role: "user", content: prompt },
+		{
+			role: "user",
+			content: options.images?.length
+				? [{ type: "text", text: prompt }, ...options.images.map((img) => ({ type: "image_url", image_url: { url: `data:${img.mime};base64,${img.data}` } }))]
+				: prompt,
+		},
 	];
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), limit);

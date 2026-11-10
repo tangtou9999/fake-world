@@ -20,6 +20,8 @@ export type AiChatMessage = {
 	/** 被拦截 / 失败的提问：不再带进之后的对话 */
 	failed?: boolean;
 	voice?: boolean;
+	/** 用户随消息发的图片（hashAssetsDB 里的图片 id） */
+	images?: string[];
 	action?: AiChatAction;
 	/** AI 提议的「改时间 / 改内容 / 删除」指令，用户点应用才执行 */
 	ops?: { target: string; targetId?: string; ops: import("@/pages/wechat/my/settings/chatOps").ChatOp[]; applied?: string };

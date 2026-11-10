@@ -10,7 +10,9 @@ import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, a
 import { isGroupId } from "@/stateV2/group";
 import { callScheduleAtom } from "@/stateV2/videoCall";
 import { AI_PROVIDERS, type AiProvider, aiProviderAtom, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
-import { GeminiBlockedError, callGemini } from "@/utils/gemini";
+import { GeminiBlockedError, type GeminiImage, callGemini, fileToGeminiImage } from "@/utils/gemini";
+import { h } from "@/components/HashAssets";
+import { saveImage } from "@/components/SheetKit";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { useAtom, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
@@ -75,6 +77,19 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const isGroupChat = isChat && isGroupId(conversationId);
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
+	const [pics, setPics] = useState<{ hash: string; img: GeminiImage }[]>([]);
+	const addPics = async (files: FileList | null) => {
+		if (!files) return;
+		const next = [...pics];
+		for (const f of Array.from(files).slice(0, 6 - next.length)) {
+			try {
+				next.push({ hash: await saveImage(f), img: await fileToGeminiImage(f) });
+			} catch {
+				setNote("有一张图片读取失败");
+			}
+		}
+		setPics(next);
+	};
 	const [toast, setToast] = useState("");
 	const showToast = (r: "copied" | "selected" | "saved") => {
 		setToast(r === "copied" ? "已复制" : r === "saved" ? "已存到记事本" : "已选中，请长按选择「拷贝」");
@@ -173,10 +188,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		setSpeaking(false);
 	};
 
-	const send = async (text: string) => {
+	const send = async (text: string, pics: { hash: string; img: GeminiImage }[] = []) => {
 		unlockAudio();
 		setNote("");
-		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text };
+		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text, ...(pics.length ? { images: pics.map((p) => p.hash) } : {}) };
 		const prior = messages.filter((m) => !m.error && !m.failed);
 		updateMessages((m) => [...m, userMsg]);
 		const myKey = busyKey;
@@ -200,9 +215,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				let turns = take ? prior.slice(-take) : [];
 				while (turns.length && turns[0].role !== "user") turns = turns.slice(1);
 				try {
-					lastTurns = turns.map((m) => ({ role: m.role, text: m.text }));
+					lastTurns = turns.map((m) => ({ role: m.role, text: m.images?.length ? `${m.text}（这条消息附了 ${m.images.length} 张图片）` : m.text }));
 					lastSystem = buildSystem(isChat ? CHAT_AI_SYSTEM : AI_CHAT_SYSTEM, level, contacts, ids, isChat ? { currentId: conversationId as string } : undefined);
-					reply = await callGemini(text, { windowKey: myKey, history: lastTurns, system: lastSystem });
+					reply = await callGemini(text, { windowKey: myKey, history: lastTurns, system: lastSystem, ...(pics.length ? { images: pics.map((p) => p.img) } : {}) });
 					usedLevel = level;
 					blocked = null;
 					break;
@@ -276,9 +291,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 	const onSend = () => {
 		const t = input.trim();
-		if (!t || busy) return;
+		if ((!t && !pics.length) || busy) return;
+		const p = pics;
 		setInput("");
-		void send(t);
+		setPics([]);
+		void send(t || "请看这张图片。", p);
 	};
 
 	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range") => {
@@ -435,6 +452,13 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						<div
 							className={`max-w-[82%] whitespace-pre-wrap break-words rounded-[6px] px-3 py-[10px] text-[16px] leading-[23px] ${m.role === "user" ? (m.failed ? "bg-[#95EC69]/50" : "bg-[#95EC69]") : m.error ? "bg-[#FBE9E9] text-[#C62828]" : "bg-white"}`}
 						>
+							{m.images?.length ? (
+								<div className="mb-1 flex flex-wrap gap-1">
+									{m.images.map((hs) => (
+										<h.img key={hs} src={hs} className="h-[90px] w-[90px] rounded-[4px] object-cover" />
+									))}
+								</div>
+							) : null}
 							{m.voice ? "🎤 " : ""}
 							{m.role === "model" && !m.error && m.text.includes("```")
 								? parseSegments(m.text).map((seg, i) =>
@@ -654,8 +678,22 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			)}
 			{toast && <div className="pointer-events-none fixed bottom-[120px] left-1/2 z-[60] -translate-x-1/2 rounded-[6px] bg-black/75 px-4 py-2 text-[14px] text-white">{toast}</div>}
 			{note && <div className="max-h-[40vh] overflow-auto whitespace-pre-line bg-[#FBE9E9] px-4 py-2 text-[13px] text-[#C62828]">{note}</div>}
+			{pics.length > 0 && (
+				<div className="flex gap-2 overflow-x-auto border-black/5 border-t bg-[#F7F7F7] px-3 pt-2">
+					{pics.map((p) => (
+						<div key={p.hash} className="relative shrink-0">
+							<h.img src={p.hash} className="h-14 w-14 rounded-[4px] object-cover" />
+							<button type="button" aria-label="移除图片" className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[12px] text-white" onClick={() => setPics(pics.filter((x) => x.hash !== p.hash))}>×</button>
+						</div>
+					))}
+				</div>
+			)}
 			<div className="flex items-end gap-2 border-t-[0.5px] border-t-[#D6D6D6] bg-[#F7F7F7] px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))]">
 					<>
+						<label aria-label="上传照片" className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-[6px] bg-white text-[20px]">
+							📷
+							<input type="file" accept="image/*" multiple hidden onChange={(e) => { void addPics(e.target.files); e.target.value = ""; }} />
+						</label>
 						<textarea
 							rows={1}
 							className="max-h-[120px] min-h-[40px] flex-1 resize-none rounded-[6px] bg-white px-3 py-[9px] text-[16px] leading-[22px] outline-none"
@@ -663,7 +701,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							onChange={(e) => setInput(e.target.value)}
 							placeholder="和 AI 说点什么…"
 						/>
-						<button type="button" disabled={busy || !input.trim()} onClick={onSend} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[16px] text-white disabled:opacity-40">
+						<button type="button" disabled={busy || (!input.trim() && !pics.length)} onClick={onSend} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[16px] text-white disabled:opacity-40">
 							发送
 						</button>
 					</>
