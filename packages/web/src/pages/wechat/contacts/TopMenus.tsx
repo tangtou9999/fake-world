@@ -1,4 +1,3 @@
-import { css } from "@emotion/react";
 import { friendRequestsAtom } from "@/stateV2/friendRequests";
 import { useAtomValue } from "jotai";
 import { memo } from "react";
@@ -17,14 +16,7 @@ const TopMenus = () => {
 	const navigate = useNavigate();
 	const pending = useAtomValue(friendRequestsAtom).filter((v) => v.direction === "in" && v.status === "pending").length;
 
-	const imageIcon = (src: string) => (
-		<div
-			className={`${iconClass} bg-cover bg-repeat-round`}
-			css={css`
-				background-image: url(${src});
-			`}
-		/>
-	);
+	const imageIcon = (src: string) => <img src={src} alt="" draggable={false} decoding="sync" className={`${iconClass} object-cover`} />;
 
 	return (
 		<List className="relative after:absolute after:right-0 after:bottom-0 after:left-0 after:h-px after:origin-bottom after:scale-y-50 after:bg-black/10">
