@@ -9,6 +9,7 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { previewLine } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
 import { type AiChatMessage, AI_CHAT_SYSTEM, CHAT_AI_SYSTEM, aiChatByConvAtom, aiChatsAtom } from "@/stateV2/aiChat";
+import { mainStore } from "@/stateV2/store";
 import { isGroupId } from "@/stateV2/group";
 import { callScheduleAtom } from "@/stateV2/videoCall";
 import { AI_PROVIDERS, type AiProvider, aiProviderAtom, geminiConfigAtom, resolveProfile, voicePresetsAtom } from "@/stateV2/gemini";
@@ -16,6 +17,7 @@ import { GeminiBlockedError, type GeminiImage, callGemini, fileToGeminiImage } f
 import { h } from "@/components/HashAssets";
 import { saveImage } from "@/components/SheetKit";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
+import { saveAs } from "file-saver";
 import { useAtom, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { parseAt } from "@/utils/parseAt";
@@ -23,8 +25,110 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
 import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
+import { armReplay } from "@/pages/wechat/conversation/replay";
+import { applyPlan, describeStep, locateMessages, parsePlan } from "./aiPlan";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
+
+/** 私人 AI：连续发出的消息先出现在聊天里，停手约 2 秒后再合并成一次回复 */
+const PRIVATE_REPLY_DEBOUNCE = 2000;
+/** 回复拆成多条后，每条之间的间隔，像真人一条条发 */
+const PRIVATE_BUBBLE_GAP = 800;
+
+const isAbortErr = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
+
+const splitProse = (text: string): string[] => {
+	const bits = text.split(/\n+|(?<=[。！？!?])\s*/).map((s) => s.trim()).filter(Boolean);
+	if (bits.length > 1) return bits;
+	const one = text.trim();
+	if (one.length <= 60) return one ? [one] : [];
+	const pieces = Math.min(4, Math.ceil(one.length / 40));
+	const size = Math.ceil(one.length / pieces);
+	const out: string[] = [];
+	for (let i = 0; i < one.length && out.length < 4; i += size) out.push(one.slice(i, i + size).trim());
+	return out.filter(Boolean);
+};
+
+const clampFour = (parts: string[]) => {
+	const clean = parts.map((p) => p.trim()).filter(Boolean);
+	if (clean.length <= 4) return clean;
+	return [...clean.slice(0, 3), clean.slice(3).join("\n")];
+};
+
+/** 私人 AI 的一条回复拆成 1~4 条短消息；代码块整段保留 */
+const splitPrivateReply = (text: string): string[] => {
+	const raw = text.trim();
+	if (!raw) return [];
+	const chunks: string[] = [];
+	const re = /```[\s\S]*?```/g;
+	let last = 0;
+	for (const m of raw.matchAll(re)) {
+		const before = raw.slice(last, m.index).trim();
+		if (before) chunks.push(...splitProse(before));
+		chunks.push(m[0].trim());
+		last = (m.index ?? 0) + m[0].length;
+	}
+	const rest = raw.slice(last).trim();
+	if (rest) chunks.push(...splitProse(rest));
+	return clampFour(chunks.length ? chunks : [raw]);
+};
+
+const insertAfterAnchor = (m: AiChatMessage[], anchorId: string, msg: AiChatMessage): AiChatMessage[] => {
+	const idx = m.findIndex((x) => x.id === anchorId);
+	if (idx < 0) return [...m, msg];
+	return [...m.slice(0, idx + 1), msg, ...m.slice(idx + 1)];
+};
+
+const waitGap = (signal: AbortSignal) =>
+	new Promise<void>((resolve) => {
+		if (signal.aborted) return resolve();
+		const timer = window.setTimeout(resolve, PRIVATE_BUBBLE_GAP);
+		signal.addEventListener(
+			"abort",
+			() => {
+				window.clearTimeout(timer);
+				resolve();
+			},
+			{ once: true },
+		);
+	});
+
+const roundBubble = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+	ctx.beginPath();
+	ctx.moveTo(x + r, y);
+	ctx.arcTo(x + w, y, x + w, y + h, r);
+	ctx.arcTo(x + w, y + h, x, y + h, r);
+	ctx.arcTo(x, y + h, x, y, r);
+	ctx.arcTo(x, y, x + w, y, r);
+	ctx.closePath();
+};
+
+const readSessionMsgs = (sid: string) => mainStore.get(aiChatsAtom).sessions.find((s) => s.id === sid)?.messages ?? [];
+
+/** 连续几条用户消息在请求历史里合成一轮，避免接口收到相邻的 user 角色（存储本身不改） */
+const coalesceUsers = (msgs: AiChatMessage[]): AiChatMessage[] => {
+	const out: AiChatMessage[] = [];
+	for (const m of msgs) {
+		const prev = out[out.length - 1];
+		if (prev && prev.role === "user" && m.role === "user") {
+			prev.text = `${prev.text}\n${m.text}`;
+			if (m.images?.length) prev.images = [...(prev.images ?? []), ...m.images];
+		} else out.push({ ...m });
+	}
+	return out;
+};
+
+const historyBefore = (msgs: AiChatMessage[], ids: string[]) => {
+	const first = msgs.findIndex((m) => m.id === ids[0]);
+	return (first < 0 ? msgs : msgs.slice(0, first)).filter((m) => !m.error && !m.failed);
+};
+
+const insertAfterIds = (m: AiChatMessage[], ids: string[], msg: AiChatMessage): AiChatMessage[] => {
+	let idx = -1;
+	for (let i = 0; i < m.length; i++) if (ids.includes(m[i].id)) idx = i;
+	if (idx < 0) return m;
+	return [...m.slice(0, idx + 1), msg, ...m.slice(idx + 1)];
+};
 
 const needsFix = (r: string, ask = ""): string => {
 	const m = r.match(/```wxchat\s*([\s\S]*?)```/);
@@ -129,6 +233,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const busyKey = isChat ? `c:${conversationId}` : `s:${session.id}`;
 	const busy = busyKeys.includes(busyKey);
 	const cancelled = useRef<Set<string>>(new Set());
+	const waitTimer = useRef<Record<string, number>>({});
+	const generating = useRef<Set<string>>(new Set());
+	const again = useRef<Set<string>>(new Set());
+	const flightIds = useRef<Record<string, string[]>>({});
+	const pendingIds = useRef<Record<string, string[]>>({});
+	const batchStop = useRef<Set<string>>(new Set());
+	const holdReply = useRef<Set<string>>(new Set());
+	const aborters = useRef<Record<string, AbortController>>({});
+	const picBlobs = useRef<Map<string, GeminiImage[]>>(new Map());
+	const sendRef = useRef<(text: string, pics: { hash: string; img: GeminiImage }[], batch?: { sid: string; ids: string[] }) => Promise<void>>(async () => {});
 	const lastTab = useRef({ id: "", t: 0 });
 	const [note, setNote] = useState("");
 	const [picker, setPicker] = useState(false);
@@ -141,14 +255,21 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		bottomRef.current?.scrollIntoView({ block: "end" });
 	}, [messages.length, busy, session.id]);
 
+	useEffect(() => {
+		const timers = waitTimer.current;
+		return () => {
+			for (const t of Object.values(timers)) window.clearTimeout(t);
+		};
+	}, []);
+
+	const patchSession = (sid: string, fn: (m: AiChatMessage[]) => AiChatMessage[]) =>
+		setState((s) => ({ ...s, sessions: s.sessions.map((x) => (x.id === sid ? { ...x, messages: fn(x.messages) } : x)) }));
+
 	const updateMessages = (fn: (m: AiChatMessage[]) => AiChatMessage[]) => {
 		if (isChat) {
 			const cid = conversationId as string;
 			setByConv((s) => ({ ...s, [cid]: fn(s[cid] ?? []) }));
-		} else {
-			const sid = session.id;
-			setState((s) => ({ ...s, sessions: s.sessions.map((x) => (x.id === sid ? { ...x, messages: fn(x.messages) } : x)) }));
-		}
+		} else patchSession(session.id, fn);
 	};
 
 	const addSession = () =>
@@ -161,7 +282,21 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			return { ...s, counter: Math.max(s.counter, no), activeId: id, sessions: [{ id, no, messages: [], boundIds: [] }, ...s.sessions] };
 		});
 
-	const clearSession = () => window.confirm(isChat ? "清空这个聊天的 AI 对话？（不会动聊天内容）" : "清空这个窗口的全部对话？") && updateMessages(() => []);
+	const clearSession = () => {
+		if (!window.confirm(isChat ? "清空这个聊天的 AI 对话？（不会动聊天内容）" : "清空这个窗口的全部对话？")) return;
+		if (!isChat) {
+			const sid = session.id;
+			delete pendingIds.current[sid];
+			if (waitTimer.current[sid]) window.clearTimeout(waitTimer.current[sid]);
+			delete waitTimer.current[sid];
+			if (generating.current.has(sid)) {
+				holdReply.current.add(sid);
+				batchStop.current.add(sid);
+				aborters.current[sid]?.abort();
+			}
+		}
+		updateMessages(() => []);
+	};
 
 	const removeSession = () => {
 		if (state.sessions.length <= 1) return clearSession();
@@ -191,14 +326,26 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 		setSpeaking(false);
 	};
 
-	const send = async (text: string, pics: { hash: string; img: GeminiImage }[] = []) => {
+	const send = async (text: string, pics: { hash: string; img: GeminiImage }[] = [], batch?: { sid: string; ids: string[] }) => {
 		unlockAudio();
 		setNote("");
 		const userMsg: AiChatMessage = { id: nanoid(8), role: "user", text, ...(pics.length ? { images: pics.map((p) => p.hash) } : {}) };
-		const prior = messages.filter((m) => !m.error && !m.failed);
-		updateMessages((m) => [...m, userMsg]);
-		const myKey = busyKey;
-		setBusyKeys((k) => [...k, myKey]);
+		const prior = batch ? coalesceUsers(historyBefore(readSessionMsgs(batch.sid), batch.ids)) : messages.filter((m) => !m.error && !m.failed);
+		if (!batch) updateMessages((m) => [...m, userMsg]);
+		const myKey = batch ? `s:${batch.sid}` : busyKey;
+		const ctrl = batch ? new AbortController() : undefined;
+		if (batch && ctrl) aborters.current[batch.sid] = ctrl;
+		setBusyKeys((k) => (batch ? (k.includes(myKey) ? k : [...k, myKey]) : [...k, myKey]));
+		const aborted = () => {
+			if (!batch) return cancelled.current.delete(userMsg.id);
+			const hit = batch.ids.some((id) => cancelled.current.has(id));
+			for (const id of batch.ids) cancelled.current.delete(id);
+			if (hit) {
+				const failed = new Set(batch.ids);
+				patchSession(batch.sid, (m) => m.map((x) => (failed.has(x.id) ? { ...x, failed: true } : x)));
+			}
+			return hit;
+		};
 		try {
 			const contacts = listContacts();
 			let ids: string[];
@@ -206,7 +353,9 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				const mentioned = findMentioned([text, ...prior.slice(-6).map((m) => m.text)].join("\n"), contacts).map((c) => c.id);
 				ids = Array.from(new Set([conversationId as string, ...mentioned])).slice(0, 4);
 			} else {
-				ids = session.boundIds ?? [];
+				const bound = batch ? (mainStore.get(aiChatsAtom).sessions.find((s) => s.id === batch.sid)?.boundIds ?? []) : (session.boundIds ?? []);
+				const mentioned = findMentioned(text, contacts).map((c) => c.id);
+				ids = Array.from(new Set([...bound, ...mentioned])).slice(0, 4);
 			}
 			let reply = "";
 			let usedLevel: Level = 0;
@@ -220,7 +369,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				try {
 					lastTurns = turns.map((m) => ({ role: m.role, text: m.images?.length ? `${m.text}（这条消息附了 ${m.images.length} 张图片）` : m.text }));
 					lastSystem = buildSystem(isChat ? CHAT_AI_SYSTEM : AI_CHAT_SYSTEM, level, contacts, ids, isChat ? { currentId: conversationId as string } : undefined);
-					reply = await callGemini(text, { windowKey: myKey, history: lastTurns, system: lastSystem, ...(pics.length ? { images: pics.map((p) => p.img) } : {}) });
+					reply = await callGemini(text, { windowKey: myKey, history: lastTurns, system: lastSystem, signal: ctrl?.signal, ...(pics.length ? { images: pics.map((p) => p.img) } : {}) });
 					usedLevel = level;
 					blocked = null;
 					break;
@@ -247,14 +396,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					break;
 				}
 			}
-			if (cancelled.current.delete(userMsg.id)) return;
+			if (aborted()) return;
 			const vm = parseVoiceMake(reply.trim());
 			const cm = isChat ? vm.text.match(/```wxcall\s*([\s\S]*?)```/) : null;
 			const callMinutes = cm ? Number((cm[1].match(/-?\d+(\.\d+)?/) ?? [])[0]) : Number.NaN;
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
 			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
-			const parsed = isChat ? parseAction(po.text) : { text: vm.text, action: undefined };
+			const planned = parsePlan(po.text);
+			const parsed = isChat ? parseAction(planned.text) : { text: planned.text, action: undefined };
 			const se = parseScreenOps(parsed.text);
+			const shownText = se.text || (planned.plan || se.screen ? "先看下面这张卡片，点确认才写入。" : "");
 			// 目标锁定当前窗口：只有用户这一句话里明确点名了别的联系人，才听 AI 写的 target；
 			// 否则（比如之前对话里提过「老妈」，AI 就把 target 写成老妈）一律写进当前聊天
 			const curContact = isChat ? contacts.find((c) => c.id === conversationId) : undefined;
@@ -264,45 +415,214 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 			const target = parsed.action ? lockCur(resolveTarget(parsed.action.target, contacts, conversationId)) : undefined;
 			let failNote = "";
-			if (isChat && !parsed.action && !po.ops && !se.screen && !Number.isFinite(callMinutes) && !vm.make && !parsed.text.includes("（AI 附上的") && needsFix(reply, text)) {
+			if (isChat && !parsed.action && !po.ops && !se.screen && !planned.plan && !Number.isFinite(callMinutes) && !vm.make && !se.text.includes("（AI 附上的") && needsFix(reply, text)) {
 				failNote = "\n\n⚠️ 这次没有写入：AI 没有输出有效的聊天数据（重试 2 次也没成功），聊天里没有任何改动。可以再发一次，或把一次要生成的条数减少、换个更强的模型。";
 			}
 			const extra = (usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "") + failNote;
-			updateMessages((m) => [
-				...m,
-				{
-					id: nanoid(8),
-					role: "model",
-					text: se.text + extra,
-					voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
-					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
-					ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
-					screen: se.screen
-						? { ...se.screen, lines: se.screen.ops.map((op) => previewScreenOp(op, { currentId: conversationId })) }
-						: undefined,
-					callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
-				},
-			]);
-			if (state.speak) void doSpeak(parsed.text);
+			const screen = se.screen
+				? { ...se.screen, lines: se.screen.ops.map((op) => previewScreenOp(op, { currentId: conversationId })) }
+				: undefined;
+			const replyMsg: AiChatMessage = {
+				id: nanoid(8),
+				role: "model",
+				text: shownText + extra,
+				plan: planned.plan,
+				voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
+				action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
+				ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
+				screen,
+				callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
+			};
+			if (batch && ctrl) {
+				const parts = splitPrivateReply(shownText + extra);
+				const show = parts.length ? parts : [shownText + extra];
+				let anchor = batch.ids[batch.ids.length - 1] ?? "";
+				let shown = 0;
+				for (let i = 0; i < show.length; i++) {
+					if (ctrl.signal.aborted || batchStop.current.has(batch.sid)) break;
+					if (i > 0) await waitGap(ctrl.signal);
+					if (ctrl.signal.aborted || batchStop.current.has(batch.sid)) break;
+					const id = nanoid(8);
+					const last = i === show.length - 1;
+					const bubble: AiChatMessage = { id, role: "model", text: show[i], voiceMake: last ? replyMsg.voiceMake : undefined, action: last ? replyMsg.action : undefined, ops: last ? replyMsg.ops : undefined, callMake: last ? replyMsg.callMake : undefined, plan: last ? replyMsg.plan : undefined, screen: last ? replyMsg.screen : undefined };
+					const anchorId = anchor;
+					patchSession(batch.sid, (m) => insertAfterAnchor(m, anchorId, bubble));
+					anchor = id;
+					shown++;
+				}
+				const halted = ctrl.signal.aborted || batchStop.current.has(batch.sid) || shown < show.length;
+				if (!halted) {
+					const done = new Set(batch.ids);
+					pendingIds.current[batch.sid] = (pendingIds.current[batch.sid] ?? []).filter((id) => !done.has(id));
+					if (state.speak) void doSpeak(shownText);
+				}
+			} else {
+				updateMessages((m) => [...m, replyMsg]);
+				if (state.speak) void doSpeak(shownText);
+			}
 		} catch (e) {
-			if (cancelled.current.delete(userMsg.id)) return;
+			if (batch && (isAbortErr(e) || ctrl?.signal.aborted || batchStop.current.has(batch.sid))) return;
+			if (aborted()) return;
 			const msg = e instanceof Error ? e.message : String(e);
-			updateMessages((m) => [
-				...m.map((x) => (x.id === userMsg.id ? { ...x, failed: true } : x)),
-				{ id: nanoid(8), role: "model", error: true, text: `${msg}\n（这条已自动跳过，不会影响之后的对话，可以直接继续提问或换个说法。）` },
-			]);
+			const errMsg: AiChatMessage = { id: nanoid(8), role: "model", error: true, text: `${msg}\n（这条已自动跳过，不会影响之后的对话，可以直接继续提问或换个说法。）` };
+			if (batch) {
+				const failed = new Set(batch.ids);
+				patchSession(batch.sid, (m) => insertAfterIds(m.map((x) => (failed.has(x.id) ? { ...x, failed: true } : x)), batch.ids, errMsg));
+			} else updateMessages((m) => [...m.map((x) => (x.id === userMsg.id ? { ...x, failed: true } : x)), errMsg]);
 		} finally {
 			setBusyKeys((k) => k.filter((x) => x !== myKey));
 		}
 	};
+	sendRef.current = send;
+
+	const touchPrivateWait = (sid: string) => {
+		const prev = waitTimer.current[sid];
+		if (prev) window.clearTimeout(prev);
+		waitTimer.current[sid] = window.setTimeout(() => {
+			delete waitTimer.current[sid];
+			void flushPrivate(sid);
+		}, PRIVATE_REPLY_DEBOUNCE);
+	};
+
+	const openPending = (sid: string) => {
+		const live = new Set(readSessionMsgs(sid).filter((m) => m.role === "user" && !m.failed).map((m) => m.id));
+		const ids = (pendingIds.current[sid] ?? []).filter((id) => live.has(id));
+		pendingIds.current[sid] = ids;
+		return readSessionMsgs(sid).filter((m) => ids.includes(m.id));
+	};
+
+	const flushPrivate = async (sid: string) => {
+		if (holdReply.current.has(sid)) return;
+		if (generating.current.has(sid)) {
+			again.current.add(sid);
+			return;
+		}
+		if (!mainStore.get(aiChatsAtom).sessions.some((s) => s.id === sid)) return;
+		batchStop.current.delete(sid);
+		const claimed = openPending(sid);
+		if (!claimed.length) {
+			again.current.delete(sid);
+			return;
+		}
+		const ids = claimed.map((m) => m.id);
+		flightIds.current[sid] = ids;
+		generating.current.add(sid);
+		const text = claimed.map((m) => m.text).join("\n");
+		const images = claimed.flatMap((m) => picBlobs.current.get(m.id) ?? []);
+		try {
+			await sendRef.current(text, images.map((img) => ({ hash: "", img })), { sid, ids });
+		} finally {
+			if (flightIds.current[sid] === ids) delete flightIds.current[sid];
+			generating.current.delete(sid);
+			const still = new Set(pendingIds.current[sid] ?? []);
+			for (const id of ids) if (!still.has(id)) picBlobs.current.delete(id);
+			if (holdReply.current.has(sid)) {
+				holdReply.current.delete(sid);
+				batchStop.current.delete(sid);
+				again.current.delete(sid);
+				return;
+			}
+			const more = openPending(sid);
+			const rerun = again.current.has(sid) || more.length > 0;
+			again.current.delete(sid);
+			if (rerun && !waitTimer.current[sid]) void flushPrivate(sid);
+		}
+	};
+
+	const enqueuePrivate = (text: string, nextPics: { hash: string; img: GeminiImage }[]) => {
+		const sid = session.id;
+		const id = nanoid(8);
+		const userMsg: AiChatMessage = { id, role: "user", text, ...(nextPics.length ? { images: nextPics.map((p) => p.hash) } : {}) };
+		if (nextPics.length) picBlobs.current.set(id, nextPics.map((p) => p.img));
+		pendingIds.current[sid] = [...(pendingIds.current[sid] ?? []), id];
+		patchSession(sid, (m) => [...m, userMsg]);
+		if (generating.current.has(sid)) {
+			batchStop.current.add(sid);
+			aborters.current[sid]?.abort();
+			again.current.add(sid);
+		}
+		touchPrivateWait(sid);
+	};
+
+	const stopPrivate = () => {
+		const sid = session.id;
+		holdReply.current.add(sid);
+		batchStop.current.add(sid);
+		again.current.delete(sid);
+		aborters.current[sid]?.abort();
+		if (waitTimer.current[sid]) window.clearTimeout(waitTimer.current[sid]);
+		delete waitTimer.current[sid];
+		setBusyKeys((k) => k.filter((x) => x !== busyKey));
+	};
+
+	const notePrivateTyping = () => {
+		if (isChat) return;
+		if (!waitTimer.current[session.id]) return;
+		touchPrivateWait(session.id);
+	};
+
+	const exportLongShot = () => {
+		const width = 390;
+		const pad = 16;
+		const maxBubble = 280;
+		const measure = document.createElement("canvas").getContext("2d");
+		if (!measure) return;
+		measure.font = "16px sans-serif";
+		const wrap = (text: string) => {
+			const lines: string[] = [];
+			for (const para of (text || "").split("\n")) {
+				let cur = "";
+				for (const ch of para) {
+					if (measure.measureText(cur + ch).width > maxBubble - 24) {
+						if (cur) lines.push(cur);
+						cur = ch;
+					} else cur += ch;
+				}
+				lines.push(cur);
+			}
+			return lines.length ? lines : [""];
+		};
+		const rows = messages.map((m) => {
+			const lines = wrap(m.text);
+			return { role: m.role, lines, h: 20 + lines.length * 22 };
+		});
+		const height = 64 + rows.reduce((sum, row) => sum + row.h + 10, 0) + 20;
+		const canvas = document.createElement("canvas");
+		const scale = 2;
+		canvas.width = width * scale;
+		canvas.height = Math.max(height, 80) * scale;
+		const ctx = canvas.getContext("2d");
+		if (!ctx) return;
+		ctx.scale(scale, scale);
+		ctx.fillStyle = "#EDEDED";
+		ctx.fillRect(0, 0, width, height);
+		ctx.fillStyle = "#111";
+		ctx.font = "600 16px sans-serif";
+		ctx.fillText("私人 AI", pad, 34);
+		ctx.font = "16px sans-serif";
+		let y = 56;
+		for (const row of rows) {
+			const bw = Math.min(maxBubble, Math.max(72, ...row.lines.map((line) => ctx.measureText(line).width + 24)));
+			const x = row.role === "user" ? width - pad - bw : pad;
+			ctx.fillStyle = row.role === "user" ? "#95EC69" : "#FFFFFF";
+			roundBubble(ctx, x, y, bw, row.h, 6);
+			ctx.fill();
+			ctx.fillStyle = "#111";
+			row.lines.forEach((line, i) => ctx.fillText(line, x + 12, y + 22 + i * 22));
+			y += row.h + 10;
+		}
+		canvas.toBlob((blob) => blob && saveAs(blob, "私人AI长截图.png"));
+	};
 
 	const onSend = () => {
 		const t = input.trim();
-		if ((!t && !pics.length) || busy) return;
+		if (!t && !pics.length) return;
+		if (isChat && busy) return;
 		const p = pics;
 		setInput("");
 		setPics([]);
-		void send(t || "请看这张图片。", p);
+		if (!isChat) enqueuePrivate(t || "请看这张图片。", p);
+		else void send(t || "请看这张图片。", p);
 	};
 
 	const applyCard = (msg: AiChatMessage, applyMode: "append" | "replace" | "range", place: "time" | "end" = "time") => {
@@ -382,6 +702,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					</button>
 				)}
 				<button type="button" onClick={clearSession}>清空对话</button>
+				{!isChat && <button type="button" onClick={exportLongShot}>导出长图</button>}
 				{!isChat && <button type="button" onClick={removeSession}>删除本窗口</button>}
 				{speaking && (
 					<button
@@ -416,8 +737,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			<div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
 				<div className="mx-auto mb-3 max-w-[92%] text-center text-[12px] text-black/40 leading-5">
 					{isChat
-						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。对话只保存在这台手机上，每个聊天各有各的 AI。"
-						: "私人 AI：可以绑定聊天让它读取，但不会改动聊天。消息和绑定聊天的记录会通过你的密钥发给 Google Gemini 处理，对话只保存在这台手机上。"}
+						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。说一段聊天，会标出范围让你确认后再回放，不会因此改记录。对话只保存在这台手机上，每个聊天各有各的 AI。"
+						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。说要回放哪一段，会到聊天里标出范围再播。对话只保存在这台手机上。"}
 				</div>
 				{!(gemini.apiKey || gemini.apiKey2) && (
 					<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-auto mb-3 block h-10 rounded-[6px] bg-[#07C160] px-6 text-[15px] text-white">
@@ -572,11 +893,61 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											if (!o) return;
 											const cid = o.targetId || resolveTarget(o.target, listContacts(), conversationId)?.id;
 											if (!cid) return window.alert(`找不到联系人「${o.target}」`);
+											const replayOnly = o.ops.every((x) => x.op === "replay");
+											const replay = o.ops.find((x) => x.op === "replay");
+											const openReplay = () => {
+												if (!replay || replay.op !== "replay") return;
+												const ids = locateMessages(cid, replay);
+												if (!ids.length) return window.alert("没有对得上的消息");
+												armReplay(cid, ids);
+												navigate(`/wechat/conversation/${cid}`);
+											};
+											if (replayOnly) {
+												openReplay();
+												updateMessages((all) => all.map((x) => (x.id === m.id && x.ops ? { ...x, ops: { ...x.ops, applied: "已在聊天里标出范围" } } : x)));
+												return;
+											}
 											const res = applyOps(cid, o.ops);
 											updateMessages((all) => all.map((x) => (x.id === m.id && x.ops ? { ...x, ops: { ...x.ops, applied: res } } : x)));
+											openReplay();
 										}}
 									>
-										应用修改
+										{m.ops.ops.every((x) => x.op === "replay") ? "去聊天确认" : "应用修改"}
+									</button>
+								)}
+							</div>
+						)}
+						{m.plan && (
+							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
+								<div className="font-medium text-[14px]">{m.plan.steps.every((s) => s.do === "replay") ? "回放范围（不会改聊天记录）" : "变更预览（点确认后才写入）"}</div>
+								<div className="mt-2 max-h-[180px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
+									{m.plan.steps.map((step, i) => (
+										<div key={i}>{describeStep(step)}</div>
+									))}
+								</div>
+								{m.plan.shot && <img src={m.plan.shot} alt="AI 导出的长截图" className="mt-2 max-h-[360px] w-full rounded-[6px] object-contain object-top" />}
+								{m.plan.applied ? (
+									<div className="mt-2 text-[13px] text-[#07C160]">✓ {m.plan.applied}</div>
+								) : (
+									<button
+										type="button"
+										className="mt-2 h-10 w-full rounded-[6px] bg-[#07C160] text-[15px] text-white"
+										onClick={() => {
+											const plan = m.plan;
+											if (!plan || plan.applied) return;
+											updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "正在写入…" } } : x)));
+											void applyPlan(plan.steps)
+												.then((res) => {
+													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x)));
+													if (res.goto) navigate(`/wechat/conversation/${res.goto}`);
+												})
+												.catch((e) => {
+													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "" } } : x)));
+													window.alert(e instanceof Error ? e.message : String(e));
+												});
+										}}
+									>
+										{m.plan.steps.every((s) => s.do === "replay") ? "去聊天确认" : "确认执行"}
 									</button>
 								)}
 							</div>
@@ -624,7 +995,12 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						<button
 							type="button"
 							className="text-[#576B95]"
+							aria-label="停止回复"
 							onClick={() => {
+								if (!isChat) {
+									stopPrivate();
+									return;
+								}
 								const last = [...messages].reverse().find((m) => m.role === "user");
 								if (last) cancelled.current.add(last.id);
 								setBusyKeys((k) => k.filter((x) => x !== busyKey));
@@ -637,7 +1013,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				)}
 				<div ref={bottomRef} />
 			</div>
-			{notepad && <Notepad onClose={() => setNotepad(false)} onSend={(t) => { setNotepad(false); void send(t); }} />}
+			{notepad && <Notepad onClose={() => setNotepad(false)} onSend={(t) => { setNotepad(false); if (!isChat) enqueuePrivate(t, []); else void send(t); }} />}
 			{searching && (
 				<div className="fixed inset-0 z-50 flex flex-col bg-white">
 					<div className="flex shrink-0 items-center gap-3 bg-[#EDEDED] px-[15px] pt-[calc(env(safe-area-inset-top)+8px)] pb-2">
@@ -716,10 +1092,13 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 							rows={1}
 							className="max-h-[120px] min-h-[40px] flex-1 resize-none rounded-[6px] bg-white px-3 py-[9px] text-[16px] leading-[22px] outline-none"
 							value={input}
-							onChange={(e) => setInput(e.target.value)}
+							onChange={(e) => {
+								setInput(e.target.value);
+								notePrivateTyping();
+							}}
 							placeholder="和 AI 说点什么…"
 						/>
-						<button type="button" disabled={busy || (!input.trim() && !pics.length)} onClick={onSend} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[16px] text-white disabled:opacity-40">
+						<button type="button" disabled={(isChat && busy) || (!input.trim() && !pics.length)} onClick={onSend} className="h-10 shrink-0 rounded-[6px] bg-[#07C160] px-4 text-[16px] text-white disabled:opacity-40">
 							发送
 						</button>
 					</>

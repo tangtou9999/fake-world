@@ -2,8 +2,11 @@ import Add2OutlinedSVG from "@/assets/add2-outlined.svg?react";
 import KeyboardOutlinedSVG from "@/assets/keyboard-outlined.svg?react";
 import StickerOutlinedSVG from "@/assets/sticker-outlined.svg?react";
 import VoiceSVG from "@/assets/voice-outlined.svg?react";
+import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { twJoin } from "tailwind-merge";
+import { useConversationAPI } from "../context";
+import { replayAtom } from "../replay";
 import BottomPopup from "./BottomPopup";
 import EmojiPanel from "./EmojiPanel";
 import Input from "./Input";
@@ -13,12 +16,16 @@ import RoleBar from "./RoleBar";
 type Panel = "emoji" | "more" | null;
 
 const ConversationFooter = () => {
+	const { conversationId } = useConversationAPI();
+	const replay = useAtomValue(replayAtom);
 	const [panel, setPanel] = useState<Panel>(null);
 	const [rendered, setRendered] = useState<Exclude<Panel, null>>("emoji");
 
 	useEffect(() => {
 		if (panel) setRendered(panel);
 	}, [panel]);
+
+	if (replay?.conversationId === conversationId && replay.phase !== "setup") return null;
 
 	return (
 		<div className="flex flex-col">

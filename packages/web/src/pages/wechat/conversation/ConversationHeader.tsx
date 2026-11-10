@@ -7,6 +7,7 @@ import { groupAtom, groupCount } from "@/stateV2/group";
 import { profileAtom } from "@/stateV2/profile";
 import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { useAtomValue } from "jotai";
+import { replayAtom } from "./replay";
 import { inEditMode } from "@/components/SheetKit";
 import ChatInfoSheet from "@/components/ChatInfoSheet";
 import { useRef, useState } from "react";
@@ -18,6 +19,8 @@ const ConversationHeader = () => {
 	const group = useAtomValue(groupAtom(id ?? ""));
 	const unreadCount = useAtomValue(unreadCountAtom);
 	const navigate = useModeNavigate();
+	const replay = useAtomValue(replayAtom);
+	const typing = !!(replay && replay.conversationId === id && replay.typing);
 	const [info, setInfo] = useState(false);
 	const press = useRef<ReturnType<typeof setTimeout>>();
 	const startPress = () => {
@@ -47,13 +50,15 @@ const ConversationHeader = () => {
 				</canBeDetected.div>
 			</div>
 			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90" onTouchStart={startPress} onTouchEnd={stopPress} onTouchMove={stopPress} onTouchCancel={stopPress}>
-				{group ? (
+				{typing ? (
+					<span className="truncate text-[#576B95]">对方正在输入…</span>
+				) : group ? (
 					<>
-						<span className="truncate">{group.name}</span>
-						<span className="shrink-0">({groupCount(group)})</span>
+						<span data-replay-title className="truncate">{group.name}</span>
+						<span data-replay-title className="shrink-0">({groupCount(group)})</span>
 					</>
 				) : (
-					<span className="truncate">{friendProfile?.remark ?? friendProfile?.nickname}</span>
+					<span data-replay-title className="truncate">{friendProfile?.remark ?? friendProfile?.nickname}</span>
 				)}
 			</div>
 			<div className="flex min-w-[72px] shrink-0 items-center justify-end">
