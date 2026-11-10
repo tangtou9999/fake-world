@@ -9,9 +9,10 @@ import UserAvatar from "@/wechatComponents/User/UserAvatar";
 import { CommentOutlined, SelectOutlined, UserOutlined } from "@ant-design/icons";
 import { Modal, Tooltip } from "antd";
 import { useAtomValue, useSetAtom } from "jotai";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { twJoin, twMerge } from "tailwind-merge";
+import FeedSheet from "../FeedSheet";
 import { commentTargetAtom } from "../CommentComposer";
 import Comments from "./Comments";
 import FeedContent from "./Content";
@@ -35,6 +36,13 @@ const Feed = ({
 	const { nickname, remark } = useAtomValue(profileAtom(userId))!;
 	const setFeedList = useSetAtom(feedListAtom);
 	const setCommentTarget = useSetAtom(commentTargetAtom);
+	const [editing, setEditing] = useState(false);
+	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
+	const startPress = () => {
+		clearTimeout(pressTimer.current);
+		pressTimer.current = setTimeout(() => setEditing(true), 600);
+	};
+	const stopPress = () => clearTimeout(pressTimer.current);
 	const originalNavigate = useNavigate();
 	const navigate = useModeNavigate({ silence: true });
 
@@ -137,7 +145,20 @@ const Feed = ({
 						},
 			]}
 			nodeTreeSort
+			onTouchStart={startPress}
+			onTouchEnd={stopPress}
+			onTouchMove={stopPress}
+			onTouchCancel={stopPress}
+			onContextMenu={(e) => {
+				e.preventDefault();
+				setEditing(true);
+			}}
 		>
+			{editing && (
+				<div onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()} onTouchMove={(e) => e.stopPropagation()}>
+					<FeedSheet feedId={id} onClose={() => setEditing(false)} />
+				</div>
+			)}
 			<div className="flex">
 				<UserAvatar
 					id={userId}

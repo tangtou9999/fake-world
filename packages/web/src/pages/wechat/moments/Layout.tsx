@@ -1,3 +1,4 @@
+import FeedSheet from "./FeedSheet";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import CameraFilledSVG from "@/assets/camera-filled.svg?react";
 import CameraOutlinedSVG from "@/assets/camera-outlined.svg?react";
@@ -58,6 +59,7 @@ const MomentsLayout = () => {
 	});
 	const [bgExpand, setBgExpand] = useState(false);
 	const navigate = useModeNavigate();
+	const [posting, setPosting] = useState(false);
 	const { hide } = useAtomValue(statusBarConfigAtom);
 	const { momentsBackgroundInfo } = useProfile();
 	const setStatusBarMountNode = useSetAtom(statusBarMountNodeAtom);
@@ -203,13 +205,18 @@ const MomentsLayout = () => {
 				<div className="text-center font-medium text-[17px]">
 					{barUseBlack && t("wechatPage.moments.title")}
 				</div>
-				<div className="flex justify-end">
+				<div className="flex justify-end" onClick={() => setPosting(true)}>
 					{barUseBlack ? (
 						<CameraOutlinedSVG fill="currentColor" className="h-5 w-5" />
 					) : (
 						<CameraFilledSVG fill="currentColor" className="h-5 w-5" />
 					)}
 				</div>
+				{posting && (
+					<div onClick={(e) => e.stopPropagation()}>
+						<FeedSheet onClose={() => setPosting(false)} />
+					</div>
+				)}
 			</div>
 
 			<div
