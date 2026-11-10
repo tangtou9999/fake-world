@@ -28,6 +28,8 @@ export type AiChatMessage = {
 	/** AI 生成的声音草稿：要用户试听、点保存同意后才存进声音库 */
 	/** AI 提议「N 分钟后对方打视频过来」：用户点「设置」才生效 */
 	callMake?: { minutes: number; done?: boolean };
+	/** AI 提议改资料 / 状态栏 / 角标 / 多设备 / 封面赞：用户点「确认执行」才写入 */
+	screen?: { ops: import("@/pages/wechat/my/settings/screenOps").ScreenOp[]; lines?: string[]; applied?: string };
 	voiceMake?: { name: string; sample: string; profile: { voice: string; chest: number; air: number; accent: string; persona: string }; saved?: boolean };
 };
 
@@ -81,7 +83,7 @@ export const AI_CHAT_SYSTEM = `你是用户的私人助手兼聊天剧本编剧�
 关于这个工具（他问系统怎么用时据此回答）：
 - 手机屏幕上快速点 3 下进入/退出「编辑模式」。编辑模式下：聊天页底部出现「发送人」开关（我/对方）、「AI 生成」「批量输入」；点页面元素可编辑内容；朋友圈页有「AI 生成朋友圈」。
 - 「AI 生成」：用自然语言写剧本（谁说几句、停顿、新的时间点、红包/转账、外语），先预览再「追加」或「清空替换」；时间不会晚于现在。也能上传多张真实聊天截图让 AI 复刻。
-- 普通模式是真实聊天：点红包/转账只会改这一条的状态，不会自动再加一条。收款记录要在编辑模式里按时间单独插入。长按文字消息可翻译。
+- 普通模式是真实聊天：点开待收款的转账可以「对方已领取」或「退回」。领取后这一条变成已被接收，对方那边会出现一条已收款；退回则两边都变成已退回。红包只有领取，没有退回。长按文字消息可翻译。
 - 钱包、零钱明细、经营账户余额、添加朋友（我加别人/别人加我）、微信支付服务号、扫码支付、朋友圈都可编辑。
 - AI 密钥在「我 → 设置 → AI 助手」填写，只保存在本机。${VOICE_MAKER_RULES}`;
 

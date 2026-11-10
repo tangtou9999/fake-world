@@ -10,8 +10,8 @@ export const TRANSFER_TEXT_NOTE_MAP: Record<
 > = {
 	mine: {
 		mine: {
-			awaiting: "你发起了一笔转账",
-			accepted: "已被接受",
+			awaiting: "",
+			accepted: "已被接收",
 			rejected: "已被退还",
 			returned: "已退回",
 			expired: "已过期",

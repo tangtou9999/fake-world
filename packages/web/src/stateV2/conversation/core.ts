@@ -6,7 +6,7 @@ import { atomFamily } from "jotai/utils";
 import atomWithStorage from "../atomWithStorage";
 import type { IStateProfile } from "../profile";
 import { mainStore } from "../store";
-import { ensureIds } from "./records";
+import { ensureIds, ensureMoneyPairs } from "./records";
 import type { TConversationItem } from "./typing";
 
 export type TStateConversationList = TConversationItem[];
@@ -18,8 +18,9 @@ export const conversationListAtom = atomFamily((id: IStateProfile["id"]) => {
 	);
 	// 打开这个聊天时，给缺 id 的旧消息补上。其它字段不动，也不改已经有 id 的记录。
 	base.onMount = (set) => {
-		const { list, changed } = ensureIds(mainStore.get(base));
-		if (changed) set(list);
+		const ids = ensureIds(mainStore.get(base));
+		const paired = ensureMoneyPairs(ids.list);
+		if (ids.changed || paired.changed) set(paired.list);
 	};
 	return base;
 });

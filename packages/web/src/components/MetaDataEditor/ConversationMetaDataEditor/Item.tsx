@@ -4,6 +4,7 @@ import {
 	type TConversationItem,
 	conversationListAtom,
 } from "@/stateV2/conversation";
+import { settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 import type { IStateProfile } from "@/stateV2/profile";
 import { IMAGE_MAX_BYTES } from "@/utils/media";
 import { Global, css } from "@emotion/react";
@@ -34,9 +35,17 @@ const ConversationItemMetaDataEditor = ({
 			message.warning("单条金额不能超过 200，这次没有保存");
 			return;
 		}
-		setConversationList((prev) =>
-			prev.map((item) => (item.id === data.id ? { ...item, ...values } : item)),
-		);
+		setConversationList((prev) => {
+			let list = prev.map((item) => (item.id === data.id ? { ...item, ...values } : item));
+			if (values.type === EConversationType.transfer && "transferStatus" in values) {
+				const st = values.transferStatus;
+				if (st === "accepted" || st === "returned" || st === "rejected" || st === "awaiting") list = settleTransfer(list, data.id, st);
+			}
+			if (values.type === EConversationType.redPacket && "redPacketStatus" in values && (values.redPacketStatus === "accepted" || values.redPacketStatus === "awaiting")) {
+				list = settleRedPacket(list, data.id, values.redPacketStatus);
+			}
+			return list;
+		});
 	};
 
 	useUpdateEffect(() => {

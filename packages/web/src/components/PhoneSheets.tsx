@@ -12,7 +12,6 @@ import {
 	getProfileValueSnapshot,
 	setAllProfilesValue,
 	setFriendsTotalCountDisplayConfigValue,
-	setProfileValue,
 } from "@/stateV2/profile";
 import { type BalanceRecord, balanceRecordsAtom } from "@/stateV2/balanceRecords";
 import { type TTransactionType, USED_ATOM_MAP } from "@/stateV2/transaction";
@@ -20,7 +19,8 @@ import { type TStateWallet, walletAtom } from "@/stateV2/wallet";
 import { centsToYuan, yuanToCents } from "@/pages/wechat/wallet/money";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
-import { useState } from "react";
+import { patchProfile, patchWallet } from "@/pages/wechat/my/settings/screenOps";
+import { useRef, useState } from "react";
 
 const FMT = "YYYY-MM-DDTHH:mm:ss";
 
@@ -38,7 +38,7 @@ export const WalletSheet = ({ onClose }: { onClose: () => void }) => {
 			title="编辑钱包"
 			onClose={onClose}
 			onSave={() => {
-				mainStore.set(walletAtom, { ...d, balance: fmt(d.balance) ?? "0.00", miniFund: fmt(d.miniFund) ?? "0.00", business: fmt(d.business) });
+				patchWallet({ ...d, balance: fmt(d.balance) ?? "0.00", miniFund: fmt(d.miniFund) ?? "0.00", business: fmt(d.business) });
 				onClose();
 			}}
 		>
@@ -242,7 +242,13 @@ export const FriendSheet = ({ id, onClose, isMyself }: { id: string; onClose: ()
 		tickleText: p0.tickleText ?? "",
 		isStarred: !!p0.isStarred,
 		hideThumbnail: !!p0.hideThumbnail,
+		coin: p0.coin !== undefined ? String(p0.coin) : "",
+		ringtone: p0.ringtone ?? "",
+		thumbs: [...(p0.thumbnailInfo ?? [])],
+		qr: p0.qrCodeImage ?? "",
 	}));
+	const thumbRef = useRef<HTMLInputElement>(null);
+	const qrRef = useRef<HTMLInputElement>(null);
 	const set = (p: Partial<typeof d>) => setD((v) => ({ ...v, ...p }));
 	const txt = (k: "nickname" | "remark" | "wechat" | "area" | "signature" | "description" | "phone" | "tags" | "tickleText", label: string, ph?: string) => (
 		<Row label={label}><input className={inputCls} placeholder={ph} value={d[k]} onChange={(e) => set({ [k]: e.target.value })} /></Row>
@@ -256,25 +262,28 @@ export const FriendSheet = ({ id, onClose, isMyself }: { id: string; onClose: ()
 			title={isMyself ? "编辑我的资料" : "编辑好友资料"}
 			onClose={onClose}
 			onSave={() => {
-				setProfileValue(id, (pv) => ({
-					...pv,
+				patchProfile(id, {
 					nickname: d.nickname,
-					remark: d.remark || undefined,
+					remark: d.remark || null,
 					wechat: d.wechat,
 					avatarInfo: d.avatarInfo,
-					gender: (d.gender || undefined) as never,
+					gender: (d.gender || null) as "male" | "female" | null,
 					hideGender: d.hideGender,
-					area: d.area || undefined,
-					signature: d.signature || undefined,
-					description: d.description || undefined,
+					area: d.area || null,
+					signature: d.signature || null,
+					description: d.description || null,
 					phone: split(d.phone),
 					tags: split(d.tags),
 					privacy: d.privacy,
 					momentsPrivacy: d.momentsPrivacy,
-					tickleText: d.tickleText || undefined,
+					tickleText: d.tickleText || null,
 					isStarred: d.isStarred,
 					hideThumbnail: d.hideThumbnail,
-				}));
+					coin: d.coin.trim() === "" ? null : Math.max(0, Math.round(Number(d.coin) || 0)),
+					ringtone: d.ringtone || null,
+					thumbnailInfo: d.thumbs,
+					qrCodeImage: d.qr || null,
+				});
 				onClose();
 			}}
 			extra={
@@ -338,6 +347,53 @@ export const FriendSheet = ({ id, onClose, isMyself }: { id: string; onClose: ()
 				</select>
 			</Row>
 			{chk("hideThumbnail", "隐藏朋友圈缩略图")}
+			<Row label="朋友圈缩略图">
+				<div className="flex flex-wrap items-center gap-2">
+					{d.thumbs.map((src, i) => (
+						<button key={`${src}-${i}`} type="button" aria-label="移除这张缩略图" onClick={() => set({ thumbs: d.thumbs.filter((_, j) => j !== i) })}>
+							<h.img src={src} className="h-12 w-12 rounded-[4px] object-cover" />
+						</button>
+					))}
+					<button type="button" className="h-12 rounded-[4px] bg-[#F5F5F5] px-2 text-[13px] text-[#576B95]" onClick={() => thumbRef.current?.click()}>
+						添加
+					</button>
+				</div>
+				<input
+					ref={thumbRef}
+					type="file"
+					accept="image/*"
+					className="hidden"
+					onChange={(e) => {
+						const f = e.target.files?.[0];
+						e.target.value = "";
+						if (f) void saveImage(f).then((hash) => set({ thumbs: [...d.thumbs, hash] }));
+					}}
+				/>
+			</Row>
+			<Row label="微信豆">
+				<input aria-label="微信豆" inputMode="numeric" className={inputCls} value={d.coin} onChange={(e) => set({ coin: e.target.value })} />
+			</Row>
+			<Row label="来电铃声">
+				<input aria-label="来电铃声" className={inputCls} value={d.ringtone} onChange={(e) => set({ ringtone: e.target.value })} />
+			</Row>
+			{isMyself && (
+				<Row label="二维码">
+					<button type="button" className="text-[14px] text-[#576B95]" onClick={() => qrRef.current?.click()}>
+						{d.qr ? "已选择，点此更换" : "从相册选择"}
+					</button>
+					<input
+						ref={qrRef}
+						type="file"
+						accept="image/*"
+						className="hidden"
+						onChange={(e) => {
+							const f = e.target.files?.[0];
+							e.target.value = "";
+							if (f) void saveImage(f).then((hash) => set({ qr: hash }));
+						}}
+					/>
+				</Row>
+			)}
 		</Sheet>
 	);
 };

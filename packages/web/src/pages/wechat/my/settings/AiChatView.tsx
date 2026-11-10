@@ -1,7 +1,9 @@
 import { parseJsonLoose } from "@/utils/gemini";
 import Notepad, { notepadAtom } from "./Notepad";
 import CopyBlock, { parseSegments } from "./CopyBlock";
+import { ScreenEditCard } from "@/components/ScreenSheets";
 import { applyOps, describeOp, parseOps } from "./chatOps";
+import { parseScreenOps, previewScreenOp } from "./screenOps";
 import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import type { ParsedItem } from "@/pages/wechat/conversation/ConversationFooter/importScreenshots";
@@ -27,6 +29,7 @@ type Props = { mode: "private" | "chat"; conversationId?: string };
 const needsFix = (r: string, ask = ""): string => {
 	const m = r.match(/```wxchat\s*([\s\S]*?)```/);
 	if (!m && /```wxops/.test(r)) return "";
+	if (!m && /```wxedit/.test(r)) return "";
 	// 代码块写到一半被截断（有开头没有结尾的 ```）：以前会被悄悄吃掉，现在要求重出
 	if (!m && /```wxchat/.test(r))
 		return "你上一条的 ```wxchat 代码块没有写完（缺少结尾的 ```），聊天里什么都没有生成。请重新输出：一句简短说明 + 完整并闭合的 ```wxchat 代码块；如果内容很多，就少写几条，保证代码块完整。";
@@ -251,6 +254,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
 			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
 			const parsed = isChat ? parseAction(po.text) : { text: vm.text, action: undefined };
+			const se = parseScreenOps(parsed.text);
 			// 目标锁定当前窗口：只有用户这一句话里明确点名了别的联系人，才听 AI 写的 target；
 			// 否则（比如之前对话里提过「老妈」，AI 就把 target 写成老妈）一律写进当前聊天
 			const curContact = isChat ? contacts.find((c) => c.id === conversationId) : undefined;
@@ -260,7 +264,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 
 			const target = parsed.action ? lockCur(resolveTarget(parsed.action.target, contacts, conversationId)) : undefined;
 			let failNote = "";
-			if (isChat && !parsed.action && !po.ops && !Number.isFinite(callMinutes) && !vm.make && !parsed.text.includes("（AI 附上的") && needsFix(reply, text)) {
+			if (isChat && !parsed.action && !po.ops && !se.screen && !Number.isFinite(callMinutes) && !vm.make && !parsed.text.includes("（AI 附上的") && needsFix(reply, text)) {
 				failNote = "\n\n⚠️ 这次没有写入：AI 没有输出有效的聊天数据（重试 2 次也没成功），聊天里没有任何改动。可以再发一次，或把一次要生成的条数减少、换个更强的模型。";
 			}
 			const extra = (usedLevel > 0 ? "\n\n（刚才触发了 Gemini 的内容拦截，这次自动缩减了上下文，我可能看不到完整的聊天记录。）" : "") + failNote;
@@ -269,10 +273,13 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				{
 					id: nanoid(8),
 					role: "model",
-					text: parsed.text + extra,
+					text: se.text + extra,
 					voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 					action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 					ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
+					screen: se.screen
+						? { ...se.screen, lines: se.screen.ops.map((op) => previewScreenOp(op, { currentId: conversationId })) }
+						: undefined,
 					callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
 				},
 			]);
@@ -538,6 +545,13 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 									</div>
 								)}
 							</div>
+						)}
+						{m.screen && (
+							<ScreenEditCard
+								screen={m.screen}
+								conversationId={conversationId}
+								onApplied={(applied) => updateMessages((all) => all.map((x) => (x.id === m.id && x.screen ? { ...x, screen: { ...x.screen, applied } } : x)))}
+							/>
 						)}
 						{m.ops && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">

@@ -11,6 +11,7 @@ import { mainStore } from "@/stateV2/store";
 import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
 import { parseAt } from "@/utils/parseAt";
+import { SCREEN_EDIT_RULES } from "./screenOps";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
@@ -126,13 +127,13 @@ export const WXCHAT_RULES = (now: string, contactNames: string, currentName?: st
 \`\`\`
 - target：${currentName ? `默认就是当前聊天「${currentName}」；只有用户「这一句话」里明确点名别的联系人时才改成那个人（之前的对话里提过别人不算，上下文里带着别的聊天记录也不算），` : ""}必须是联系人列表里的名字（照抄）。
 - 视频通话记录也用 items 生成：{"kind":"call","who":"me或friend（谁打的）","status":"rejected被拒绝/cancelled已取消/accepted接通","seconds":接通时的秒数,"at":"..."}。例如「我给对方打视频被拒绝」= who:me,status:rejected。
-- 红包金额单个最高 200 元，超过要拆成多个，或自己调到 200 以内。
+- 红包金额单个最高 200 元，超过要拆成多个，或自己调到 200 以内。转账金额照用户说的写，可以超过 200。
 - mode 有三种：
   append = 追加到该聊天末尾；
   replace = 清空整个聊天后用 items 整个替换（用户说「重写整个聊天」才用，items 要包含全部记录）；
   range = 只修改某个时间段：额外写 "from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm"，该时间段内（含两端）的旧消息会被 items 替换，时间段之外的聊天保持不动。用户说「把昨天某一段改成……」「把这几句改掉」就用 range，items 只写这一段修改后的内容，at 必须落在 from 到 to 之间。
 - items 每项：kind 为 text / redPacket / redPacketReceipt / transfer / transferReceipt / voice / call / system；who 为 friend（对方）或 me（我）；text 文字（voice 时是这句话说的内容，必须填写，播放时就用它读出声音，聊天里默认不显示，用户长按「转文字」才会看到；system 是居中灰色提示）。
-- 转账、红包的「发起」和「收款」是两条，禁止合并。发起用 redPacket 或 transfer：amount（数字字符串，单条不能超过 200，超过就不要写）、note、status（awaiting 待领取 / accepted 已收款 / returned 已退回）。status 只改变这一条气泡的样子，系统不会因为 status 再自动加一条。收款用 redPacketReceipt 或 transferReceipt：who 是谁收的，可选 amount，必须有自己的 at。两条用同一个 "pair"（你编的短标记，如 "a"）连起来。只有用户要求「超时未领自动退回」时，才在发起那条写 autoReturnHours（小时，如 24）。
+- 转账、红包要写成和用户手动发、手动点领取一样的两个动作，禁止合并成一条孤立的「已被接收」。发起：{"kind":"transfer","who":"me或friend","amount":"200","note":"备注可省略","pair":"a","at":"..."} 或 kind redPacket（红包金额不超过 200）。对方领取：{"kind":"transferAct","pair":"a","act":"receive","at":"领取时间"}；对方退回：act 为 return（只有转账能退回）。红包领取用 {"kind":"redPacketAct","pair":"a","act":"receive","at":"..."}，红包没有 return。还没收/还没领就只有发起那一条，不要写 Act。「给他转 100，让他退回」= transfer who me 100 + transferAct return；「转 200，让他接收」= transfer 200 + transferAct receive；「转 300，未收」= 只有 transfer 300；「对方发红包我领取」= redPacket who friend + redPacketAct receive。系统会自动写成两边成对的气泡，不要再写 transferReceipt。只有用户要求「超时未领自动退回」时，才在发起那条写 autoReturnHours（小时，如 24）。
 - 视频通话用 kind call，不要写成文字：who 是谁打的，status 为 rejected / cancelled / accepted，接通再写 seconds。
 - voice 需要 seconds，可选 read（false 表示未播放、会显示红点），并且要按这一句话「当时所处的真实场景」带上 scene、pace，可选 tone：scene 只能是 clean（安静/普通）、bed（家里被窝）、room（夜晚客厅房间）、crowd（嘈杂餐厅夜宵摊）、rain（雨夜车内）、mall（商场超市）、street（户外马路街头）之一；pace 只能是 normal（自然闲聊）、fast（快节奏互怼）、slow（深夜走心）之一；tone 是这一句的口气，如「奶声奶气撒娇，稍微提高音量」。同一个人今天在车里、明天在家里，scene 就要不同，别全用一个；外语消息可加 translation（中文译文）；每项都要有 at。
 - at 的格式只能是 "YYYY-MM-DD HH:mm"：半角、必须带四位年份、24 小时制，例如 "2026-01-06 12:00"；不要写「2026年1月6日」「1/6」「下午三点」这类写法，也不要省略年份或时间。
@@ -144,7 +145,7 @@ ${groupMembers}
 - 群里 who 为 friend 的每一项都必须加 "sender":"成员名"（照抄上面名字，不要写「对方」）；who 为 me 是「我」，不需要 sender。
 - 生成群聊要像真实群：多个成员轮流发言、插话、接梗、互相回应，每人风格不同（参考他们的人设和已有记录里的说话方式），不要让一个人连着说太多条；红包、转账也要标明是哪个成员发的（sender）；用户没点名谁说时由你合理安排。
 - 群里的 target 照抄「当前聊天」的名字。
-- 群红包、群转账的领取/收款也要单独写 redPacketReceipt 或 transferReceipt，每条自己的 at 和 sender（谁领的）。不要和发起合并，系统不会自动补收款消息。` : ""}
+- 群红包、群转账的领取/退回也用 redPacketAct 或 transferAct，pair 指向发起那条，at 是领取或退回的时间。不要和发起合并。` : ""}
 微信表情：文字里可以写 [名字] 表示表情，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；不要用其他方括号表情或 Unicode 小黄脸，数量像真人聊天一样适度。读取聊天记录时表情也显示成 [名字]。
 【表情包】这里做不到发真正的表情图片，只能用上面的 [名字] 文字表情。用户要「发表情包/测试表情」时，就生成一批带这些 [名字] 的 text 消息放进 wxchat 代码块，并在说明里直说是文字表情；不要说「已经发了表情图」。
 【必须执行】用户要你生成、放进、重写、补上聊天内容时，回复里必须带完整的 wxchat 代码块；说明文字只写一句话，不要以冒号结尾，也不要在没附代码块的情况下说「已经放进去了」。附不了就直接说做不到。
@@ -153,7 +154,7 @@ ${groupMembers}
 \`\`\`wxops
 {"target":"联系人名字","ops":[{"op":"delete","ids":["id1","id2"]},{"op":"setTime","id":"id3","at":"YYYY-MM-DD HH:mm"},{"op":"edit","id":"id4","text":"新内容"},{"op":"edit","id":"id5","amount":"88","note":"备注","status":"accepted"}]}
 \`\`\`
-- delete 可批量，按每条自己的 id。删收款记录就只写收款那条的 id，不要连发起那条一起删。setTime 改单条时间（系统会按时间重排、重算「昨天/今天」等时间标签，不会把它丢到末尾，除非那个时间本来就是最后）。edit 可改文字 text、红包/转账的 amount（超过 200 会被拒绝）note status（awaiting/accepted/returned）、语音的 text seconds scene pace tone read、通话的 status seconds。只改 status 不会新增消息，也不会挪位置。
+- delete 可批量，按每条自己的 id。setTime 改单条时间（系统会按时间重排、重算「昨天/今天」等时间标签，不会把它丢到末尾，除非那个时间本来就是最后）。edit 可改文字 text、红包/转账的 amount（红包超过 200 会被拒绝，转账可以超过）note status。转账 status 用 awaiting / accepted / returned：accepted 和 returned 会按手动领取补上对方那一条，改回 awaiting 会删掉那一条。红包 status 用 awaiting / accepted，accepted 会补上领取提示，没有退回。语音可改 text seconds scene pace tone read，通话可改 status seconds。
 - id 必须照抄聊天记录里的 #后面的内容，不要编造。某条找不到时，系统会指出是哪条，其它照常执行，不会整批失败。
 - 同一个回复里 wxops 和 wxchat 可以都带，但改已有消息时优先 wxops。
 当前所有联系人：${contactNames || "（暂无）"}`;
@@ -174,7 +175,7 @@ export const buildSystem = (
 	const names = contacts.map((c) => c.name).slice(0, 150).join("、");
 	const cur = chatMode ? contacts.find((c) => c.id === chatMode.currentId)?.name : undefined;
 	const COPY_RULE = "\n【可复制内容】回复里如果有需要用户单独复制走的文本（需求说明、代码、文案、提示词等），把它单独放进 ```copy 代码块里，正文放在块外面；一条回复可以有多个 ```copy 块，每块只放一份完整内容，块里不要夹带解释。普通聊天回复不要滥用。";
-	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`) + COPY_RULE;
+	let s = (chatMode ? `${base}\n${WXCHAT_RULES(now, names, cur, groupText || undefined)}` : `${base}\n现在的真实时间：${now}`) + COPY_RULE + SCREEN_EDIT_RULES;
 	if (level >= 3) return s;
 	for (const id of ctxIds) {
 		const c = contacts.find((x) => x.id === id);

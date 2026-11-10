@@ -46,7 +46,7 @@ import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { groupDefaultSender, isGroupId } from "@/stateV2/group";
-import { applyAutoReturn } from "@/stateV2/conversation/records";
+import { applyAutoReturn, ensureMoneyPairs, settleRedPacket, settleTransfer } from "@/stateV2/conversation/records";
 
 const ConversationList = () => {
 	const { listRef, conversationId } = useConversationAPI();
@@ -59,11 +59,13 @@ const ConversationList = () => {
 		void pruneClips(`${conversationId}:`, new Set(conversationList.map((i) => `${conversationId}:${i.id}`)));
 	}, [conversationList, conversationId]);
 
-	// 带了「超时未领自动退回」的转账/红包，到点改成已退回，并在那个时间插入系统提示。没有这个字段的旧消息不动。
+	// 超时未领的自动退回；已经是已收款/已退回却缺配对的，按手动领取的结构补上。
 	useEffect(() => {
 		const tick = () => {
-			const { list, changed } = applyAutoReturn(getConversationListValueSnapshot(conversationId));
-			if (changed) setConversationList(list);
+			const cur = getConversationListValueSnapshot(conversationId);
+			const ret = applyAutoReturn(cur);
+			const paired = ensureMoneyPairs(ret.list);
+			if (ret.changed || paired.changed) setConversationList(paired.list);
 		};
 		tick();
 		const timer = window.setInterval(tick, 30_000);
@@ -89,30 +91,20 @@ const ConversationList = () => {
 	const peerOf = (item: { senderId?: string }) =>
 		isGroupId(conversationId) ? (item.senderId ?? groupDefaultSender(conversationId) ?? "") : conversationId;
 
-	const generateTransferReplyConversation = (conversationItemId: TConversationItem["id"]) => {
-		const item = getConversationListValueSnapshot(conversationId).find(
-			(v) => v.id === conversationItemId,
-		);
-		const { amount, originalSender } = item as IConversationTypeTransfer;
-		if (originalSender === "friend") {
-			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item as TConversationItem), amount });
+	const generateTransferReplyConversation = (conversationItemId: TConversationItem["id"], status: "accepted" | "returned" = "accepted") => {
+		const item = getConversationListValueSnapshot(conversationId).find((v) => v.id === conversationItemId) as IConversationTypeTransfer | undefined;
+		if (!item) return;
+		if (status === "accepted" && item.originalSender === "friend" && item.transferStatus === "awaiting") {
+			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item), amount: item.amount });
 		}
-		// 只改这一条的状态，不另加收款消息，也不挪位置
-		setConversationList((prev) =>
-			prev.map((item) =>
-				item.id === conversationItemId
-					? ({ ...item, transferStatus: "accepted" } as TConversationItem)
-					: item,
-			),
-		);
+		if (status === "returned" && item.originalSender === "mine" && item.transferStatus === "awaiting") {
+			applyMoneyMove({ kind: "transfer", direction: "in", peerId: peerOf(item), amount: item.amount });
+		}
+		setConversationList((prev) => settleTransfer(prev, conversationItemId, status, Date.now()));
 	};
 
-	const generateRedPacketAcceptedReplyConversation = (
-		conversationItemId: TConversationItem["id"],
-	) => {
-		const packet = getConversationListValueSnapshot(conversationId).find(
-			(v) => v.id === conversationItemId,
-		) as IConversationTypeRedPacket | undefined;
+	const generateRedPacketAcceptedReplyConversation = (conversationItemId: TConversationItem["id"]) => {
+		const packet = getConversationListValueSnapshot(conversationId).find((v) => v.id === conversationItemId) as IConversationTypeRedPacket | undefined;
 		if (packet && packet.originalSender === "friend" && packet.redPacketStatus === "awaiting") {
 			applyMoneyMove({
 				kind: "redPacket",
@@ -121,13 +113,7 @@ const ConversationList = () => {
 				amount: packet.amount,
 			});
 		}
-		setConversationList((prev) =>
-			prev.map((item) =>
-				item.id === conversationItemId
-					? ({ ...item, redPacketStatus: "accepted" } as TConversationItem)
-					: item,
-			),
-		);
+		setConversationList((prev) => settleRedPacket(prev, conversationItemId, "accepted", Date.now()));
 	};
 
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
@@ -200,6 +186,7 @@ const ConversationList = () => {
 		content: string;
 		okText: string;
 		onOk: () => void;
+		onReturn?: () => void;
 	} | null>(null);
 	const [rp, setRp] = useState<{
 		stage: "open" | "detail";
@@ -268,22 +255,24 @@ const ConversationList = () => {
 		if ((item as IConversationTypeRedPacket).originalSender === "friend") {
 			setDlg({
 				title: isPacket ? "领取红包？" : "确认收款？",
-				content: `金额 ¥${(item as IConversationTypeRedPacket).amount} 将存入零钱`,
+				content: isPacket ? `金额 ¥${(item as IConversationTypeRedPacket).amount} 将存入零钱` : `金额 ¥${(item as IConversationTypeRedPacket).amount} 将存入零钱。退回则两边都变成已退回。`,
 				okText: isPacket ? "领取" : "确认收款",
 				onOk: run,
+				onReturn: isPacket ? undefined : () => generateTransferReplyConversation(item.id, "returned"),
 			});
 		} else {
-			// 我发出的：真实聊天里只能等对方领取；这里「双击」才模拟对方领取
+			// 我发出的：双击才模拟对方领取或退回。红包没有退回。
 			const now = Date.now();
 			const isDouble = lastTap.current.id === item.id && now - lastTap.current.t < 400;
 			lastTap.current = { id: item.id, t: now };
 			if (!isDouble) return;
 			lastTap.current = { id: "", t: 0 };
 			setDlg({
-				title: `模拟对方领取${label}？`,
-				content: "只会把这一条改成已收款，不会另加消息。收款记录请在编辑里按时间单独插入。",
+				title: isPacket ? `模拟对方领取${label}？` : "模拟对方处理这笔转账？",
+				content: isPacket ? "对方领取后，这一条变成已领取，并加上一条领取提示。" : "对方领取后，这一条变成已被接收，并在对方那边加上一条已收款。退回则两边都变成已退回。",
 				okText: "对方已领取",
 				onOk: run,
+				onReturn: isPacket ? undefined : () => generateTransferReplyConversation(item.id, "returned"),
 			});
 		}
 	};
@@ -332,7 +321,7 @@ const ConversationList = () => {
 							key: "transferReply",
 							onClick: () => generateTransferReplyConversation(item.id),
 							element: (
-								<Tooltip title="只把这一条标成已收款，不另加消息">
+								<Tooltip title="标成已收款，并在对方那边加上一条已收款">
 									<SubnodeOutlined />
 								</Tooltip>
 							),
@@ -343,7 +332,7 @@ const ConversationList = () => {
 							key: "RedPacketAcceptedReply",
 							onClick: () => generateRedPacketAcceptedReplyConversation(item.id),
 							element: (
-								<Tooltip title="只把这一条标成已领取，不另加消息">
+								<Tooltip title="标成已领取，并加上一条领取提示">
 									<SubnodeOutlined />
 								</Tooltip>
 							),
@@ -448,6 +437,19 @@ const ConversationList = () => {
 							<button type="button" className="flex-1 border-black/10 border-r text-black" onClick={() => setDlg(null)}>
 								取消
 							</button>
+							{dlg.onReturn && (
+								<button
+									type="button"
+									className="flex-1 border-black/10 border-r text-[#FA5151]"
+									onClick={() => {
+										const f = dlg.onReturn;
+										setDlg(null);
+										f?.();
+									}}
+								>
+									退回
+								</button>
+							)}
 							<button
 								type="button"
 								className="flex-1 font-medium text-[#07C160]"

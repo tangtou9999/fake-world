@@ -6,11 +6,13 @@ import { useInterval, useUpdate } from "ahooks";
 import { Tooltip } from "antd";
 import dayjs from "dayjs";
 import { useAtom, useAtomValue } from "jotai";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { twJoin } from "tailwind-merge";
+import { PhoneEditHit, StatusBarSheet, useCompactPhone } from "../ScreenSheets";
 import { canBeDetected } from "../NodeDetected";
 import useDeviceConfig from "../useDeviceConfig";
+import useMode from "../useMode";
 import _5GSVG from "./assets/5G.svg?react";
 import BatterySVG from "./assets/battery.svg?react";
 import ChargingSVG from "./assets/charging.svg?react";
@@ -25,6 +27,10 @@ import SignalNoneSVG from "./assets/signalNone.svg?react";
 import WifiSVG from "./assets/wifi.svg?react";
 
 const StatusBar = () => {
+	const { isEdit } = useMode();
+	const compact = useCompactPhone();
+	const [sheet, setSheet] = useState(false);
+	const phoneEdit = compact && isEdit;
 	const mountNode = useAtomValue(statusBarMountNodeAtom);
 	const [{ backgroundColor, theme }, setStatusBar] = useAtom(statusBarAtom);
 	const { hide, signalIconType, batteryIconType, networkIconType } =
@@ -152,8 +158,9 @@ const StatusBar = () => {
 			<canBeDetected.div
 				innerRef={divRef}
 				className={twJoin(
-					"flex items-center justify-between pr-7 pl-8",
-					hide && "hidden",
+					"relative flex items-center justify-between pr-7 pl-8",
+					hide && !phoneEdit && "hidden",
+					hide && phoneEdit && "opacity-40",
 					isMount && "pointer-events-auto z-10",
 				)}
 				metaData={{
@@ -176,15 +183,28 @@ const StatusBar = () => {
 					{getNetworkIcon()}
 					{getBatteryIcon()}
 				</div>
+				{phoneEdit && <PhoneEditHit label="编辑状态栏" onOpen={() => setSheet(true)} />}
 			</canBeDetected.div>
 		);
 	};
 
+	const sheetNode = sheet ? createPortal(<StatusBarSheet onClose={() => setSheet(false)} />, document.body) : null;
+
 	if (mountNode) {
-		return createPortal(renderContent(true), mountNode);
+		return (
+			<>
+				{createPortal(renderContent(true), mountNode)}
+				{sheetNode}
+			</>
+		);
 	}
 
-	return renderContent();
+	return (
+		<>
+			{renderContent()}
+			{sheetNode}
+		</>
+	);
 };
 
 export default StatusBar;

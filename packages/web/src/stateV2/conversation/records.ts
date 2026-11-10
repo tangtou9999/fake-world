@@ -83,6 +83,159 @@ export const rangeReplace = <T extends { id: string; sendTimestamp?: number }>(e
 	return insertByTime(kept, incoming);
 };
 
+/** 配对消息默认紧挨在发起之后，不另起一个时间标签 */
+export const PAIR_GAP = 2_000;
+
+const normYuan = (amount: unknown) => {
+	const n = Number(String(amount ?? "").replace(/[^\d.]/g, ""));
+	return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+};
+
+const clampTime = (t: number) => (t > Date.now() ? Date.now() : t);
+
+const settledTransfer = (s: string) => s === "accepted" || s === "returned" || s === "rejected";
+
+const closestLegacyPair = (list: TConversationItem[], init: Extract<TConversationItem, { type: EConversationType.transfer }>) => {
+	const amount = normYuan(init.amount);
+	const cands = list.filter(
+		(v): v is Extract<TConversationItem, { type: EConversationType.transfer }> =>
+			v.type === EConversationType.transfer &&
+			v.id !== init.id &&
+			!v.pairOf &&
+			v.originalSender === init.originalSender &&
+			v.role !== init.role &&
+			v.role !== v.originalSender &&
+			normYuan(v.amount) === amount &&
+			settledTransfer(v.transferStatus),
+	);
+	if (!cands.length) return undefined;
+	const t = init.sendTimestamp ?? 0;
+	cands.sort((a, b) => Math.abs((a.sendTimestamp ?? 0) - t) - Math.abs((b.sendTimestamp ?? 0) - t));
+	return cands[0];
+};
+
+/**
+ * 和手动点「领取 / 退回」同一套：
+ * accepted / returned / rejected 时，对面必须有一条转账气泡（pairOf 指向发起）。
+ * awaiting 时删掉这条配对。时间用 at，没给就用发起时间再加一点点。
+ * 没有变化时返回原来的数组。
+ */
+export const settleTransfer = (
+	list: TConversationItem[],
+	id: string,
+	status: "accepted" | "returned" | "awaiting" | "rejected",
+	at?: number,
+): TConversationItem[] => {
+	const init = list.find((v) => v.id === id);
+	if (!init || init.type !== EConversationType.transfer) return list;
+	const opposite: TConversationRole = init.role === "mine" ? "friend" : "mine";
+	const linked = list.find((v): v is Extract<TConversationItem, { type: EConversationType.transfer }> => v.type === EConversationType.transfer && v.pairOf === id);
+	const legacy = linked ? undefined : closestLegacyPair(list, init);
+	const existing = linked ?? legacy;
+
+	if (status === "awaiting") {
+		if (init.transferStatus === "awaiting" && !existing) return list;
+		return list.flatMap((v) => {
+			if (existing && v.id === existing.id) return [];
+			if (v.id === id && v.type === EConversationType.transfer) return [{ ...v, transferStatus: "awaiting" as TTransferStatus }];
+			return [v];
+		});
+	}
+
+	const wantTs = clampTime(at ?? (init.sendTimestamp ? init.sendTimestamp + PAIR_GAP : Date.now()));
+	if (
+		init.transferStatus === status &&
+		existing &&
+		existing.pairOf === id &&
+		existing.transferStatus === status &&
+		existing.role === opposite &&
+		existing.originalSender === init.originalSender &&
+		normYuan(existing.amount) === normYuan(init.amount) &&
+		(at == null || existing.sendTimestamp === wantTs)
+	) {
+		return list;
+	}
+
+	const pairId = existing?.id ?? nanoid(8);
+	const pair: TConversationItem = {
+		id: pairId,
+		type: EConversationType.transfer,
+		role: opposite,
+		originalSender: init.originalSender,
+		transferStatus: status,
+		amount: normYuan(init.amount),
+		sendTimestamp: wantTs,
+		pairOf: id,
+		...(init.transferTo && opposite === "friend" ? { senderId: init.transferTo } : {}),
+	};
+	const base = list.flatMap((v) => {
+		if (v.id === pairId) return [];
+		if (v.id === id && v.type === EConversationType.transfer) return [{ ...v, transferStatus: status }];
+		return [v];
+	});
+	return stampInserted(insertByTime(base, [pair]), new Set([pairId]));
+};
+
+/**
+ * 红包只有领取，没有退回。
+ * accepted：状态改成已领取，并补上和手动领取一样的「领取了红包」提示。
+ * awaiting：改回待领取，并删掉这条提示。
+ */
+export const settleRedPacket = (
+	list: TConversationItem[],
+	id: string,
+	status: "accepted" | "awaiting",
+	at?: number,
+): TConversationItem[] => {
+	const pkt = list.find((v) => v.id === id);
+	if (!pkt || pkt.type !== EConversationType.redPacket) return list;
+	const reply = list.find((v) => v.type === EConversationType.redPacketAcceptedReply && v.redPacketId === id);
+	if (status === "awaiting") {
+		if (pkt.redPacketStatus === "awaiting" && !reply) return list;
+		return list.flatMap((v) => {
+			if (v.type === EConversationType.redPacketAcceptedReply && v.redPacketId === id) return [];
+			if (v.id === id && v.type === EConversationType.redPacket) return [{ ...v, redPacketStatus: "awaiting" as TRedPacketStatus }];
+			return [v];
+		});
+	}
+	const wantTs = clampTime(at ?? (pkt.sendTimestamp ? pkt.sendTimestamp + PAIR_GAP : Date.now()));
+	if (pkt.redPacketStatus === "accepted" && reply && (at == null || reply.sendTimestamp === wantTs)) return list;
+	const replyId = reply?.id ?? nanoid(8);
+	const msg: TConversationItem = {
+		id: replyId,
+		type: EConversationType.redPacketAcceptedReply,
+		role: "friend",
+		redPacketId: id,
+		sendTimestamp: wantTs,
+	};
+	const base = list.flatMap((v) => {
+		if (v.id === replyId) return [];
+		if (v.id === id && v.type === EConversationType.redPacket) return [{ ...v, redPacketStatus: "accepted" as TRedPacketStatus }];
+		return [v];
+	});
+	return stampInserted(insertByTime(base, [msg]), new Set([replyId]));
+};
+
+/** 打开聊天时：已接收 / 已退回却没有配对的旧记录，按手动领取的结构补上。已经成对的不动。 */
+export const ensureMoneyPairs = (list: TConversationItem[]): { list: TConversationItem[]; changed: boolean } => {
+	let cur = list;
+	for (const item of list) {
+		if (
+			item.type === EConversationType.transfer &&
+			item.role === item.originalSender &&
+			(item.transferStatus === "accepted" || item.transferStatus === "returned" || item.transferStatus === "rejected")
+		) {
+			const next = settleTransfer(cur, item.id, item.transferStatus);
+			if (next !== cur) cur = next;
+		}
+		if (item.type === EConversationType.redPacket && item.redPacketStatus === "accepted") {
+			const next = settleRedPacket(cur, item.id, "accepted");
+			if (next !== cur) cur = next;
+		}
+	}
+	return { list: cur, changed: cur !== list };
+};
+
 export const makeTransferReceipt = (p: {
 	sendTimestamp: number;
 	receiver: TConversationRole;

@@ -15,10 +15,10 @@ import { getMyProfileValueSnapshot, getProfileValueSnapshot, getAllProfilesValue
 import { EMOJI_NAME_LIST, slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { getGroup, groupDefaultSender, isGroupId } from "@/stateV2/group";
-import { MONEY_MAX, insertByTime, makeRedPacketReceipt, makeTransferReceipt, moneyOverLimit, stampInserted } from "@/stateV2/conversation/records";
+import { MONEY_MAX, insertByTime, makeRedPacketReceipt, makeTransferReceipt, moneyOverLimit, settleRedPacket, settleTransfer, stampInserted } from "@/stateV2/conversation/records";
 
 export type ParsedItem = {
-	kind: "text" | "time" | "system" | "redPacket" | "redPacketReceipt" | "transfer" | "transferReceipt" | "voice" | "image" | "call" | "other";
+	kind: "text" | "time" | "system" | "redPacket" | "redPacketReceipt" | "redPacketAct" | "transfer" | "transferReceipt" | "transferAct" | "voice" | "image" | "call" | "other";
 	who?: "friend" | "me";
 	text?: string;
 	amount?: string;
@@ -37,8 +37,10 @@ export type ParsedItem = {
 	tone?: string;
 	/** 群聊：这条消息是哪位群成员发的（成员名字，照抄群成员列表） */
 	sender?: string;
-	/** 发起和收款共用的短标记，用来把两条连上。不会写进聊天记录 */
+	/** 发起和领取/退回共用的短标记，用来把两个动作连上。不会写进聊天记录 */
 	pair?: string;
+	/** transferAct / redPacketAct：receive 领取，return 退回（红包没有退回） */
+	act?: "receive" | "return";
 	/** 超时未领自动退回的小时数，如 24。不写就不会自动退 */
 	autoReturnHours?: number;
 	/** 语音：false = 未播放（红点）。不写则视为已播放 */
@@ -164,8 +166,13 @@ export function applyParsedItems(
 		: [];
 	let prevStamp = range ? (lastBefore ?? 0) : replace ? 0 : (existing.at(-1)?.sendTimestamp ?? 0);
 	let pendingTime: string | undefined;
-	const items: TConversationItem[] = [];
+	let items: TConversationItem[] = [];
 	const pairOf = new Map<string, { pair: string; kind: "init" | "receipt" }>();
+	const actWant = new Map<string, { act: "receive" | "return"; ts: number }>();
+	const fmtAmount = (v?: string) => {
+		const n = Number(String(v ?? "").replace(/[^\d.]/g, ""));
+		return Number.isFinite(n) && n > 0 ? n.toFixed(2) : "0.00";
+	};
 	let lastPreview = "";
 	let newestTs = 0;
 	let rotate = 0;
@@ -203,6 +210,11 @@ export function applyParsedItems(
 				lastPreview = it.text ?? "";
 				newestTs = Math.max(newestTs, ts);
 				return;
+			case "redPacketAct":
+			case "transferAct": {
+				if (it.pair) actWant.set(String(it.pair), { act: it.act === "return" ? "return" : "receive", ts });
+				return;
+			}
 			case "redPacket": {
 				if (rejectMoney(it)) return;
 				rememberPair("init");
@@ -211,9 +223,9 @@ export function applyParsedItems(
 					type: EConversationType.redPacket,
 					role,
 					originalSender: role,
-					amount: it.amount || "0.00",
+					amount: fmtAmount(it.amount),
 					note: it.note || undefined,
-					redPacketStatus: packetStatusOf(it.status),
+					redPacketStatus: timed ? (it.status === "accepted" || it.status === "expired" || it.status === "returned" ? (it.status === "returned" ? "returned" : it.status) : "awaiting") : packetStatusOf(it.status),
 					autoReturnHours: hoursOf(it.autoReturnHours),
 					upperText: takeUpper(),
 				} as TConversationItem);
@@ -222,6 +234,8 @@ export function applyParsedItems(
 				return;
 			}
 			case "redPacketReceipt": {
+				if (timed && it.pair) actWant.set(String(it.pair), { act: "receive", ts });
+				if (timed) return;
 				rememberPair("receipt");
 				const member = resolveMember(conversationId, it.sender);
 				const receipt = makeRedPacketReceipt({
@@ -250,16 +264,15 @@ export function applyParsedItems(
 				return;
 			}
 			case "transfer": {
-				if (rejectMoney(it)) return;
 				rememberPair("init");
 				items.push({
 					...common,
 					type: EConversationType.transfer,
 					role,
 					originalSender: role,
-					amount: it.amount || "0.00",
+					amount: fmtAmount(it.amount),
 					note: it.note || undefined,
-					transferStatus: transferStatusOf(it.status),
+					transferStatus: timed ? (it.status === "accepted" || it.status === "returned" || it.status === "rejected" || it.status === "expired" ? it.status : "awaiting") : transferStatusOf(it.status),
 					autoReturnHours: hoursOf(it.autoReturnHours),
 					upperText: takeUpper(),
 				} as TConversationItem);
@@ -268,6 +281,8 @@ export function applyParsedItems(
 				return;
 			}
 			case "transferReceipt": {
+				if (timed && it.pair) actWant.set(String(it.pair), { act: "receive", ts });
+				if (timed) return;
 				rememberPair("receipt");
 				const member = resolveMember(conversationId, it.sender);
 				const receipt = makeTransferReceipt({
@@ -304,6 +319,21 @@ export function applyParsedItems(
 		if (!msg) continue;
 		if (msg.type === EConversationType.transferReceipt) msg.transferId = init[0];
 		if (msg.type === EConversationType.redPacketAcceptedReply) msg.redPacketId = init[0];
+	}
+	if (timed) {
+		for (const item of items) {
+			if (item.type !== EConversationType.transfer && item.type !== EConversationType.redPacket) continue;
+			if (item.role !== item.originalSender) continue;
+			const mark = pairOf.get(item.id);
+			const act = mark?.pair ? actWant.get(mark.pair) : undefined;
+			if (item.type === EConversationType.transfer) {
+				const st = item.transferStatus;
+				const want = act?.act === "return" ? "returned" : act?.act === "receive" ? "accepted" : st === "returned" ? "returned" : st === "rejected" ? "rejected" : st === "accepted" ? "accepted" : null;
+				if (want) items = settleTransfer(items, item.id, want, act?.ts);
+			} else if (act?.act === "receive" || item.redPacketStatus === "accepted") {
+				items = settleRedPacket(items, item.id, "accepted", act?.ts);
+			}
+		}
 	}
 	const newIds = new Set(items.map((v) => v.id));
 	setConversationListValue(conversationId, (prev) => {
@@ -370,14 +400,19 @@ ${ctx.script}
 2. 每个元素都必须有 at（"YYYY-MM-DD HH:mm"）。at 必须单调递增、且绝对不能晚于现在的真实时间 ${ctx.now}。默认接在最后一条已有消息之后；但如果用户明确要求生成「很久以前」的聊天（如「一个月前」「两个月前」「半年前」「去年」「上个月那几天」），at 必须真的写成那段过去的日期（以现在的真实时间往前推算，系统会按时间把它插到聊天记录的正确位置），不要写成今天或最近几天。「第二天」「一小时后」等如果会超过现在，就把整段剧本整体往前挪（例如挪到昨天或前天），保证最后一条仍不晚于现在。同一段连续对话间隔 5 秒到 2 分钟；「停顿」「新的时间节点」间隔至少 10 分钟，通常几十分钟到几小时。
 3. kind 只能是：
    text（who, text, 可选 translation：若这条是外语，translation 填中文译文）
-   redPacket（发起那条：who, amount 数字字符串, note 祝福语, status：awaiting 待领取 / accepted 已领取 / returned 已退回, 可选 pair, 可选 autoReturnHours）
-   redPacketReceipt（收款那条：who 是谁领的, at, pair 与发起那条相同。群聊再加 sender）
-   transfer（发起那条：who, amount, note, status：awaiting 待收款 / accepted 已收款 / returned 已退回, 可选 pair, 可选 autoReturnHours）
-   transferReceipt（收款那条：who 是谁收的, at, 可选 amount, pair 与发起那条相同）
+   redPacket（发起那条，永远是刚发出去：who, amount 数字字符串且不超过 200, note 祝福语, pair, 可选 autoReturnHours。不要用 status 表示已经领了）
+   redPacketAct（领取动作：pair 与发起相同, act 只能是 receive, at 是领取时间。红包没有退回）
+   transfer（发起那条，永远是刚转出去、还没收：who, amount 按剧本原数写、可以超过 200, note 备注，没有备注就省略, pair）
+   transferAct（对方处理：pair 与发起相同, act 为 receive 领取 或 return 退回, at 是处理时间）
    voice（who, seconds, text 为转文字, 可选 scene：clean/bed/room/crowd/rain/mall/street, pace：normal/fast/slow, tone 口气, read：false 表示还没播放）
    call（视频通话记录，不要写成文字：who 是谁打的；status：rejected 被拒绝 / cancelled 已取消 / accepted 接通（接通要写 seconds 通话秒数））
    system（text，居中的灰色系统提示）
-4. 转账和红包的「发起」和「收款」必须是数组里的两条，各自带自己的 at，禁止合并成一条，也不要用 status 代替收款那条。status 只描述发起那条长什么样。pair 是你编的短标记（如 "a"），两条用同一个。金额单条不能超过 200，超过就不要写这条。只有用户明确要求「超时未领自动退回」时才写 autoReturnHours（小时，如 24）。收款那条的时间可以落在聊天中间，不要为了它把所有时间都写成最后。
+4. 转账和红包必须写成「发起」加可选的「领取/退回」两个动作，禁止合并成一条，也不要自己再写一条假的收款气泡。系统会用和用户手动发、手动点领取完全相同的结构落进聊天：转账领取后，发起那条变成已被接收，对方那边多一条已收款；转账退回后两边都是已退回；红包领取后发起那条变成已领取，并多一条「领取了红包」的系统提示。还没收 / 还没领就只有发起那一条。pair 是你编的短标记（如 "a"）。红包金额不能超过 200，超过就不要写这条。转账金额照剧本写，不要因为超过 200 就省略（例如「转 300 未收」就是一条 300 的待收款）。只有用户明确要求「超时未领自动退回」时才写 autoReturnHours（小时，如 24）。
+   例：「给他转 100 元，让他退回」= {"kind":"transfer","who":"me","amount":"100","pair":"a","at":"..."} 然后 {"kind":"transferAct","pair":"a","act":"return","at":"稍晚一点"}。
+   「给他转 200 元，让他接收」= transfer who me amount 200 + transferAct act receive。
+   「给他转 300 元，未收」= 只有 transfer who me amount 300，不要 transferAct。
+   「对方发红包，我领取」= redPacket who friend + redPacketAct act receive。
+   「对方发红包，未领取」= 只有 redPacket who friend。红包不要写 return。
 5. 口语化、简短，符合各自身份，不要旁白、编号。不要输出 time 类元素。
 6. 文字里可以用微信表情，写成 [名字]，只能用这些名字：${EMOJI_NAME_LIST.join("、")}；真人聊天表情不要太多，不要用其他方括号表情，也不要用 Unicode 小黄脸。只输出 JSON 数组，如 [{"kind":"text","who":"friend",${ctx.group ? '"sender":"成员名",' : ""}"text":"在吗","at":"2026-01-02 10:00"}]。who 只能是 friend 或 me。`;
 
@@ -439,9 +474,11 @@ export const previewLine = (it: ParsedItem) => {
 	const tm = at !== null ? dayjs(at).format("YYYY/M/D HH:mm") : it.at ? `⚠️${it.at}` : "";
 	switch (it.kind) {
 		case "redPacket": return `${tm} ${who}发红包 ¥${it.amount ?? ""} ${it.note ?? ""}${moneyOverLimit(it.amount) ? "（超过200，不会写入）" : ""}`;
-		case "redPacketReceipt": return `${tm} ${who}领取红包`;
-		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}${moneyOverLimit(it.amount) ? "（超过200，不会写入）" : ""}`;
-		case "transferReceipt": return `${tm} ${who}收款${it.amount ? ` ¥${it.amount}` : ""}`;
+		case "redPacketReceipt":
+		case "redPacketAct": return `${tm} ${who}领取红包`;
+		case "transfer": return `${tm} ${who}转账 ¥${it.amount ?? ""} ${it.note ?? ""}`;
+		case "transferReceipt":
+		case "transferAct": return `${tm} ${who}${it.act === "return" ? "退回转账" : "收款"}`;
 		case "call": return `${tm} ${who}发起视频通话：${callText(it.who === "me" ? "mine" : "friend", it.status, it.seconds)}`;
 		case "voice": return `${tm} ${who}语音 ${it.seconds ?? 3}″ ${it.text ?? ""}`;
 		case "system": return `${tm} [系统] ${it.text ?? ""}`;
