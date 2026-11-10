@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phone-edit5
+          ref: phone-ai-img
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -42,3 +42,4 @@ jobs:
 # 1794301549
 # 1794301818
 # 1794303107
+# 1794318992
