@@ -24,6 +24,7 @@ import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
+import LongShot from "../LongShot";
 import VideoSheet from "./VideoSheet";
 import VoiceSheet from "./VoiceSheet";
 
@@ -224,6 +225,7 @@ const RoleBar = () => {
 				>
 					批量
 				</button>
+				<LongShot />
 			</div>
 			{videoOpen && <VideoSheet conversationId={conversationId} onClose={() => setVideoOpen(false)} />}
 			{voiceOpen && <VoiceSheet conversationId={conversationId} onClose={() => setVoiceOpen(false)} />}
