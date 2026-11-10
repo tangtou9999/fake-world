@@ -1,10 +1,9 @@
-import { inEditMode } from "@/components/SheetKit";
-import FeedSheet from "./FeedSheet";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import CameraFilledSVG from "@/assets/camera-filled.svg?react";
 import CameraOutlinedSVG from "@/assets/camera-outlined.svg?react";
 import { h } from "@/components/HashAssets";
 import { canBeDetected } from "@/components/NodeDetected";
+import { inEditMode } from "@/components/SheetKit";
 import { useMemoScrollPos } from "@/components/useMemoScrollPos";
 import useModeNavigate from "@/components/useModeNavigate";
 import {
@@ -24,6 +23,7 @@ import { useTranslation } from "react-i18next";
 import { Outlet } from "react-router-dom";
 import { CSSTransition, SwitchTransition } from "react-transition-group";
 import { twJoin } from "tailwind-merge";
+import MomentComposer from "./AiMoments";
 import { MomentsCommentBar } from "./CommentComposer";
 import CoverOperations from "./CoverOperations";
 import TopAvatar from "./TopAvatar";
@@ -206,18 +206,19 @@ const MomentsLayout = () => {
 				<div className="text-center font-medium text-[17px]">
 					{barUseBlack && t("wechatPage.moments.title")}
 				</div>
-				<div className="flex justify-end" onClick={() => inEditMode() && setPosting(true)}>
+				<div
+					role="button"
+					aria-label="发朋友圈"
+					className="flex justify-end"
+					onClick={() => inEditMode() && setPosting(true)}
+				>
 					{barUseBlack ? (
 						<CameraOutlinedSVG fill="currentColor" className="h-5 w-5" />
 					) : (
 						<CameraFilledSVG fill="currentColor" className="h-5 w-5" />
 					)}
 				</div>
-				{posting && (
-					<div onClick={(e) => e.stopPropagation()}>
-						<FeedSheet onClose={() => setPosting(false)} />
-					</div>
-				)}
+				{posting && <MomentComposer onClose={() => setPosting(false)} />}
 			</div>
 
 			<div
