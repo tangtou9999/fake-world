@@ -1,4 +1,5 @@
 import getFakerInstanceByLang from "@/faker/core";
+import { pickFriendAvatar } from "@/library/pick";
 import type { IStateProfile } from "@/stateV2/profile";
 import { nanoid } from "nanoid";
 
@@ -24,14 +25,26 @@ export function randomNickname() {
 	});
 }
 
+function friendAvatarHint(preData: Partial<IStateProfile>) {
+	return [
+		preData.nickname,
+		preData.remark,
+		preData.description,
+		preData.signature,
+		...(preData.tags ?? []),
+	]
+		.filter((part): part is string => !!part)
+		.join(" ");
+}
+
 export function generateFakeUser(preData: Partial<IStateProfile> = {}): IStateProfile {
 	const faker = getFakerInstanceByLang();
 	const gender = randomGender();
+	const { avatarInfo: givenAvatar, ...rest } = preData;
 	return {
 		id: randomUserId(),
 		nickname: randomNickname(),
 		gender,
-		avatarInfo: randomAvatar(),
 		wechat: faker.internet.userName({
 			firstName: faker.person.firstName(gender),
 			lastName: faker.person.lastName(gender),
@@ -41,6 +54,7 @@ export function generateFakeUser(preData: Partial<IStateProfile> = {}): IStatePr
 		momentsPrivacy: "all",
 		thumbnailInfo: [],
 		momentsBackgroundInfo: faker.image.url(),
-		...preData,
+		...rest,
+		avatarInfo: givenAvatar || pickFriendAvatar(friendAvatarHint(preData)),
 	};
 }

@@ -1,8 +1,9 @@
 import { h } from "@/components/HashAssets";
 import { saveImage } from "@/components/SheetKit";
 import { MYSELF_ID } from "@/faker/wechat/user";
+import { pickMomentImages } from "@/library/pick";
 import { geminiConfigAtom } from "@/stateV2/gemini";
-import { type IFeedComment, type IStateFeed, setFeedListValue } from "@/stateV2/moments";
+import { type IFeedComment, type IStateFeed, getFeedListValueSnapshot, setFeedListValue } from "@/stateV2/moments";
 import { getAllProfilesValueSnapshot } from "@/stateV2/profile";
 import {
 	type GeminiImage,
@@ -24,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 const MAX_PHOTOS = 9;
 const AT_FMT = "YYYY-MM-DDTHH:mm";
 
-type MomentPhoto = { hash: string; img: GeminiImage };
+type MomentPhoto = { hash: string; img?: GeminiImage };
 type Person = { id: string; name: string };
 type CommentDraft = { id: string; from: string; reply: string; text: string };
 type Filled = {
@@ -274,7 +275,7 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 		}
 	};
 
-	const applyFilled = (filled: Filled) => {
+	const applyFilled = (filled: Filled, hint: string) => {
 		setText(filled.text);
 		setLocation(filled.location);
 		setAt(filled.at);
@@ -287,6 +288,16 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 				text: c.text,
 			})),
 		);
+		setImages((prev) => {
+			if (prev.length) return prev;
+			const avoid = new Set<string>();
+			for (const feed of getFeedListValueSnapshot()) {
+				if (feed.content.type === "textWithImages") {
+					for (const image of feed.content.imagesInfo) avoid.add(image);
+				}
+			}
+			return pickMomentImages({ text: filled.text, hint, avoid }).map((hash) => ({ hash }));
+		});
 	};
 
 	const send = async () => {
@@ -301,19 +312,20 @@ const MomentComposer = ({ onClose }: { onClose: () => void }) => {
 		setMessages((m) => [...m, userMsg]);
 		setBusy(true);
 		try {
-			const note = shots.length
-				? `\n（已上传 ${shots.length} 张照片，按顺序附在这次请求里。）`
+			const vision = shots.flatMap((p) => (p.img ? [p.img] : []));
+			const note = vision.length
+				? `\n（已上传 ${vision.length} 张照片，按顺序附在这次请求里。）`
 				: "";
 			const reply = await askMoments(
 				typed + note,
 				historyOf(prior),
-				shots.map((p) => p.img),
-				shots.length,
+				vision,
+				vision.length,
 				people,
 			);
 			if (!live.current || run.current !== token) return;
 			const parsed = parseDraft(reply, people);
-			if (parsed.filled) applyFilled(parsed.filled);
+			if (parsed.filled) applyFilled(parsed.filled, typed);
 			setMessages((m) => [
 				...m,
 				{ id: nanoid(8), role: "model", text: parsed.say, filled: parsed.filled },
