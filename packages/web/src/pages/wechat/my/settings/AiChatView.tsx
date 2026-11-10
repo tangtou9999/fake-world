@@ -26,6 +26,7 @@ import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
 import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
 import { armReplay } from "@/pages/wechat/conversation/replay";
+import { FormCard, formToText, parseForm } from "./aiForm";
 import { applyPlan, describeStep, locateMessages, parsePlan } from "./aiPlan";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
@@ -36,42 +37,6 @@ const PRIVATE_REPLY_DEBOUNCE = 2000;
 const PRIVATE_BUBBLE_GAP = 800;
 
 const isAbortErr = (e: unknown) => e instanceof DOMException && e.name === "AbortError";
-
-const splitProse = (text: string): string[] => {
-	const bits = text.split(/\n+|(?<=[。！？!?])\s*/).map((s) => s.trim()).filter(Boolean);
-	if (bits.length > 1) return bits;
-	const one = text.trim();
-	if (one.length <= 60) return one ? [one] : [];
-	const pieces = Math.min(4, Math.ceil(one.length / 40));
-	const size = Math.ceil(one.length / pieces);
-	const out: string[] = [];
-	for (let i = 0; i < one.length && out.length < 4; i += size) out.push(one.slice(i, i + size).trim());
-	return out.filter(Boolean);
-};
-
-const clampFour = (parts: string[]) => {
-	const clean = parts.map((p) => p.trim()).filter(Boolean);
-	if (clean.length <= 4) return clean;
-	return [...clean.slice(0, 3), clean.slice(3).join("\n")];
-};
-
-/** 私人 AI 的一条回复拆成 1~4 条短消息；代码块整段保留 */
-const splitPrivateReply = (text: string): string[] => {
-	const raw = text.trim();
-	if (!raw) return [];
-	const chunks: string[] = [];
-	const re = /```[\s\S]*?```/g;
-	let last = 0;
-	for (const m of raw.matchAll(re)) {
-		const before = raw.slice(last, m.index).trim();
-		if (before) chunks.push(...splitProse(before));
-		chunks.push(m[0].trim());
-		last = (m.index ?? 0) + m[0].length;
-	}
-	const rest = raw.slice(last).trim();
-	if (rest) chunks.push(...splitProse(rest));
-	return clampFour(chunks.length ? chunks : [raw]);
-};
 
 const insertAfterAnchor = (m: AiChatMessage[], anchorId: string, msg: AiChatMessage): AiChatMessage[] => {
 	const idx = m.findIndex((x) => x.id === anchorId);
@@ -403,9 +368,10 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			const vmText = isChat ? vm.text.replace(/```wxcall[\s\S]*?(```|$)/g, "").trim() : vm.text;
 			const po = isChat ? parseOps(vmText) : { text: vmText, ops: undefined };
 			const planned = parsePlan(po.text);
-			const parsed = isChat ? parseAction(planned.text) : { text: planned.text, action: undefined };
+			const formed = parseForm(planned.text);
+			const parsed = isChat ? parseAction(formed.text) : { text: formed.text, action: undefined };
 			const se = parseScreenOps(parsed.text);
-			const shownText = se.text || (planned.plan || se.screen ? "先看下面这张卡片，点确认才写入。" : "");
+			const shownText = se.text || (planned.plan || se.screen ? "先看下面这张卡片，点确认才写入。" : formed.form ? "先填一下下面这张资料卡。" : "");
 			// 目标锁定当前窗口：只有用户这一句话里明确点名了别的联系人，才听 AI 写的 target；
 			// 否则（比如之前对话里提过「老妈」，AI 就把 target 写成老妈）一律写进当前聊天
 			const curContact = isChat ? contacts.find((c) => c.id === conversationId) : undefined;
@@ -427,6 +393,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				role: "model",
 				text: shownText + extra,
 				plan: planned.plan,
+				form: formed.form,
 				voiceMake: vm.make ? { name: vm.make.name, sample: vm.make.sample, profile: { voice: vm.make.profile.voice, chest: vm.make.profile.chest ?? 0, air: vm.make.profile.air ?? 0, accent: vm.make.profile.accent ?? "默认自然口语", persona: vm.make.profile.persona ?? "" } } : undefined,
 				action: parsed.action ? { ...parsed.action, targetId: target?.id } : undefined,
 				ops: po.ops ? { ...po.ops, targetId: opsTarget?.id } : undefined,
@@ -434,8 +401,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				callMake: Number.isFinite(callMinutes) ? { minutes: Math.min(Math.max(callMinutes, 0), 1440) } : undefined,
 			};
 			if (batch && ctrl) {
-				const parts = splitPrivateReply(shownText + extra);
-				const show = parts.length ? parts : [shownText + extra];
+				const show = [shownText + extra];
 				let anchor = batch.ids[batch.ids.length - 1] ?? "";
 				let shown = 0;
 				for (let i = 0; i < show.length; i++) {
@@ -444,7 +410,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 					if (ctrl.signal.aborted || batchStop.current.has(batch.sid)) break;
 					const id = nanoid(8);
 					const last = i === show.length - 1;
-					const bubble: AiChatMessage = { id, role: "model", text: show[i], voiceMake: last ? replyMsg.voiceMake : undefined, action: last ? replyMsg.action : undefined, ops: last ? replyMsg.ops : undefined, callMake: last ? replyMsg.callMake : undefined, plan: last ? replyMsg.plan : undefined, screen: last ? replyMsg.screen : undefined };
+					const bubble: AiChatMessage = { id, role: "model", text: show[i], voiceMake: last ? replyMsg.voiceMake : undefined, action: last ? replyMsg.action : undefined, ops: last ? replyMsg.ops : undefined, callMake: last ? replyMsg.callMake : undefined, plan: last ? replyMsg.plan : undefined, form: last ? replyMsg.form : undefined, screen: last ? replyMsg.screen : undefined };
 					const anchorId = anchor;
 					patchSession(batch.sid, (m) => insertAfterAnchor(m, anchorId, bubble));
 					anchor = id;
@@ -753,7 +719,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				<div className="mx-auto mb-3 max-w-[92%] text-center text-[12px] text-black/40 leading-5">
 					{isChat
 						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。说一段聊天，会标出范围让你确认后再回放，不会因此改记录。对话只保存在这台手机上，每个聊天各有各的 AI。"
-						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。说要回放哪一段，会到聊天里标出范围再播。对话只保存在这台手机上。"}
+						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，一次回复就是一条消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。说要回放哪一段，会到聊天里标出范围再播。对话只保存在这台手机上。"}
 				</div>
 				{!(gemini.apiKey || gemini.apiKey2) && (
 					<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-auto mb-3 block h-10 rounded-[6px] bg-[#07C160] px-6 text-[15px] text-white">
@@ -931,6 +897,18 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 									</button>
 								)}
 							</div>
+						)}
+						{m.form && (
+							<FormCard
+								form={m.form}
+								onSubmit={(ans) => {
+									if (busy && isChat) return;
+									updateMessages((all) => all.map((x) => (x.id === m.id && x.form ? { ...x, form: { ...x.form, answers: ans } } : x)));
+									const t = formToText(m.form as NonNullable<typeof m.form>, ans);
+									if (!isChat) enqueuePrivate(t, []);
+									else void send(t);
+								}}
+							/>
 						)}
 						{m.plan && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
