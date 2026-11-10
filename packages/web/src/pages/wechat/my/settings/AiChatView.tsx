@@ -1,5 +1,5 @@
 import { parseJsonLoose } from "@/utils/gemini";
-import Notepad from "./Notepad";
+import Notepad, { notepadAtom } from "./Notepad";
 import CopyBlock, { parseSegments } from "./CopyBlock";
 import { applyOps, describeOp, parseOps } from "./chatOps";
 import SearchOutlinedSVG from "@/assets/search-outlined.svg?react";
@@ -76,11 +76,16 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 	const messages: AiChatMessage[] = isChat ? (byConv[conversationId as string] ?? []) : session.messages;
 	const [input, setInput] = useState("");
 	const [toast, setToast] = useState("");
-	const showToast = (r: "copied" | "selected") => {
-		setToast(r === "copied" ? "已复制" : "已选中，请长按选择「拷贝」");
+	const showToast = (r: "copied" | "selected" | "saved") => {
+		setToast(r === "copied" ? "已复制" : r === "saved" ? "已存到记事本" : "已选中，请长按选择「拷贝」");
 		window.setTimeout(() => setToast(""), 1600);
 	};
 	const [notepad, setNotepad] = useState(false);
+	const setNotes = useSetAtom(notepadAtom);
+	const saveToNotepad = (text: string) => {
+		setNotes((v) => [{ id: nanoid(8), title: "", content: text, at: Date.now() }, ...v]);
+		showToast("saved");
+	};
 	const [searching, setSearching] = useState(false);
 	const [sq, setSq] = useState("");
 	const jumpTo = (sid: string | undefined, mid: string) => {
@@ -346,7 +351,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				</div>
 			)}
 			<div className="flex shrink-0 items-center gap-4 px-4 pb-2 text-[13px] text-[#576B95]">
-				{!isChat && (
+				{(
 					<button type="button" aria-label="记事本" className="rounded-full bg-white px-3 py-[2px] text-black/80" onClick={() => setNotepad(true)}>
 						📝 记事本
 					</button>
@@ -437,6 +442,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 									)
 								: m.text}
 						</div>
+						{m.role === "model" && !m.error && m.text.trim() && (
+							<button type="button" aria-label="存到记事本" className="mt-1 ml-1 text-[12px] text-[#576B95]" onClick={() => saveToNotepad(m.text.replace(/```(wxchat|wxops|wxvoice|wxcall)[\s\S]*?```/g, "").trim())}>
+								存到记事本
+							</button>
+						)}
 						{m.callMake && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
 								<div className="font-medium text-[14px]">📹 {m.callMake.minutes <= 0 ? "马上让对方打视频过来" : `${m.callMake.minutes} 分钟后让对方打视频过来`}</div>
@@ -585,7 +595,7 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				)}
 				<div ref={bottomRef} />
 			</div>
-			{notepad && <Notepad onClose={() => setNotepad(false)} />}
+			{notepad && <Notepad onClose={() => setNotepad(false)} onSend={(t) => { setNotepad(false); void send(t); }} />}
 			{searching && (
 				<div className="fixed inset-0 z-50 flex flex-col bg-white">
 					<div className="flex shrink-0 items-center gap-3 bg-[#EDEDED] px-[15px] pt-[calc(env(safe-area-inset-top)+8px)] pb-2">

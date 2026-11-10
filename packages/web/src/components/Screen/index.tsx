@@ -4,6 +4,7 @@ import { isDesktop, isMobileOnly } from "react-device-detect";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router-dom";
 
+import { refreshMoments } from "@/stateV2/moments/autoRoll";
 import Fallback from "../Fallback";
 import DetectedOverall from "../NodeDetected/DetectedFloating";
 import StatusBar from "../StatusBar";
@@ -11,6 +12,10 @@ import useDeviceConfig from "../useDeviceConfig";
 
 const Screen = () => {
 	const { screenSize } = useDeviceConfig();
+
+	useEffect(() => {
+		refreshMoments();
+	}, []);
 
 	// 手机上把整页钉住：左右滑动不再带着页面晃
 	useEffect(() => {

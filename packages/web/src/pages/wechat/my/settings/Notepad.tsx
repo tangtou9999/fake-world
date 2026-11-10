@@ -8,7 +8,7 @@ type Note = { id: string; title: string; content: string; at: number };
 export const notepadAtom = atomWithStorage<Note[]>("ai-notepad", []);
 
 /** 私人 AI 的记事本：存常用指令，随时一键复制 */
-const Notepad = ({ onClose }: { onClose: () => void }) => {
+const Notepad = ({ onClose, onSend }: { onClose: () => void; onSend?: (text: string) => void }) => {
 	const [notes, setNotes] = useAtom(notepadAtom);
 	const [editing, setEditing] = useState<Note | null>(null);
 	const [toast, setToast] = useState("");
@@ -91,6 +91,11 @@ const Notepad = ({ onClose }: { onClose: () => void }) => {
 							<div className="flex items-center justify-between gap-2">
 								<div className="truncate font-medium text-[15px]">{n.title || n.content.split("\n")[0].slice(0, 20) || "（空）"}</div>
 								<div className="flex shrink-0 gap-2">
+									{onSend && (
+										<button type="button" aria-label="发送到当前窗口" className="rounded-[4px] border border-[#07C160] px-3 py-[3px] text-[13px] text-[#07C160]" onClick={() => onSend(n.content)}>
+											发送
+										</button>
+									)}
 									<button type="button" className="rounded-[4px] border border-black/15 px-3 py-[3px] text-[13px]" onClick={() => setEditing(n)}>
 										编辑
 									</button>

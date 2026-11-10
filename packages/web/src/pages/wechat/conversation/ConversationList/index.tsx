@@ -38,6 +38,7 @@ const lineFx = (item: object) => {
 };
 import { pruneClips } from "@/utils/audioStore";
 import { mainStore } from "@/stateV2/store";
+import { slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
@@ -125,6 +126,34 @@ const ConversationList = () => {
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
 	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean; voice?: { shown: boolean; has: boolean } } | null>(null);
 	const [busy, setBusy] = useState(false);
+	// 编辑模式下快速点两下某条消息：直接改里面的文字
+	const [quickEdit, setQuickEdit] = useState<{ id: string; text: string } | null>(null);
+	const lastTap = useRef<{ id: string; t: number }>({ id: "", t: 0 });
+	const onEditTap = (item: TConversationItem) => {
+		if (!isEdit) return;
+		const now = Date.now();
+		const twice = lastTap.current.id === item.id && now - lastTap.current.t < 380;
+		lastTap.current = { id: item.id, t: twice ? 0 : now };
+		if (!twice) return;
+		const r = item as unknown as Record<string, any>;
+		if (item.type === EConversationType.text) setQuickEdit({ id: item.id, text: item.textContent.map((n) => slateToPlain(n as never)).join("\n") });
+		else if (item.type === EConversationType.centerText) setQuickEdit({ id: item.id, text: String(r.simpleContent ?? "") });
+		else if (item.type === EConversationType.voice) setQuickEdit({ id: item.id, text: String(r.stt ?? "") });
+	};
+	const saveQuickEdit = () => {
+		if (!quickEdit) return;
+		const { id, text } = quickEdit;
+		setConversationList((prev) =>
+			prev.map((v) => {
+				if (v.id !== id) return v;
+				if (v.type === EConversationType.text) return { ...v, textContent: text.split("\n").map((line) => ({ type: "paragraph", children: textToSlateChildren(line) })) } as TConversationItem;
+				if (v.type === EConversationType.centerText) return { ...v, simpleContent: text } as TConversationItem;
+				if (v.type === EConversationType.voice) return { ...v, stt: text } as TConversationItem;
+				return v;
+			}),
+		);
+		setQuickEdit(null);
+	};
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const openTextMenu = (item: TConversationItem) => {
 		if (isEdit) return;
@@ -358,7 +387,10 @@ const ConversationList = () => {
 						>
 							<div
 								className="contents"
-								onClick={() => handleTap(item)}
+								onClick={() => {
+									onEditTap(item);
+									handleTap(item);
+								}}
 								onTouchStart={() => startPress(item)}
 								onTouchMove={stopPress}
 								onTouchEnd={stopPress}
@@ -396,6 +428,28 @@ const ConversationList = () => {
 					amount={rp.amount}
 					onClose={() => setRp(null)}
 				/>
+			)}
+			{quickEdit && (
+				<div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 px-6" onClick={() => setQuickEdit(null)}>
+					<div className="w-full max-w-[340px] overflow-hidden rounded-[12px] bg-white" onClick={(e) => e.stopPropagation()}>
+						<div className="px-4 pt-4 font-medium text-[16px]">修改文字</div>
+						<textarea
+							aria-label="修改文字"
+							autoFocus
+							value={quickEdit.text}
+							onChange={(e) => setQuickEdit({ ...quickEdit, text: e.target.value })}
+							className="mx-4 mt-3 mb-4 block h-[140px] w-[calc(100%-32px)] resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] leading-6 outline-none"
+						/>
+						<div className="flex h-[50px] border-black/10 border-t text-[17px]">
+							<button type="button" className="flex-1 border-black/10 border-r" onClick={() => setQuickEdit(null)}>
+								取消
+							</button>
+							<button type="button" className="flex-1 font-medium text-[#07C160]" onClick={saveQuickEdit}>
+								保存
+							</button>
+						</div>
+					</div>
+				</div>
 			)}
 			{dlg && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-10" onClick={() => setDlg(null)}>
