@@ -4,6 +4,9 @@ import useScreenTopBg from "@/components/useScreenTopBg";
 import { type BalanceRecord, balanceRecordsAtom } from "@/stateV2/balanceRecords";
 import { getProfileValueSnapshot } from "@/stateV2/profile";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { RecordSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
 import type { ReactNode } from "react";
 import { centsToYuan } from "./money";
 
@@ -147,6 +150,9 @@ const BalanceRecords = () => {
 	const navigate = useModeNavigate();
 	const records = useAtomValue(balanceRecordsAtom);
 	useScreenTopBg("#EDEDED");
+	const [sheet, setSheet] = useState<string | null>(null); // "" = 新增
+	const lpNew = useLongPress(() => setSheet(""));
+	const baseId = (k: string) => k.replace(/-(fee|wd)$/, "");
 
 	const rows = toRows(records).sort((a, b) => b.timestamp - a.timestamp);
 	const groups: { month: string; rows: Row[] }[] = [];
@@ -171,7 +177,8 @@ const BalanceRecords = () => {
 						<path d="M3 3l12 12M15 3L3 15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
 					</svg>
 				</button>
-				<div className="font-medium text-[17.5px]">零钱明细</div>
+				<div className="font-medium text-[17.5px]" {...lpNew}>零钱明细</div>
+			{sheet !== null && <RecordSheet id={sheet || undefined} onClose={() => setSheet(null)} />}
 			</div>
 			<div className="min-h-0 flex-1 overflow-auto">
 				{groups.length === 0 ? (
@@ -190,6 +197,10 @@ const BalanceRecords = () => {
 									<div
 										key={row.key}
 										className="flex h-[77px] items-center border-black/10 border-b px-[22px]"
+										onContextMenu={(e) => { e.preventDefault(); setSheet(baseId(row.key)); }}
+										onTouchStart={(e) => { const t = e.currentTarget as HTMLElement & { _t?: ReturnType<typeof setTimeout> }; t._t = setTimeout(() => setSheet(baseId(row.key)), 550); }}
+										onTouchEnd={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
+										onTouchMove={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
 									>
 										{row.icon}
 										<div className="ml-[18px] min-w-0 flex-1">

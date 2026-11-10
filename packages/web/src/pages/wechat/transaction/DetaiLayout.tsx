@@ -5,6 +5,11 @@ import CloseOutlinedSVG from "@/assets/close-outlined.svg?react";
 import HelpOutlinedSVG from "@/assets/help-outlined.svg?react";
 import { type InjectProps, canBeDetected } from "@/components/NodeDetected";
 import useModeNavigate from "@/components/useModeNavigate";
+import { TxSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
+import type { TTransactionType } from "@/stateV2/transaction";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
 
 type Props = {
 	topElement: ReactNode;
@@ -14,6 +19,9 @@ type Props = {
 
 const DetaiLayout = ({ topElement, columnElement, metaData }: Props) => {
 	const navigate = useModeNavigate();
+	const { type } = useParams<{ type: TTransactionType }>();
+	const [editing, setEditing] = useState(false);
+	const lp = useLongPress(() => setEditing(true));
 
 	return (
 		<>
@@ -26,7 +34,8 @@ const DetaiLayout = ({ topElement, columnElement, metaData }: Props) => {
 				<div>全部账单</div>
 			</div>
 			<div className="flex flex-1 flex-col overflow-auto">
-				<canBeDetected.div metaData={metaData ?? undefined}>
+				<canBeDetected.div metaData={metaData ?? undefined} {...lp}>
+					{editing && type && <TxSheet type={type} onClose={() => setEditing(false)} />}
 					<div className="mx-6 mt-8 flex flex-col items-center border-black/10 border-b pb-10">
 						{topElement}
 					</div>

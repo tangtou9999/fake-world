@@ -9,7 +9,9 @@ import { setAllProfilesValue } from "@/stateV2/profile";
 import List from "@/wechatComponents/List";
 import { Modal } from "antd";
 import { useSetAtom } from "jotai";
-import { memo } from "react";
+import { memo, useState } from "react";
+import { FriendSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
 import { twJoin } from "tailwind-merge";
 import type { TRenderUser } from "../utils";
 
@@ -25,6 +27,8 @@ const UserItem = ({
 	const setDialogueList = useSetAtom(dialogueListAtom);
 	const setFeedList = useSetAtom(feedListAtom);
 	const withDescription = !!description;
+	const [editing, setEditing] = useState(false);
+	const lp = useLongPress(() => setEditing(true));
 
 	const handleOperationDelete = () => {
 		Modal.confirm({
@@ -39,6 +43,8 @@ const UserItem = ({
 	};
 
 	return (
+		<div key={_key} {...lp}>
+		{editing && <FriendSheet id={id} isMyself={id === MYSELF_ID} onClose={() => setEditing(false)} />}
 		<List.CanBeDetectedItem
 			textPrev={
 				<h.img
@@ -66,7 +72,6 @@ const UserItem = ({
 						}
 			}
 			textPrevClassName="ml-0"
-			key={_key}
 			onClick={() => navigate(`/wechat/friend/${id}`)}
 			className="ml-4"
 			rightClassName={twJoin(
@@ -79,6 +84,7 @@ const UserItem = ({
 				{withDescription && <span className="truncate text-[14px] text-black/55">{description}</span>}
 			</div>
 		</List.CanBeDetectedItem>
+		</div>
 	);
 };
 

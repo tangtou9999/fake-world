@@ -6,6 +6,9 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import { walletAtom } from "@/stateV2/wallet";
 import List from "@/wechatComponents/List";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
+import { WalletSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
 import { useTranslation } from "react-i18next";
 import {
 	BusinessIcon,
@@ -33,6 +36,8 @@ const Wallet = () => {
 	const navigate = useModeNavigate();
 	const { balance, miniFund, miniFundYield, business } = useAtomValue(walletAtom);
 	const { t } = useTranslation();
+	const [editing, setEditing] = useState(false);
+	const lp = useLongPress(() => setEditing(true));
 
 	return (
 		<>
@@ -49,7 +54,8 @@ const Wallet = () => {
 					{t("wechatPage.wallet.transactions")}
 				</div>
 			</div>
-			<div className="flex flex-1 flex-col overflow-auto bg-[#EDEDED]">
+			<div className="flex flex-1 flex-col overflow-auto bg-[#EDEDED]" {...lp}>
+				{editing && <WalletSheet onClose={() => setEditing(false)} />}
 				<List className="border-black/10 border-t">
 					<List.CanBeDetectedItem
 												rightClassName={ROW}

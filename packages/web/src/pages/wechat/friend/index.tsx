@@ -16,6 +16,9 @@ import dayjs from "dayjs";
 import { useAtomValue, useSetAtom } from "jotai";
 import { isEmpty, isString } from "lodash-es";
 import { nanoid } from "nanoid";
+import { useState } from "react";
+import { FriendSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
 import { useTranslation } from "react-i18next";
 import { useParams } from "react-router-dom";
 import { twJoin } from "tailwind-merge";
@@ -33,6 +36,8 @@ const Friend = () => {
 	const { t } = useTranslation();
 
 	const isMyself = userId === MYSELF_ID;
+	const [editing, setEditing] = useState(false);
+	const lp = useLongPress(() => setEditing(true));
 
 	if (!profile) return <></>;
 
@@ -78,14 +83,15 @@ const Friend = () => {
 	};
 
 	return (
-		<canBeDetected.div className="flex flex-1 flex-col overflow-hidden" metaData={getMetaData()}>
+		<canBeDetected.div className="flex flex-1 flex-col overflow-hidden" metaData={getMetaData()} {...lp}>
+			{editing && <FriendSheet id={userId!} isMyself={isMyself} onClose={() => setEditing(false)} />}
 			<div className="flex justify-between px-4 py-2">
 				<BackFilledSVG
 					fill="black"
 					className="h-5 w-5 cursor-pointer"
 					onClick={() => navigate(-1)}
 				/>
-				<MoreFilledSVG fill="black" className="h-5 w-5" />
+				<MoreFilledSVG fill="black" className="h-5 w-5 cursor-pointer" onClick={() => setEditing(true)} />
 			</div>
 			<div className="flex flex-1 flex-col overflow-auto bg-[rgba(237,237,237,1)]">
 				<div className={twJoin("flex bg-white py-6 pl-5", !isMyself && "border-black/5 border-b")}>
