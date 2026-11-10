@@ -1,10 +1,11 @@
 import { hashAssetsDB } from "@/db";
 import { getFileMD5 } from "@/utils";
+import { type Perm, can } from "@/auth";
 import { getModeValueSnapshot } from "@/stateV2/mode";
 import { type ReactNode, useRef } from "react";
 
 /** 只有编辑模式才允许改内容 */
-export const inEditMode = () => getModeValueSnapshot() === "edit";
+export const inEditMode = (perm?: Perm) => getModeValueSnapshot() === "edit" && (!perm || can(perm));
 
 export const inputCls = "w-full rounded-[6px] bg-[#F5F5F5] px-3 py-[7px] text-[16px] outline-none";
 
@@ -16,7 +17,7 @@ export const Row = ({ label, children }: { label: string; children: ReactNode })
 );
 
 /** 长按（触屏 550ms 或右键）触发 */
-export function useLongPress(cb: () => void, ms = 550) {
+export function useLongPress(cb: () => void, perm?: Perm, ms = 550) {
 	const t = useRef<ReturnType<typeof setTimeout>>();
 	const stop = () => {
 		if (t.current) clearTimeout(t.current);
@@ -25,13 +26,13 @@ export function useLongPress(cb: () => void, ms = 550) {
 	return {
 		onTouchStart: () => {
 			stop();
-			t.current = setTimeout(() => inEditMode() && cb(), ms);
+			t.current = setTimeout(() => inEditMode(perm) && cb(), ms);
 		},
 		onTouchEnd: stop,
 		onTouchMove: stop,
 		onTouchCancel: stop,
 		onContextMenu: (e: { preventDefault: () => void }) => {
-			if (!inEditMode()) return;
+			if (!inEditMode(perm)) return;
 			e.preventDefault();
 			cb();
 		},

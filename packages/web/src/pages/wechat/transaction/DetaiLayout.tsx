@@ -21,7 +21,7 @@ const DetaiLayout = ({ topElement, columnElement, metaData }: Props) => {
 	const navigate = useModeNavigate();
 	const { type } = useParams<{ type: TTransactionType }>();
 	const [editing, setEditing] = useState(false);
-	const lp = useLongPress(() => setEditing(true));
+	const lp = useLongPress(() => setEditing(true), "editBalance");
 
 	return (
 		<>

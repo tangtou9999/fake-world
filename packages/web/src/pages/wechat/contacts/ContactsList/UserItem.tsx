@@ -28,7 +28,7 @@ const UserItem = ({
 	const setFeedList = useSetAtom(feedListAtom);
 	const withDescription = !!description;
 	const [editing, setEditing] = useState(false);
-	const lp = useLongPress(() => setEditing(true));
+	const lp = useLongPress(() => setEditing(true), "editChat");
 
 	const handleOperationDelete = () => {
 		Modal.confirm({

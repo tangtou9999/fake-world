@@ -27,7 +27,7 @@ const ConversationHeader = () => {
 	const press = useRef<ReturnType<typeof setTimeout>>();
 	const startPress = () => {
 		clearTimeout(press.current);
-		press.current = setTimeout(() => !group && inEditMode() && setInfo(true), 600);
+		press.current = setTimeout(() => !group && inEditMode("editChat") && setInfo(true), 600);
 	};
 	const stopPress = () => clearTimeout(press.current);
 
@@ -64,7 +64,7 @@ const ConversationHeader = () => {
 				)}
 			</div>
 			<div className="flex min-w-[72px] shrink-0 items-center justify-end">
-				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => (group ? navigate(`/wechat/conversation/${id}/info`) : inEditMode() && setInfo(true))} />
+				<MoreFilledSVG fill="black" className="h-5 w-5" onClick={() => (group ? navigate(`/wechat/conversation/${id}/info`) : inEditMode("editChat") && setInfo(true))} />
 				{info && id && <ChatInfoSheet friendId={id} onClose={() => setInfo(false)} />}
 			</div>
 		</div>

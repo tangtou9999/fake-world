@@ -8,6 +8,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createHashRouter } from "react-router-dom";
 import { initDBImagesCacheStore } from "./db";
+import AuthGate from "./auth/AuthGate.tsx";
+import { initAuth } from "./auth/index.ts";
 import { routes } from "./router/index.tsx";
 import { ensureFileHelper } from "./stateV2/fileHelper.ts";
 import { mainStore } from "./stateV2/store.ts";
@@ -22,6 +24,7 @@ for (const evt of ["gesturestart", "gesturechange", "gestureend"]) {
 initDayjs();
 ensureFileHelper();
 initDBImagesCacheStore();
+initAuth();
 backendHealthCheck();
 
 const router = createHashRouter(routes);
@@ -29,7 +32,9 @@ const router = createHashRouter(routes);
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<Provider store={mainStore}>
-			<RouterProvider router={router} />
+			<AuthGate>
+				<RouterProvider router={router} />
+			</AuthGate>
 		</Provider>
 	</React.StrictMode>,
 );

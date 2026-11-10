@@ -37,7 +37,7 @@ const Wallet = () => {
 	const { balance, miniFund, miniFundYield, business } = useAtomValue(walletAtom);
 	const { t } = useTranslation();
 	const [editing, setEditing] = useState(false);
-	const lp = useLongPress(() => setEditing(true));
+	const lp = useLongPress(() => setEditing(true), "editBalance");
 
 	return (
 		<>

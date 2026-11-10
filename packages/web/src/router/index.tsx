@@ -1,4 +1,6 @@
 import App from "@/App";
+import AdminPage from "@/auth/AdminPage";
+import Need from "@/auth/Need";
 import Contacts from "@/pages/wechat/contacts";
 import Conversation from "@/pages/wechat/conversation";
 import Discover from "@/pages/wechat/discover";
@@ -73,13 +75,13 @@ export const routes: RouteObject[] = [
 							label: "routerLabel.wechat.cHistory",
 						},
 					},
-					{ path: "conversation/:id/ai", element: <ChatAi /> },
+					{ path: "conversation/:id/ai", element: <Need perm="chatAi"><ChatAi /></Need> },
 					{ path: "conversation/:id/info", element: <GroupInfo /> },
 					{ path: "group/new", element: <NewGroup /> },
 					{ path: "search", element: <ChatSearch /> },
-					{ path: "add-friend", element: <AddFriend /> },
-					{ path: "new-friends", element: <NewFriends /> },
-					{ path: "new-friends/:id", element: <RequestDetail /> },
+					{ path: "add-friend", element: <Need perm="addFriend"><AddFriend /></Need> },
+					{ path: "new-friends", element: <Need perm="addFriend"><NewFriends /></Need> },
+					{ path: "new-friends/:id", element: <Need perm="addFriend"><RequestDetail /></Need> },
 					{ path: "scan-pay", element: <ScanPay /> },
 					{ path: "pay-service", element: <PayService /> },
 					{ path: "pay-service/bill/:id", element: <PayBill /> },
@@ -124,21 +126,21 @@ export const routes: RouteObject[] = [
 							},
 							{
 								path: "settings/ai",
-								element: <AiIntro />,
+								element: <Need perm="chatAi"><AiIntro /></Need>,
 								handle: {
 									label: "routerLabel.wechat.settings",
 								},
 							},
 							{
 								path: "settings/ai/chat",
-								element: <AiChat />,
+								element: <Need perm="chatAi"><AiChat /></Need>,
 								handle: {
 									label: "routerLabel.wechat.settings",
 								},
 							},
 							{
 								path: "settings/ai/key",
-								element: <AiSettings />,
+								element: <Need perm="chatAi"><AiSettings /></Need>,
 								handle: {
 									label: "routerLabel.wechat.settings",
 								},
@@ -297,4 +299,5 @@ export const routes: RouteObject[] = [
 			},
 		],
 	},
+	{ path: "/admin", element: <AdminPage /> },
 ];

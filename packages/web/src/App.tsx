@@ -7,10 +7,13 @@ import RightPanel from "./components/RightPanel";
 import Screen from "./components/Screen";
 import TopPopover from "./components/TopPopover";
 import Tour from "./components/Tour";
+import { useCan } from "./auth";
 import { ANTD_LANG_MAP } from "./i18n";
 
 const App = () => {
-	const inShareMode = !!window.__SHARE_KEY__;
+	// 没有「编辑模式」权限的账号看不到电脑端的编辑面板
+	const panelsAllowed = useCan("editMode");
+	const inShareMode = !!window.__SHARE_KEY__ || !panelsAllowed;
 	const { i18n } = useTranslation();
 
 	return (

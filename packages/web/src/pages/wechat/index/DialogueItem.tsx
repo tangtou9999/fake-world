@@ -143,7 +143,7 @@ const DialogueItem = ({ itemId, className }: Props) => {
 						<button type="button" className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px]" onClick={togglePin}>
 							{isPinned ? "取消置顶" : "置顶聊天"}
 						</button>
-						{!group && inEditMode() && (
+						{!group && inEditMode("editChat") && (
 							<button type="button" className="block h-[56px] w-full border-black/10 border-t bg-white text-[17px]" onClick={() => { setSheet(false); setInfo(true); }}>
 								编辑聊天信息
 							</button>

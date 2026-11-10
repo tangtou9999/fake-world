@@ -11,7 +11,7 @@ const Total = () => {
 	const count = useAtomValue(friendsTotalCountAtom);
 	const { t } = useTranslation();
 	const [open, setOpen] = useState(false);
-	const lp = useLongPress(() => setOpen(true));
+	const lp = useLongPress(() => setOpen(true), "editChat");
 	return (
 		<canBeDetected.div
 			metaData={{

@@ -9,6 +9,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { refreshMoments } from "@/stateV2/moments/autoRoll";
 import Fallback from "../Fallback";
 import DetectedOverall from "../NodeDetected/DetectedFloating";
+import { can } from "@/auth";
 import { getModeValueSnapshot, modeAtom } from "@/stateV2/mode";
 import { mainStore } from "@/stateV2/store";
 import { showToast } from "@/wechatComponents/Toast";
@@ -73,6 +74,7 @@ const Screen = () => {
 		let taps: { t: number; x: number; y: number }[] = [];
 		let swallow = 0;
 		const onUp = (e: PointerEvent) => {
+			if (!can("editMode")) return;
 			const now = Date.now();
 			taps = taps.filter((k) => now - k.t < 650 && Math.hypot(k.x - e.clientX, k.y - e.clientY) < 40);
 			taps.push({ t: now, x: e.clientX, y: e.clientY });

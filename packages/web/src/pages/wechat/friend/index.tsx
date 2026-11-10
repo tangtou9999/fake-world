@@ -44,7 +44,7 @@ const Friend = () => {
 		.sort((a, b) => b.sendTimestamp - a.sendTimestamp)
 		.flatMap((f) => (f.content.type === "textWithImages" ? f.content.imagesInfo : []))
 		.slice(0, 4);
-	const lp = useLongPress(() => setEditing(true));
+	const lp = useLongPress(() => setEditing(true), "editChat");
 
 	if (!profile) return <></>;
 
@@ -99,7 +99,7 @@ const Friend = () => {
 					className="h-5 w-5 cursor-pointer"
 					onClick={() => navigate(-1)}
 				/>
-				<MoreFilledSVG fill="black" className="h-5 w-5 cursor-pointer" onClick={() => inEditMode() && setEditing(true)} />
+				<MoreFilledSVG fill="black" className="h-5 w-5 cursor-pointer" onClick={() => inEditMode("editChat") && setEditing(true)} />
 			</div>
 			<div className="flex flex-1 flex-col overflow-auto bg-[rgba(237,237,237,1)]">
 				<div className={twJoin("flex bg-white py-6 pl-5", !isMyself && "border-black/5 border-b")}>

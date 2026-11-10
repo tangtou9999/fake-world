@@ -1,3 +1,4 @@
+import { AUTH_ENABLED, authAtom, changePassword, logout } from "@/auth";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import { mobilePanelAtom } from "@/components/MobilePanel/atom";
 import useMode from "@/components/useMode";
@@ -20,6 +21,7 @@ const Settings = () => {
 	const cards = useAtomValue(bankCardsAtom);
 	const profile = useAtomValue(myProfileAtom);
 	const gemini = useAtomValue(geminiConfigAtom);
+	const me = useAtomValue(authAtom).me;
 	const setMobilePanel = useSetAtom(mobilePanelAtom);
 	const { setMode } = useMode();
 	useScreenTopBg("#EDEDED");
@@ -111,6 +113,43 @@ const Settings = () => {
 						AI 助手
 					</List.Item>
 				</List>
+				{AUTH_ENABLED && me && (
+					<>
+						<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">账号（{me.name || me.phone}）</div>
+						<List>
+							{me.role === "admin" && (
+								<List.Item withJump onClick={() => navigate("/admin")}>
+									总后台（开通子账号 / 权限）
+								</List.Item>
+							)}
+							<List.Item
+								withJump
+								onClick={async () => {
+									const o = window.prompt("原密码");
+									if (!o) return;
+									const n = window.prompt("新密码（6 位以上）");
+									if (!n) return;
+									try {
+										await changePassword(o, n);
+										message.success("密码已修改");
+									} catch (e) {
+										message.error(e instanceof Error ? e.message : "修改失败");
+									}
+								}}
+							>
+								修改密码
+							</List.Item>
+							<List.Item
+								withJump
+								onClick={() => {
+									if (window.confirm("退出登录？本机的剧情数据不会删除。")) logout();
+								}}
+							>
+								退出登录
+							</List.Item>
+						</List>
+					</>
+				)}
 				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">数据</div>
 				<List>
 					<List.Item

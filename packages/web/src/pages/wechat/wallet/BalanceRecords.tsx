@@ -151,7 +151,7 @@ const BalanceRecords = () => {
 	const records = useAtomValue(balanceRecordsAtom);
 	useScreenTopBg("#EDEDED");
 	const [sheet, setSheet] = useState<string | null>(null); // "" = 新增
-	const lpNew = useLongPress(() => setSheet(""));
+	const lpNew = useLongPress(() => setSheet(""), "editBalance");
 	const baseId = (k: string) => k.replace(/-(fee|wd)$/, "");
 
 	const rows = toRows(records).sort((a, b) => b.timestamp - a.timestamp);
@@ -197,8 +197,8 @@ const BalanceRecords = () => {
 									<div
 										key={row.key}
 										className="flex h-[77px] items-center border-black/10 border-b px-[22px]"
-										onContextMenu={(e) => { if (!inEditMode()) return; e.preventDefault(); setSheet(baseId(row.key)); }}
-										onTouchStart={(e) => { const t = e.currentTarget as HTMLElement & { _t?: ReturnType<typeof setTimeout> }; t._t = setTimeout(() => inEditMode() && setSheet(baseId(row.key)), 550); }}
+										onContextMenu={(e) => { if (!inEditMode("editBalance")) return; e.preventDefault(); setSheet(baseId(row.key)); }}
+										onTouchStart={(e) => { const t = e.currentTarget as HTMLElement & { _t?: ReturnType<typeof setTimeout> }; t._t = setTimeout(() => inEditMode("editBalance") && setSheet(baseId(row.key)), 550); }}
 										onTouchEnd={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
 										onTouchMove={(e) => clearTimeout((e.currentTarget as unknown as { _t?: ReturnType<typeof setTimeout> })._t)}
 									>

@@ -1,0 +1,11 @@
+{
+	"name": "@fake-world/auth",
+	"private": true,
+	"type": "module",
+	"description": "账号与权限服务（零依赖，需要 Node >= 22.5，内置 node:sqlite）",
+	"scripts": {
+		"start": "node src/server.mjs",
+		"test": "node test/smoke.mjs"
+	},
+	"engines": { "node": ">=22.5" }
+}

@@ -217,7 +217,7 @@ const MomentsLayout = () => {
 					className="flex justify-end"
 					onClick={(e) => {
 						e.stopPropagation();
-						if (inEditMode()) setPosting(true);
+						if (inEditMode("momentsAi")) setPosting(true);
 					}}
 				>
 					{barUseBlack ? (

@@ -2,6 +2,7 @@ import IncomingCall from "./IncomingCall";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { canBeDetected } from "@/components/NodeDetected";
 import TopOperations from "@/components/TopOperations";
+import { useCan } from "@/auth";
 import useMode from "@/components/useMode";
 import {
 	ConversationTypeLabel,
@@ -61,7 +62,9 @@ const ConversationList = () => {
 		const allow = new Set(mine.ids.slice(0, mine.shown));
 		return conversationList.filter((item) => allow.has(item.id));
 	}, [conversationList, live, mine]);
-	const { isEdit } = useMode();
+	const { isEdit: modeEdit } = useMode();
+	const canEditChat = useCan("editChat");
+	const isEdit = modeEdit && canEditChat;
 	const rebuildTree = useSetAtom(allNodesTreeAtom);
 
 	// 聊天里已经不存在的消息，对应的本地语音一并清掉（只要消息还在，语音就一直保存在手机里）
