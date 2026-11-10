@@ -38,7 +38,9 @@ const lineFx = (item: object) => {
 };
 import { pruneClips } from "@/utils/audioStore";
 import { mainStore } from "@/stateV2/store";
-import { slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
+import { reflow } from "@/pages/wechat/my/settings/chatOps";
+import { copyText } from "@/pages/wechat/my/settings/CopyBlock";
+import MessageSheet from "./MessageSheet";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
 import { geminiSpeak, stopSpeaking, unlockAudio, waitIdle } from "@/utils/tts";
 import { RedPacketDetail, RedPacketOpen } from "./RedPacketViews";
@@ -124,46 +126,38 @@ const ConversationList = () => {
 	};
 
 	/** 非编辑模式下点击红包 / 转账：对方发的 → 我领取；我发的 → 模拟对方领取 */
-	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean; voice?: { shown: boolean; has: boolean } } | null>(null);
+	const [menu, setMenu] = useState<{ id: string; text: string; translated: boolean; kind: string; voice?: { shown: boolean; has: boolean } } | null>(null);
 	const [busy, setBusy] = useState(false);
-	// 编辑模式下快速点两下某条消息：直接改里面的文字
-	const [quickEdit, setQuickEdit] = useState<{ id: string; text: string } | null>(null);
+	// 编辑模式下快速点两下某条消息：打开「编辑这条消息」面板
+	const [sheetId, setSheetId] = useState<string | null>(null);
 	const editTapRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const onEditTap = (item: TConversationItem) => {
 		if (!isEdit) return;
 		const now = Date.now();
 		const twice = editTapRef.current.id === item.id && now - editTapRef.current.t < 380;
 		editTapRef.current = { id: item.id, t: twice ? 0 : now };
-		if (!twice) return;
-		const r = item as unknown as Record<string, any>;
-		if (item.type === EConversationType.text) setQuickEdit({ id: item.id, text: item.textContent.map((n) => slateToPlain(n as never)).join("\n") });
-		else if (item.type === EConversationType.centerText) setQuickEdit({ id: item.id, text: String(r.simpleContent ?? "") });
-		else if (item.type === EConversationType.voice) setQuickEdit({ id: item.id, text: String(r.stt ?? "") });
+		if (twice) setSheetId(item.id);
 	};
-	const saveQuickEdit = () => {
-		if (!quickEdit) return;
-		const { id, text } = quickEdit;
-		setConversationList((prev) =>
-			prev.map((v) => {
-				if (v.id !== id) return v;
-				if (v.type === EConversationType.text) return { ...v, textContent: text.split("\n").map((line) => ({ type: "paragraph", children: textToSlateChildren(line) })) } as TConversationItem;
-				if (v.type === EConversationType.centerText) return { ...v, simpleContent: text } as TConversationItem;
-				if (v.type === EConversationType.voice) return { ...v, stt: text } as TConversationItem;
-				return v;
-			}),
-		);
-		setQuickEdit(null);
+	// 多选：长按菜单里点「多选」进入，勾选后批量删除 / 互换发送人 / 平移时间
+	const [selected, setSelected] = useState<Set<string> | null>(null);
+	const [shift, setShift] = useState({ n: "1", unit: "3600000" });
+	const batch = (fn: (list: Record<string, any>[]) => Record<string, any>[]) => {
+		setConversationList((prev) => fn(prev.map((v) => ({ ...v }))) as TConversationItem[]);
+		setSelected(null);
 	};
 	const pressTimer = useRef<ReturnType<typeof setTimeout>>();
 	const openTextMenu = (item: TConversationItem) => {
 		if (isEdit) return;
 		if (item.type === EConversationType.voice) {
-			setMenu({ id: item.id, text: "", translated: false, voice: { shown: !!item.showStt, has: !!item.stt?.trim() } });
+			setMenu({ id: item.id, text: "", kind: item.type, translated: false, voice: { shown: !!item.showStt, has: !!item.stt?.trim() } });
 			return;
 		}
-		if (item.type !== EConversationType.text) return;
+		if (item.type !== EConversationType.text) {
+			setMenu({ id: item.id, text: "", kind: item.type, translated: false });
+			return;
+		}
 		const text = item.textContent.map((n) => Node.string(n)).join("\n");
-		setMenu({ id: item.id, text, translated: !!item.translation });
+		setMenu({ id: item.id, text, kind: item.type, translated: !!item.translation });
 	};
 	const startPress = (item: TConversationItem) => {
 		clearTimeout(pressTimer.current);
@@ -359,6 +353,7 @@ const ConversationList = () => {
 								"group flex flex-col space-y-4",
 								item.role,
 								isEdit && "cursor-grab",
+								selected?.has(item.id) && "rounded bg-[#07C160]/25",
 							)}
 							key={item.id}
 							metaData={[
@@ -391,12 +386,23 @@ const ConversationList = () => {
 									onEditTap(item);
 									handleTap(item);
 								}}
+								onClickCapture={(e) => {
+									if (selected) {
+										e.stopPropagation();
+										e.preventDefault();
+										setSelected((prev) => {
+											const next = new Set(prev);
+											next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+											return next;
+										});
+									}
+								}}
 								onTouchStart={() => startPress(item)}
 								onTouchMove={stopPress}
 								onTouchEnd={stopPress}
 								onTouchCancel={stopPress}
 								onContextMenu={(e) => {
-									if ((item.type === EConversationType.text || item.type === EConversationType.voice) && !isEdit) {
+									if (!isEdit) {
 										e.preventDefault();
 										openTextMenu(item);
 									}
@@ -429,28 +435,6 @@ const ConversationList = () => {
 					onClose={() => setRp(null)}
 				/>
 			)}
-			{quickEdit && (
-				<div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/50 px-6" onClick={() => setQuickEdit(null)}>
-					<div className="w-full max-w-[340px] overflow-hidden rounded-[12px] bg-white" onClick={(e) => e.stopPropagation()}>
-						<div className="px-4 pt-4 font-medium text-[16px]">修改文字</div>
-						<textarea
-							aria-label="修改文字"
-							autoFocus
-							value={quickEdit.text}
-							onChange={(e) => setQuickEdit({ ...quickEdit, text: e.target.value })}
-							className="mx-4 mt-3 mb-4 block h-[140px] w-[calc(100%-32px)] resize-none rounded-[8px] bg-[#F5F5F5] p-3 text-[16px] leading-6 outline-none"
-						/>
-						<div className="flex h-[50px] border-black/10 border-t text-[17px]">
-							<button type="button" className="flex-1 border-black/10 border-r" onClick={() => setQuickEdit(null)}>
-								取消
-							</button>
-							<button type="button" className="flex-1 font-medium text-[#07C160]" onClick={saveQuickEdit}>
-								保存
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
 			{dlg && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-10" onClick={() => setDlg(null)}>
 					<div className="w-full max-w-[300px] overflow-hidden rounded-[12px] bg-white" onClick={(e) => e.stopPropagation()}>
@@ -478,10 +462,59 @@ const ConversationList = () => {
 				</div>
 			)}
 			<IncomingCall conversationId={conversationId} />
+			{sheetId && <MessageSheet key={sheetId} id={sheetId} conversationId={conversationId} onClose={() => setSheetId(null)} onSwitch={(nid) => setSheetId(nid)} />}
+			{selected && (
+				<div className="fixed right-0 bottom-0 left-0 z-[1000] border-black/10 border-t bg-[#F7F7F7] px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+8px)]">
+					<div className="flex items-center justify-between text-[14px]">
+						<span>已选 {selected.size} 条（点消息勾选）</span>
+						<button type="button" className="text-black/60" onClick={() => setSelected(null)}>取消</button>
+					</div>
+					<div className="mt-2 flex flex-wrap items-center gap-2 text-[14px]">
+						<button
+							type="button"
+							className="rounded-[6px] border border-[#FA5151] px-3 py-[6px] text-[#FA5151]"
+							onClick={() => {
+								if (!selected.size || !window.confirm(`删除选中的 ${selected.size} 条消息？`)) return;
+								batch((list) => list.filter((v) => !selected.has(v.id) && !(v.type === EConversationType.redPacketAcceptedReply && selected.has(v.redPacketId))));
+							}}
+						>
+							删除
+						</button>
+						<button
+							type="button"
+							className="rounded-[6px] border border-black/20 px-3 py-[6px]"
+							onClick={() => batch((list) => list.map((v) => (selected.has(v.id) ? { ...v, role: v.role === "mine" ? "friend" : "mine" } : v)))}
+						>
+							互换发送人
+						</button>
+						<input aria-label="平移数量" type="number" value={shift.n} onChange={(e) => setShift({ ...shift, n: e.target.value })} className="h-8 w-14 rounded-[6px] bg-white px-2" />
+						<select aria-label="平移单位" value={shift.unit} onChange={(e) => setShift({ ...shift, unit: e.target.value })} className="h-8 rounded-[6px] bg-white px-1">
+							<option value="60000">分钟</option>
+							<option value="3600000">小时</option>
+							<option value="86400000">天</option>
+						</select>
+						{[-1, 1].map((dir) => (
+							<button
+								key={dir}
+								type="button"
+								className="rounded-[6px] border border-black/20 px-3 py-[6px]"
+								onClick={() => {
+									const delta = dir * Number(shift.n || 0) * Number(shift.unit);
+									if (!delta) return;
+									const ids = new Set(selected);
+									batch((list) => reflow(list.map((v) => (ids.has(v.id) && v.sendTimestamp ? { ...v, sendTimestamp: Math.min(v.sendTimestamp + delta, Date.now()) } : v)), ids));
+								}}
+							>
+								{dir < 0 ? "提前" : "推后"}
+							</button>
+						))}
+					</div>
+				</div>
+			)}
 			{menu && (
 				<div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/40" onClick={() => !busy && setMenu(null)}>
 					<div className="rounded-t-[12px] bg-white pb-[env(safe-area-inset-bottom)]" onClick={(e) => e.stopPropagation()}>
-						{menu.voice ? (
+						{menu.voice && (
 							<button
 								type="button"
 								disabled={!menu.voice.has && !menu.voice.shown}
@@ -491,15 +524,46 @@ const ConversationList = () => {
 									setConversationList((prev) => prev.map((v) => (v.id === id ? ({ ...v, showStt: next } as TConversationItem) : v)));
 									setMenu(null);
 								}}
-								className="h-[54px] w-full text-[17px] disabled:opacity-40"
+								className="h-[54px] w-full border-black/5 border-b text-[17px] disabled:opacity-40"
 							>
 								{menu.voice.shown ? "收起文字" : menu.voice.has ? "转文字" : "转文字（这条没有文字内容）"}
 							</button>
-						) : (
-							<button type="button" disabled={busy} onClick={doTranslate} className="h-[54px] w-full text-[17px] disabled:opacity-50">
-								{busy ? "翻译中…" : menu.translated ? "取消翻译" : "翻译"}
-							</button>
 						)}
+						{menu.kind === EConversationType.text && (
+							<>
+								<button type="button" disabled={busy} onClick={doTranslate} className="h-[54px] w-full border-black/5 border-b text-[17px] disabled:opacity-50">
+									{busy ? "翻译中…" : menu.translated ? "取消翻译" : "翻译"}
+								</button>
+								<button
+									type="button"
+									onClick={async () => {
+										await copyText(menu.text);
+										setMenu(null);
+									}}
+									className="h-[54px] w-full border-black/5 border-b text-[17px]"
+								>
+									复制
+								</button>
+							</>
+						)}
+						<button type="button" disabled={busy} onClick={() => { setSheetId(menu.id); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
+							编辑
+						</button>
+						<button type="button" disabled={busy} onClick={() => { setSelected(new Set([menu.id])); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
+							多选
+						</button>
+						<button
+							type="button"
+							disabled={busy}
+							onClick={() => {
+								const id = menu.id;
+								setMenu(null);
+								if (window.confirm("删除这条消息？")) setConversationList((prev) => prev.filter((v) => v.id !== id && !(v.type === EConversationType.redPacketAcceptedReply && v.redPacketId === id)));
+							}}
+							className="h-[54px] w-full text-[17px] text-[#FA5151]"
+						>
+							删除
+						</button>
 						<div className="h-2 bg-[#F7F7F7]" />
 						<button type="button" disabled={busy} onClick={() => setMenu(null)} className="h-[54px] w-full text-[17px]">取消</button>
 					</div>

@@ -8,11 +8,14 @@ import { geminiConfigAtom } from "@/stateV2/gemini";
 import { myProfileAtom } from "@/stateV2/profile";
 import List from "@/wechatComponents/List";
 import { message } from "antd";
+import { exportBackup, importBackup } from "./Backup";
+import { useRef } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import BankLogo from "../../wallet/BankLogo";
 import { genderLabel, maskPhone, useFillMeProfileDefaults } from "../profileText";
 
 const Settings = () => {
+	const restoreRef = useRef<HTMLInputElement>(null);
 	const navigate = useModeNavigate();
 	const cards = useAtomValue(bankCardsAtom);
 	const profile = useAtomValue(myProfileAtom);
@@ -108,6 +111,44 @@ const Settings = () => {
 						AI 助手
 					</List.Item>
 				</List>
+				<div className="px-4 pt-3 pb-1 text-[13px] text-black/40">数据</div>
+				<List>
+					<List.Item
+						withJump
+						onClick={() => {
+							try {
+								const n = exportBackup();
+								message.success(`已导出 ${n} 项数据（不含 AI 密钥和图片视频）`);
+							} catch (e) {
+								message.error(`导出失败：${(e as Error).message}`);
+							}
+						}}
+					>
+						备份数据（导出文件）
+					</List.Item>
+					<List.Item withJump onClick={() => restoreRef.current?.click()}>
+						从备份文件恢复
+					</List.Item>
+				</List>
+				<input
+					ref={restoreRef}
+					type="file"
+					accept="application/json,.json"
+					className="hidden"
+					onChange={async (e) => {
+						const f = e.target.files?.[0];
+						e.target.value = "";
+						if (!f) return;
+						if (!window.confirm("恢复会覆盖这台手机上同名的数据，确定继续？")) return;
+						try {
+							const n = await importBackup(f);
+							message.success(`已恢复 ${n} 项，正在刷新`);
+							window.setTimeout(() => window.location.reload(), 800);
+						} catch (err) {
+							message.error(`恢复失败：${(err as Error).message}`);
+						}
+					}}
+				/>
 				<List className="mt-2">
 					<List.Item
 						withJump

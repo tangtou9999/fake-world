@@ -77,6 +77,30 @@ export const describeOp = (conversationId: string, o: ChatOp) => {
 	}
 };
 
+/** 按时间稳定排序，并重算改动位置（及其后一条）的时间标签：相隔 5 分钟以上显示，今天/昨天/星期自动判断 */
+export const reflow = (input: Record<string, any>[], touched: Set<string>) => {
+	let list = input;
+	// 按时间稳定排序（没有时间的保持原位）
+	const keyed = list.map((v, i) => ({ v, i, t: v.sendTimestamp ?? 0 }));
+	if (keyed.some((k, i) => i > 0 && k.t && keyed[i - 1].t && k.t < keyed[i - 1].t)) {
+		keyed.sort((a, b) => (a.t && b.t ? a.t - b.t : a.i - b.i));
+		list = keyed.map((k) => k.v);
+	}
+	// 时间标签：改过的位置及其后一条重新算（相隔 5 分钟以上显示，今天/昨天/星期自动判断）
+	const after = new Set<string>();
+	list.forEach((v, i) => {
+		if (touched.has(v.id) && list[i + 1]) after.add(list[i + 1].id);
+	});
+	list.forEach((v, i) => {
+		if (!v.sendTimestamp) return;
+		const prevTs = list[i - 1]?.sendTimestamp ?? 0;
+		const needed = !prevTs || v.sendTimestamp - prevTs >= 5 * 60_000;
+		if (touched.has(v.id) || after.has(v.id)) v.upperText = needed ? formatWechatTime(v.sendTimestamp) : undefined;
+		else if (needed && !v.upperText) v.upperText = formatWechatTime(v.sendTimestamp);
+	});
+	return list;
+};
+
 /** 执行修改；返回结果说明。改完按时间重新排序，并重算受影响消息的时间标签 */
 export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 	let deleted = 0;
@@ -123,24 +147,7 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 				edited++;
 			} else edited++;
 		}
-		// 按时间稳定排序（没有时间的保持原位）
-		const keyed = list.map((v, i) => ({ v, i, t: v.sendTimestamp ?? 0 }));
-		if (keyed.some((k, i) => i > 0 && k.t && keyed[i - 1].t && k.t < keyed[i - 1].t)) {
-			keyed.sort((a, b) => (a.t && b.t ? a.t - b.t : a.i - b.i));
-			list = keyed.map((k) => k.v);
-		}
-		// 时间标签：改过的位置及其后一条重新算（相隔 5 分钟以上显示，今天/昨天/星期自动判断）
-		const after = new Set<string>();
-		list.forEach((v, i) => {
-			if (touched.has(v.id) && list[i + 1]) after.add(list[i + 1].id);
-		});
-		list.forEach((v, i) => {
-			if (!v.sendTimestamp) return;
-			const prevTs = list[i - 1]?.sendTimestamp ?? 0;
-			const needed = !prevTs || v.sendTimestamp - prevTs >= 5 * 60_000;
-			if (touched.has(v.id) || after.has(v.id)) v.upperText = needed ? formatWechatTime(v.sendTimestamp) : undefined;
-			else if (needed && !v.upperText) v.upperText = formatWechatTime(v.sendTimestamp);
-		});
+		list = reflow(list, touched);
 		return list as TConversationItem[];
 	});
 	return `已执行：删除 ${deleted} 条、修改 ${edited} 处${missing ? `，有 ${missing} 个 id 找不到（已跳过）` : ""}`;
