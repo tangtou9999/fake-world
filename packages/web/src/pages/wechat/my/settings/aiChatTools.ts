@@ -12,7 +12,7 @@ import { parseJsonLoose } from "@/utils/gemini";
 import dayjs from "dayjs";
 import { parseAt } from "@/utils/parseAt";
 import { SCREEN_EDIT_RULES } from "./screenOps";
-import { PERSONA_KEYS, type PersonaCard, peekPersona, writePersona } from "@/pages/wechat/conversation/persona";
+import { EMPTY_PERSONA, PERSONA_KEYS, type PersonaCard, alignPersonaAge, peekPersona, writePersona } from "@/pages/wechat/conversation/persona";
 
 export type Contact = { id: string; name: string; tokens: string[] };
 
@@ -262,6 +262,7 @@ const PERSONA_LABEL: Record<keyof PersonaCard, string> = {
 	story: "背景",
 	scene: "场景",
 	plot: "临时剧情",
+	rules: "对话规则",
 };
 
 export type PersonaPatch = Partial<PersonaCard>;
@@ -275,7 +276,13 @@ export const personaPatchFrom = (raw: Record<string, unknown>): PersonaPatch | n
 		if (raw[key] === undefined || raw[key] === null) continue;
 		patch[key] = String(raw[key]);
 	}
-	return Object.keys(patch).length ? patch : null;
+	if (!Object.keys(patch).length) return null;
+	const aligned = alignPersonaAge({ ...EMPTY_PERSONA, ...patch });
+	for (const key of PERSONA_KEYS) {
+		if (patch[key] !== undefined) patch[key] = aligned[key];
+	}
+	if (patch.age === undefined && aligned.age) patch.age = aligned.age;
+	return patch;
 };
 
 export const previewSetPersona = (name: string, contactId: string | undefined, patch: PersonaPatch) => {

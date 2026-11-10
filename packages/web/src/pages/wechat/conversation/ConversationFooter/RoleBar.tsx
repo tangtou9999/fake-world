@@ -20,14 +20,15 @@ import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { useNavigate } from "react-router-dom";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import dayjs from "dayjs";
-import { useAtom, useAtomValue } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { nanoid } from "nanoid";
 import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
 import LongShot from "../LongShot";
 import { armReplay } from "../replay";
-import { standInAtom } from "../standIn";
+import { personaEditorAtom } from "../persona";
+import { standInAtom, writeStandIn } from "../standIn";
 import VideoSheet from "./VideoSheet";
 import VoiceSheet from "./VoiceSheet";
 
@@ -58,7 +59,8 @@ const RoleBar = () => {
 	const [rangeFrom, setRangeFrom] = useState("");
 	const [rangeTo, setRangeTo] = useState("");
 	const [rangeText, setRangeText] = useState("");
-	const [standIn, setStandIn] = useAtom(standInAtom);
+	const standIn = useAtomValue(standInAtom);
+	const setPersonaOpen = useSetAtom(personaEditorAtom);
 	if (!isEdit || conversationId === FILE_HELPER_ID) return null;
 
 	const roleBtn = (role: TConversationRole, label: string) => (
@@ -238,14 +240,19 @@ const RoleBar = () => {
 					回放
 				</button>
 				{!isGroupId(conversationId) && (
-					<button
-						type="button"
-						aria-pressed={!!standIn[conversationId]}
-						onClick={() => setStandIn((v) => ({ ...v, [conversationId]: !v[conversationId] }))}
-						className={`h-7 rounded-full px-3 text-[14px] ${standIn[conversationId] ? "bg-[#07C160] text-white" : "bg-[#07C160]/10 text-[#07C160]"}`}
-					>
-						AI代回
-					</button>
+					<>
+						<button type="button" onClick={() => setPersonaOpen(true)} className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]">
+							人设
+						</button>
+						<button
+							type="button"
+							aria-pressed={!!standIn[conversationId]}
+							onClick={() => writeStandIn(conversationId, !standIn[conversationId])}
+							className={`h-7 rounded-full px-3 text-[14px] ${standIn[conversationId] ? "bg-[#07C160] text-white" : "bg-[#07C160]/10 text-[#07C160]"}`}
+						>
+							AI代回
+						</button>
+					</>
 				)}
 			</div>
 			{videoOpen && <VideoSheet conversationId={conversationId} onClose={() => setVideoOpen(false)} />}
