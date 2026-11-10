@@ -11,6 +11,7 @@ import { parseJsonLoose } from "@/utils/gemini";
 import { parseAt } from "@/utils/parseAt";
 import dayjs from "dayjs";
 import { nanoid } from "nanoid";
+import { armReplay } from "@/pages/wechat/conversation/replay";
 import { applyAction, listContacts, resolveTarget } from "./aiChatTools";
 import { shiftTimes } from "./chatOps";
 
@@ -21,7 +22,8 @@ export type PlanStep =
 	| { do: "profile"; target: string; remark?: string; nickname?: string; signature?: string; area?: string; description?: string }
 	| { do: "friend"; nickname: string; avatar?: string; greeting?: string; items?: ParsedItem[]; moment?: string }
 	| { do: "shot"; target: string; query?: string; from?: string; to?: string }
-	| { do: "timeline"; target: string; days?: number; hours?: number; minutes?: number; evening?: boolean };
+	| { do: "timeline"; target: string; days?: number; hours?: number; minutes?: number; evening?: boolean }
+	| { do: "replay"; target: string; query?: string; from?: string; to?: string };
 
 const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -52,6 +54,8 @@ export const parsePlan = (raw: string): { text: string; plan?: { steps: PlanStep
 				steps.push({ do: "shot", target, query: s.query ? String(s.query) : undefined, from: s.from ? String(s.from) : undefined, to: s.to ? String(s.to) : undefined });
 			} else if (s.do === "timeline" && target && (s.evening === true || num(s.days) || num(s.hours) || num(s.minutes))) {
 				steps.push({ do: "timeline", target, days: num(s.days), hours: num(s.hours), minutes: num(s.minutes), evening: s.evening === true });
+			} else if (s.do === "replay" && target) {
+				steps.push({ do: "replay", target, query: s.query ? String(s.query) : undefined, from: s.from ? String(s.from) : undefined, to: s.to ? String(s.to) : undefined });
 			}
 		}
 		if (!steps.length) return { text: `${text}\n\n（AI 附上的操作里没有可执行的内容，什么都没改。）` };
@@ -111,6 +115,11 @@ export const describeStep = (step: PlanStep) => {
 			].filter(Boolean);
 			return `「${who(step.target)}」整段时间线：${bits.join("，") || "调整"}。顺序不变，收款记录一起移动`;
 		}
+		case "replay": {
+			const id = resolveTarget(step.target, listContacts())?.id;
+			const n = id ? locateMessages(id, step).length : 0;
+			return `回放「${who(step.target)}」${step.query ? `里和「${step.query}」有关的` : step.from ? ` ${step.from} ~ ${step.to ?? ""}` : ""}这一段${n ? `，约 ${n} 条` : ""}。到聊天里确认首尾，不会改记录`;
+		}
 	}
 };
 
@@ -137,6 +146,7 @@ const needId = (target: string) => {
 export const applyPlan = async (steps: PlanStep[]) => {
 	const lines: string[] = [];
 	let shot = "";
+	let goto = "";
 	for (const step of steps) {
 		if (step.do === "chat") {
 			const id = needId(step.target);
@@ -190,7 +200,14 @@ export const applyPlan = async (steps: PlanStep[]) => {
 			if (!ids.length) throw new Error(`「${step.target}」里没有对得上的消息`);
 			shot = await exportConversationPng(id, ids);
 			lines.push(`已生成「${who(step.target)}」的长图，共 ${ids.length} 条`);
+		} else if (step.do === "replay") {
+			const id = needId(step.target);
+			const ids = locateMessages(id, step);
+			if (!ids.length) throw new Error(`「${step.target}」里没有对得上的消息`);
+			armReplay(id, ids);
+			goto = id;
+			lines.push(`已标出「${who(step.target)}」的 ${ids.length} 条，到聊天里确认后再播放`);
 		}
 	}
-	return { summary: lines.join("；"), shot };
+	return { summary: lines.join("；"), shot, goto };
 };

@@ -16,13 +16,14 @@ import {
 import { EMetaDataType, type StaticMetaData, allNodesTreeAtom } from "@/stateV2/detectedNode";
 import { SubnodeOutlined } from "@ant-design/icons";
 import { Modal, Tooltip } from "antd";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Node } from "slate";
 import { translateText } from "../ConversationFooter/importScreenshots";
 import { ReactSortable } from "react-sortablejs";
 import { twJoin } from "tailwind-merge";
 import { useConversationAPI } from "../context";
+import { replayAtom, retarget } from "../replay";
 import ConversationItem from "./ConversationItem";
 import { getGeminiConfig, normPace, normScene, resolveProfile } from "@/stateV2/gemini";
 
@@ -51,6 +52,15 @@ import { applyAutoReturn } from "@/stateV2/conversation/records";
 const ConversationList = () => {
 	const { listRef, conversationId } = useConversationAPI();
 	const [conversationList, setConversationList] = useAtom(conversationListAtom(conversationId));
+	const replay = useAtomValue(replayAtom);
+	const setReplay = useSetAtom(replayAtom);
+	const mine = replay?.conversationId === conversationId ? replay : null;
+	const live = !!mine && mine.phase !== "setup";
+	const shownList = useMemo(() => {
+		if (!live || !mine) return conversationList;
+		const allow = new Set(mine.ids.slice(0, mine.shown));
+		return conversationList.filter((item) => allow.has(item.id));
+	}, [conversationList, live, mine]);
 	const { isEdit } = useMode();
 	const rebuildTree = useSetAtom(allNodesTreeAtom);
 
@@ -71,10 +81,10 @@ const ConversationList = () => {
 	}, [conversationId, conversationList, setConversationList]);
 
 	const mappedSortableListData = useMemo(() => {
-		return conversationList.map((item) => ({
+		return shownList.map((item) => ({
 			id: item.id,
 		}));
-	}, [conversationList]);
+	}, [shownList]);
 
 	const handleOperationDelete = (id: TConversationItem["id"]) => {
 		Modal.confirm({
@@ -300,7 +310,7 @@ const ConversationList = () => {
 			id="conversation-list"
 		>
 			<ReactSortable
-				disabled={!isEdit}
+				disabled={!isEdit || !!mine}
 				list={mappedSortableListData}
 				animation={400}
 				setList={(v, sortable) => {
@@ -316,7 +326,7 @@ const ConversationList = () => {
 					rebuildTree();
 				}}
 			>
-				{conversationList.map((item) => {
+				{shownList.map((item) => {
 					const operations: StaticMetaData.InjectMetaData["operations"] = [
 						{
 							onClick: handleOperationDelete.bind(null, item.id),
@@ -354,8 +364,10 @@ const ConversationList = () => {
 							className={twJoin(
 								"group flex flex-col space-y-4",
 								item.role,
-								isEdit && "cursor-grab",
+								isEdit && !mine && "cursor-grab",
 								selected?.has(item.id) && "rounded bg-[#07C160]/25",
+								mine?.phase === "setup" && mine.ids.includes(item.id) && "rounded-lg ring-2 ring-[#07C160]",
+								mine?.phase === "setup" && !mine.ids.includes(item.id) && "opacity-40",
 							)}
 							key={item.id}
 							metaData={[
@@ -382,9 +394,16 @@ const ConversationList = () => {
 							nodeTreeSort
 							data-conversation-id={item.id}
 						>
+							{mine?.phase === "setup" && item.id === mine.ids[0] && <div className="text-center text-[12px] text-[#07C160]">起点</div>}
+							{mine?.phase === "setup" && item.id === mine.ids[mine.ids.length - 1] && item.id !== mine.ids[0] && <div className="text-center text-[12px] text-[#07C160]">终点</div>}
 							<div
 								className="contents"
 								onClick={() => {
+									if (mine?.phase === "setup") {
+										const order = conversationList.map((m) => m.id);
+										setReplay((r) => (r ? { ...r, ids: retarget(r, item.id, order), pick: r.pick === "start" ? "end" : "start" } : r));
+										return;
+									}
 									onEditTap(item);
 									handleTap(item);
 								}}

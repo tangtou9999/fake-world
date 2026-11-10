@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import ConversationFooter from "./ConversationFooter";
 import ConversationHeader from "./ConversationHeader";
 import ConversationList from "./ConversationList";
+import ReplayLayer from "./ReplayLayer";
 import { ConversationAPIProvider } from "./context";
 
 const Conversation = () => {
@@ -26,6 +27,7 @@ const Conversation = () => {
 			<ConversationHeader />
 			<ConversationList />
 			<ConversationFooter />
+			<ReplayLayer />
 		</ConversationAPIProvider>
 	);
 };

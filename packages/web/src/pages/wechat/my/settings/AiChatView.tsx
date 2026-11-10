@@ -23,7 +23,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { NavBar } from "../../addFriend/Shared";
 import { type Level, applyAction, buildSystem, findMentioned, listContacts, parseAction, parseVoiceMake, resolveTarget } from "./aiChatTools";
-import { applyPlan, describeStep, parsePlan } from "./aiPlan";
+import { armReplay } from "@/pages/wechat/conversation/replay";
+import { applyPlan, describeStep, locateMessages, parsePlan } from "./aiPlan";
 
 type Props = { mode: "private" | "chat"; conversationId?: string };
 
@@ -728,8 +729,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 			<div className="min-h-0 flex-1 overflow-auto px-3 pb-3">
 				<div className="mx-auto mb-3 max-w-[92%] text-center text-[12px] text-black/40 leading-5">
 					{isChat
-						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。对话只保存在这台手机上，每个聊天各有各的 AI。"
-						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。对话只保存在这台手机上。"}
+						? "这是这个聊天专属的 AI：能读取这个聊天的全部记录，并直接修改它（包括改之前某一段）。说一段聊天，会标出范围让你确认后再回放，不会因此改记录。对话只保存在这台手机上，每个聊天各有各的 AI。"
+						: "私人 AI：可以连续发消息，停约 2 秒后合并回复，并分成几条短消息。正在回复时再发一条会打断当前回复。要改聊天、朋友圈或余额时，会先给出变更预览，点确认才写入。说要回放哪一段，会到聊天里标出范围再播。对话只保存在这台手机上。"}
 				</div>
 				{!(gemini.apiKey || gemini.apiKey2) && (
 					<button type="button" onClick={() => navigate("/wechat/my/settings/ai/key")} className="mx-auto mb-3 block h-10 rounded-[6px] bg-[#07C160] px-6 text-[15px] text-white">
@@ -877,18 +878,33 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											if (!o) return;
 											const cid = o.targetId || resolveTarget(o.target, listContacts(), conversationId)?.id;
 											if (!cid) return window.alert(`找不到联系人「${o.target}」`);
+											const replayOnly = o.ops.every((x) => x.op === "replay");
+											const replay = o.ops.find((x) => x.op === "replay");
+											const openReplay = () => {
+												if (!replay || replay.op !== "replay") return;
+												const ids = locateMessages(cid, replay);
+												if (!ids.length) return window.alert("没有对得上的消息");
+												armReplay(cid, ids);
+												navigate(`/wechat/conversation/${cid}`);
+											};
+											if (replayOnly) {
+												openReplay();
+												updateMessages((all) => all.map((x) => (x.id === m.id && x.ops ? { ...x, ops: { ...x.ops, applied: "已在聊天里标出范围" } } : x)));
+												return;
+											}
 											const res = applyOps(cid, o.ops);
 											updateMessages((all) => all.map((x) => (x.id === m.id && x.ops ? { ...x, ops: { ...x.ops, applied: res } } : x)));
+											openReplay();
 										}}
 									>
-										应用修改
+										{m.ops.ops.every((x) => x.op === "replay") ? "去聊天确认" : "应用修改"}
 									</button>
 								)}
 							</div>
 						)}
 						{m.plan && (
 							<div className="mt-2 w-[88%] rounded-[8px] bg-white p-3">
-								<div className="font-medium text-[14px]">变更预览（点确认后才写入）</div>
+								<div className="font-medium text-[14px]">{m.plan.steps.every((s) => s.do === "replay") ? "回放范围（不会改聊天记录）" : "变更预览（点确认后才写入）"}</div>
 								<div className="mt-2 max-h-[180px] space-y-1 overflow-auto rounded-[6px] bg-[#F5F5F5] p-2 text-[13px] leading-5">
 									{m.plan.steps.map((step, i) => (
 										<div key={i}>{describeStep(step)}</div>
@@ -906,14 +922,17 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 											if (!plan || plan.applied) return;
 											updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "正在写入…" } } : x)));
 											void applyPlan(plan.steps)
-												.then((res) => updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x))))
+												.then((res) => {
+													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: res.summary, shot: res.shot || x.plan.shot } } : x)));
+													if (res.goto) navigate(`/wechat/conversation/${res.goto}`);
+												})
 												.catch((e) => {
 													updateMessages((all) => all.map((x) => (x.id === m.id && x.plan ? { ...x, plan: { ...x.plan, applied: "" } } : x)));
 													window.alert(e instanceof Error ? e.message : String(e));
 												});
 										}}
 									>
-										确认执行
+										{m.plan.steps.every((s) => s.do === "replay") ? "去聊天确认" : "确认执行"}
 									</button>
 								)}
 							</div>

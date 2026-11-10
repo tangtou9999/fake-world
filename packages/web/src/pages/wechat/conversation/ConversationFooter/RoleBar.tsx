@@ -7,6 +7,7 @@ import {
 	type TConversationItem,
 	type TConversationRole,
 	fromLastGenerateUpperText,
+	getConversationListValueSnapshot,
 	inputterConfigAtom,
 	setConversationListValue,
 } from "@/stateV2/conversation";
@@ -25,6 +26,7 @@ import { useState } from "react";
 import useMode from "@/components/useMode";
 import { useConversationAPI } from "../context";
 import LongShot from "../LongShot";
+import { armReplay } from "../replay";
 import { standInAtom } from "../standIn";
 import VideoSheet from "./VideoSheet";
 import VoiceSheet from "./VoiceSheet";
@@ -228,6 +230,13 @@ const RoleBar = () => {
 					批量
 				</button>
 				<LongShot />
+				<button
+					type="button"
+					onClick={() => armReplay(conversationId, getConversationListValueSnapshot(conversationId).map((m) => m.id))}
+					className="h-7 rounded-full bg-[#07C160]/10 px-3 text-[14px] text-[#07C160]"
+				>
+					回放
+				</button>
 				{!isGroupId(conversationId) && (
 					<button
 						type="button"

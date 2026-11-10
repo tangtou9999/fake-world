@@ -9,7 +9,8 @@ export type ChatOp =
 	| { op: "delete"; ids: string[] }
 	| { op: "setTime"; id: string; at: string }
 	| { op: "edit"; id: string; text?: string; amount?: string; note?: string; status?: string; seconds?: number; at?: string; scene?: string; pace?: string; tone?: string; read?: boolean }
-	| { op: "shift"; days?: number; hours?: number; minutes?: number; evening?: boolean; ids?: string[] };
+	| { op: "shift"; days?: number; hours?: number; minutes?: number; evening?: boolean; ids?: string[] }
+	| { op: "replay"; query?: string; from?: string; to?: string };
 
 export type OpsAction = { target: string; targetId?: string; ops: ChatOp[]; applied?: string };
 
@@ -37,6 +38,8 @@ export const parseOps = (raw: string): { text: string; ops?: OpsAction } => {
 				const hours = num(o.hours);
 				const minutes = num(o.minutes);
 				if (evening || days || hours || minutes) ops.push({ op: "shift", days, hours, minutes, evening, ...(ids.length ? { ids } : {}) });
+			} else if (o?.op === "replay") {
+				ops.push({ op: "replay", query: o.query ? String(o.query) : undefined, from: o.from ? String(o.from) : undefined, to: o.to ? String(o.to) : undefined });
 			}
 		}
 		if (!ops.length) return { text: `${text}\n\n（AI 附上的修改指令里没有可执行的内容，请让它重新输出）` };
@@ -92,6 +95,8 @@ export const describeOp = (conversationId: string, o: ChatOp) => {
 			].filter(Boolean);
 			return `时间线：${bits.join("，") || "调整时间"}${o.ids?.length ? `（${o.ids.length} 条）` : "（整段一起移动，收款记录也跟着走）"}`;
 		}
+		case "replay":
+			return `回放${o.query ? `「${o.query}」` : o.from ? ` ${o.from} ~ ${o.to ?? ""}` : "这一段"}。到聊天里确认首尾后再播，不改记录`;
 		default: {
 			const f = [o.text !== undefined && `内容「${o.text.slice(0, 20)}」`, o.amount && `金额 ¥${o.amount}`, o.note !== undefined && `备注「${o.note}」`, o.status && `状态 ${o.status}`, o.seconds && `${o.seconds} 秒`, o.scene && `场景 ${o.scene}`, o.pace && `语速 ${o.pace}`, o.at && `时间 ${o.at}`].filter(Boolean).join("，");
 			return `修改 ${f}：${describeId(conversationId, o.id)}`;
@@ -172,6 +177,7 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 				edited++;
 				continue;
 			}
+			if (o.op === "replay") continue;
 			if (o.op === "delete") {
 				// 收款记录和发起那条各自独立，删一条不连带另一条
 				for (const id of o.ids) {

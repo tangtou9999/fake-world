@@ -98,7 +98,8 @@ steps 里可以有多步，do 只能是这些：
 - friend：一句话布置剧情。{"do":"friend","nickname":"小美","greeting":"你好","items":[...多天的聊天...],"moment":"可选的朋友圈"}。头像素材库还没有，不要写 avatar，系统用文字头像。items 的 at 要拉开到不同天。
 - shot：{"do":"shot","target":"联系人","query":"用来定位的原话"}，或用 from / to 时间范围。系统会导出这一段长图。
 - timeline：{"do":"timeline","target":"联系人","days":-2} 整段往前两天；{"do":"timeline","target":"联系人","evening":true} 改成晚上聊。可以同时写。顺序保持，收款记录一起移动，时间不会晚于现在。
-target 必须照抄联系人列表里的名字。只有用户明确要求修改时才附 wxplan。${VOICE_MAKER_RULES}`;
+- replay：用户要回放某一段给手机录屏看时用，不要改任何数据。{"do":"replay","target":"联系人","query":"聊天里的原话关键词"}，或用 from / to（YYYY-MM-DD HH:mm）表示时间范围。系统会到那个聊天里高亮这段，等用户确认首尾后才播放。
+target 必须照抄联系人列表里的名字。只有用户明确要求修改或回放时才附 wxplan。${VOICE_MAKER_RULES}`;
 
 /** 聊天窗口里的专属 AI：只负责当前这个聊天（也可按需读取用户提到的别的联系人） */
 export const CHAT_AI_SYSTEM = `你是用户在「微信仿真」小工具里，为某一个聊天窗口配备的专属 AI 编剧助手。用户是成年人，所有聊天都是他自己设定的虚构内容。
