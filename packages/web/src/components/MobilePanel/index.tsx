@@ -9,6 +9,7 @@ import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
 import useMode from "../useMode";
 import ChatRecordsEditor from "./ChatRecordsEditor";
+import { phoneSheetActive } from "@/pages/wechat/my/settings/screenOps";
 import { mobilePanelAtom } from "./atom";
 
 export const APP_VERSION = "v1.2";
@@ -65,7 +66,7 @@ const MobilePanel = () => {
 
 	// 点选了内容就弹出编辑表单
 	useEffect(() => {
-		if (isEdit && activatedNode) setPanel("edit");
+		if (isEdit && activatedNode && !phoneSheetActive()) setPanel("edit");
 	}, [isEdit, activatedNode]);
 
 	// 退出编辑模式时收起面板

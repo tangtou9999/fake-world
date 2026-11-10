@@ -9,6 +9,8 @@ import { setProfileValue } from "@/stateV2/profile";
 import { usePrevious } from "ahooks";
 import { useSetAtom } from "jotai";
 import { keys } from "lodash-es";
+import { CoverSheet, useCompactPhone } from "@/components/ScreenSheets";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { twJoin } from "tailwind-merge";
 import { useProfile } from "./hook";
@@ -19,10 +21,16 @@ const CoverOperations = () => {
 	const { t } = useTranslation();
 	const setMode = useSetAtom(modeAtom);
 	const setActivatedNode = useSetAtom(activatedNodeAtom);
+	const compact = useCompactPhone();
+	const [coverOpen, setCoverOpen] = useState(false);
 
 	const isMySelf = id === MYSELF_ID;
 
 	const handleChangeCover = () => {
+		if (compact) {
+			setCoverOpen(true);
+			return;
+		}
 		setMode("edit");
 		const nodesAtoms = getNodesAtomsValueSnapshot();
 		setActivatedNode(keys(nodesAtoms)[0]);
@@ -67,6 +75,7 @@ const CoverOperations = () => {
 					<span className="text-sm text-white">{t("wechatPage.moments.like")}</span>
 				</>
 			)}
+			{coverOpen && <CoverSheet id={id} onClose={() => setCoverOpen(false)} />}
 		</div>
 	);
 };

@@ -1,7 +1,8 @@
 import { h } from "@/components/HashAssets";
 import { hashAssetsDB } from "@/db";
 import { dialogueListAtom, setDialogueListValue } from "@/stateV2/dialogueList";
-import { profileAtom, setProfileValue } from "@/stateV2/profile";
+import { patchProfile } from "@/pages/wechat/my/settings/screenOps";
+import { profileAtom } from "@/stateV2/profile";
 import { setConversationListValue } from "@/stateV2/conversation";
 import { unreadCountAtom } from "@/stateV2/unreadCount";
 import { mainStore } from "@/stateV2/store";
@@ -52,14 +53,13 @@ const ChatInfoSheet = ({ friendId, onClose }: { friendId: string; onClose: () =>
 
 	const save = () => {
 		if (profile)
-			setProfileValue(friendId, (v) => ({
-				...v,
-				nickname: d.nickname.trim() || v.nickname,
-				remark: d.remark.trim() || undefined,
-				avatarInfo: d.avatar || v.avatarInfo,
-				wechat: d.wechat.trim() || v.wechat,
-				tickleText: d.tickle.trim() || undefined,
-			}));
+			patchProfile(friendId, {
+				nickname: d.nickname.trim() || undefined,
+				remark: d.remark.trim() || null,
+				avatarInfo: d.avatar || undefined,
+				wechat: d.wechat.trim() || undefined,
+				tickleText: d.tickle.trim() || null,
+			});
 		if (dlg)
 			setDialogueListValue((prev) =>
 				prev.map((v) =>

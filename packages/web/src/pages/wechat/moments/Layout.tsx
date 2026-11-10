@@ -1,4 +1,6 @@
 import { inEditMode } from "@/components/SheetKit";
+import { CoverSheet, PhoneEditHit, useCompactPhone } from "@/components/ScreenSheets";
+import useMode from "@/components/useMode";
 import FeedSheet from "./FeedSheet";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import CameraFilledSVG from "@/assets/camera-filled.svg?react";
@@ -62,7 +64,10 @@ const MomentsLayout = () => {
 	const navigate = useModeNavigate();
 	const [posting, setPosting] = useState(false);
 	const { hide } = useAtomValue(statusBarConfigAtom);
-	const { momentsBackgroundInfo } = useProfile();
+	const { id, momentsBackgroundInfo } = useProfile();
+	const compact = useCompactPhone();
+	const { isEdit } = useMode();
+	const [coverOpen, setCoverOpen] = useState(false);
 	const setStatusBarMountNode = useSetAtom(statusBarMountNodeAtom);
 	const scroll = useScroll(divWrapperRef);
 	const { getScrollDataAndSave } = useMemoScrollPos(DATA_WHEEL_ID, divWrapperRef);
@@ -229,7 +234,7 @@ const MomentsLayout = () => {
 			>
 				<canBeDetected.div
 					className={twJoin(
-						"cursor-pointer transition-all duration-300",
+						"relative cursor-pointer transition-all duration-300",
 						bgExpand ? "h-5/6" : "h-72",
 					)}
 					metaData={{
@@ -241,6 +246,7 @@ const MomentsLayout = () => {
 					}}
 				>
 					{momentsBackgroundElement}
+					{compact && isEdit && <PhoneEditHit label="编辑朋友圈封面" onOpen={() => setCoverOpen(true)} />}
 				</canBeDetected.div>
 				<div className="relative flex flex-col">
 					<SwitchTransition>
@@ -261,6 +267,7 @@ const MomentsLayout = () => {
 				</div>
 			</div>
 			<MomentsCommentBar />
+			{coverOpen && <CoverSheet id={id} onClose={() => setCoverOpen(false)} />}
 		</>
 	);
 };

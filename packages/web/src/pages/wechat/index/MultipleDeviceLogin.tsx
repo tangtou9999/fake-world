@@ -4,18 +4,24 @@ import DisplayOutlinedSVG from "@/assets/display-outlined.svg?react";
 import IMacOutlinedSVG from "@/assets/imac-outlined.svg?react";
 import PadOutlined from "@/assets/pad-outlined.svg?react";
 import { canBeDetected } from "@/components/NodeDetected";
+import { DeviceSheet, PhoneEditHit, useCompactPhone } from "@/components/ScreenSheets";
+import useMode from "@/components/useMode";
 import { EMetaDataType } from "@/stateV2/detectedNode";
 import { type ALL_LOGIN_DEVICES, multipleDeviceLoginAtom } from "@/stateV2/multipleDeviceLogin";
 import { useAtomValue } from "jotai";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { twJoin } from "tailwind-merge";
 
 const MultipleDeviceLogin = () => {
 	const { visible, devices } = useAtomValue(multipleDeviceLoginAtom);
 	const { t } = useTranslation();
+	const { isEdit } = useMode();
+	const compact = useCompactPhone();
+	const [open, setOpen] = useState(false);
 
 	const show = visible && devices.length > 0;
+	const phoneEdit = compact && isEdit;
 
 	const DEVICE_RENDER_CONFIG: Record<
 		(typeof ALL_LOGIN_DEVICES)[number],
@@ -60,8 +66,9 @@ const MultipleDeviceLogin = () => {
 	return (
 		<canBeDetected.div
 			className={twJoin(
-				"flex h-11 items-center border-black/10 border-b bg-[#EDEDED] px-4 text-[14px]",
-				show ? "visible" : "hidden",
+				"relative flex h-11 items-center border-black/10 border-b bg-[#EDEDED] px-4 text-[14px]",
+				show || phoneEdit ? "visible" : "hidden",
+				!show && phoneEdit && "opacity-60",
 			)}
 			metaData={{
 				type: EMetaDataType.MultipleDeviceLogin,
@@ -77,9 +84,13 @@ const MultipleDeviceLogin = () => {
 						})}
 					</span>
 				</>
-			) : (
+			) : show ? (
 				renderDevice()
+			) : (
+				<span className="text-black/45">多设备登录未显示，点此编辑</span>
 			)}
+			{phoneEdit && <PhoneEditHit label="编辑多设备登录" onOpen={() => setOpen(true)} />}
+			{open && <DeviceSheet onClose={() => setOpen(false)} />}
 		</canBeDetected.div>
 	);
 };
