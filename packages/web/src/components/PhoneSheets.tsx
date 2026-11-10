@@ -7,6 +7,7 @@ import {
 	type IStateProfile,
 	friendsTotalCountAtom,
 	friendsTotalCountDisplayConfigAtom,
+	getAllProfilesValueSnapshot,
 	getFriendsTotalCountDisplayConfigValueSnapshot,
 	getProfileValueSnapshot,
 	setAllProfilesValue,
@@ -173,7 +174,13 @@ export const TxSheet = ({ type, onClose }: { type: TTransactionType; onClose: ()
 			<Row label="支付方式"><input className={inputCls} value={String(d.payentMethod ?? "")} onChange={(e) => set("payentMethod", e.target.value)} /></Row>
 			<Row label="交易单号"><input className={inputCls} value={String(d.code ?? "")} onChange={(e) => set("code", e.target.value)} /></Row>
 			{type === "transfer" || type === "red-packet" ? (
-				<Row label="对方好友ID"><input className={inputCls} value={String(d.toFriendId ?? "")} onChange={(e) => set("toFriendId", e.target.value)} /></Row>
+				<Row label="对方好友">
+					<select className={inputCls} value={String(d.toFriendId ?? "")} onChange={(e) => set("toFriendId", e.target.value)}>
+						{getAllProfilesValueSnapshot().map((p) => (
+							<option key={p.id} value={p.id}>{p.remark || p.nickname}</option>
+						))}
+					</select>
+				</Row>
 			) : null}
 			{extras.map(([k, label, kind]) => (
 				<Row key={k} label={label}>
