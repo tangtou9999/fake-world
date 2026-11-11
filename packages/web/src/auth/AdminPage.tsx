@@ -1,9 +1,30 @@
 import { useCallback, useEffect, useState } from "react";
+import { API_BASE } from "./config";
 import { api } from "./api";
+import { readSession } from "./session";
 import { type AuthUser, PERM_KEYS, PERM_LABELS, type PermKey, isAdmin } from "./session";
 
 const ROLE_LABEL = { admin: "总账号", real: "子账号", story: "子账号" } as const;
 const inputCls = "w-full rounded-[6px] bg-[#F5F5F5] px-3 py-[8px] text-[16px] outline-none";
+
+const Avatar = ({ id }: { id?: number | null }) => {
+	const [src, setSrc] = useState("");
+	useEffect(() => {
+		if (!id) return setSrc("");
+		let url = "";
+		fetch(`${API_BASE}/api/real/blob/${id}`, { headers: { Authorization: `Bearer ${readSession()?.token}` } })
+			.then((r) => (r.ok ? r.blob() : null))
+			.then((b) => {
+				if (b) {
+					url = URL.createObjectURL(b);
+					setSrc(url);
+				}
+			})
+			.catch(() => {});
+		return () => url && URL.revokeObjectURL(url);
+	}, [id]);
+	return src ? <img src={src} alt="" className="mr-3 h-10 w-10 shrink-0 rounded-[6px] object-cover" /> : <div className="mr-3 h-10 w-10 shrink-0 rounded-[6px] bg-black/10" />;
+};
 
 const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) => (
 	<label className="flex items-center justify-between py-[7px] text-[15px]">
@@ -85,13 +106,15 @@ const AdminPage = () => {
 				{users.map((u) => (
 					<div key={u.id} className="border-black/5 border-b last:border-b-0">
 						<button type="button" className="flex w-full items-center justify-between px-3 py-3 text-left" onClick={() => setOpen(open === u.id ? null : u.id)}>
-							<div className="min-w-0">
+							<Avatar id={u.avatar} />
+							<div className="min-w-0 flex-1">
 								<div className="truncate text-[16px]">
-									{u.name || u.phone}
+									{u.nickname || u.name || u.phone}
 									{u.disabled && <span className="ml-2 rounded bg-black/10 px-1 text-[12px] text-black/50">已停用</span>}
 								</div>
 								<div className="text-[13px] text-black/40">
 									{u.phone} · {ROLE_LABEL[u.role]}
+									{u.nickname && u.name && u.nickname !== u.name ? ` · 备注：${u.name}` : ""}
 								</div>
 							</div>
 							<span className="ml-2 shrink-0 rounded-full bg-[#07C160]/10 px-3 py-1 text-[13px] text-[#07C160]">{open === u.id ? "收起 ⌃" : "权限 ⌄"}</span>

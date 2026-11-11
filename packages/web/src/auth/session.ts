@@ -18,6 +18,8 @@ export type AuthUser = {
 	role: "admin" | "real" | "story";
 	perms: Record<PermKey, boolean>;
 	disabled: boolean;
+	nickname?: string;
+	avatar?: number | null;
 };
 export type Session = { token: string; user: AuthUser; verifiedAt: number };
 
