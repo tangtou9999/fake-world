@@ -4,7 +4,7 @@ import { mainStore } from "@/stateV2/store";
 import { ApiError, meApi } from "./api";
 import { AUTH_ENABLED } from "./config";
 import LoginPage from "./LoginPage";
-import RealHome from "./RealHome";
+import RealApp from "./RealApp";
 import { can, readSession, writeSession } from "./session";
 
 const OFFLINE_GRACE = 3 * 86400_000;
@@ -41,7 +41,7 @@ const AuthGate = ({ children }: { children: ReactNode }) => {
 	}, []);
 
 	if (!AUTH_ENABLED || state === "ok") {
-		if (AUTH_ENABLED && readSession()?.user.role === "real") return <RealHome />;
+		if (AUTH_ENABLED && readSession()?.user.role === "real") return <RealApp standalone />;
 		return <>{children}</>;
 	}
 	if (state === "checking") return <div className="min-h-screen bg-white" />;

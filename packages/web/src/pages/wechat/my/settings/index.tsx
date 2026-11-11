@@ -154,6 +154,11 @@ const Settings = () => {
 				{AUTH_ENABLED && (
 					<List className="mt-2">
 						{isAdmin() && (
+							<List.Item withJump onClick={() => navigate("/real")}>
+								真实聊天
+							</List.Item>
+						)}
+						{isAdmin() && (
 							<List.Item withJump onClick={() => navigate("/admin")}>
 								总后台（账号与权限）
 							</List.Item>

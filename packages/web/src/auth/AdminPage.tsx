@@ -60,7 +60,7 @@ const AdminPage = () => {
 					<input className={inputCls} placeholder="备注名（比如：安卓手机）" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
 					<select className={inputCls} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as "story" | "real" })}>
 						<option value="story">剧情账号（现有这套界面）</option>
-						<option value="real">真实账号（真实聊天，第二期开放）</option>
+						<option value="real">真实账号（只能真实聊天，自动和你互为好友）</option>
 					</select>
 				</div>
 				{form.role === "story" && (

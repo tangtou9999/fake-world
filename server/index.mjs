@@ -1,6 +1,6 @@
 // 账号服务（第一期）：登录、总后台开子账号/权限/停用/重置密码，并可顺带托管前端打包文件。
 // 零依赖：只用 Node 22+ 自带的 node:sqlite / node:crypto / node:http。
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { DatabaseSync } from "node:sqlite";
@@ -41,6 +41,35 @@ CREATE TABLE IF NOT EXISTS users (
   token_ver INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS friends (
+  a INTEGER NOT NULL,
+  b INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (a, b)
+);
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender INTEGER NOT NULL,
+  receiver INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  ts INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages (sender, receiver, id);
+CREATE TABLE IF NOT EXISTS reads (
+  user_id INTEGER NOT NULL,
+  peer INTEGER NOT NULL,
+  last_id INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, peer)
+);
+CREATE TABLE IF NOT EXISTS memos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  text TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+-- 真实聊天记录只能新增：数据库层面直接禁止修改和删除，接口里也没有这类功能（管理员也一样）
+CREATE TRIGGER IF NOT EXISTS messages_no_update BEFORE UPDATE ON messages BEGIN SELECT RAISE(ABORT, '聊天记录不可修改'); END;
+CREATE TRIGGER IF NOT EXISTS messages_no_delete BEFORE DELETE ON messages BEGIN SELECT RAISE(ABORT, '聊天记录不可删除'); END;
 `);
 
 /* ───────── 密码 / token ───────── */
@@ -95,15 +124,29 @@ const byPhone = (phone) => db.prepare("SELECT * FROM users WHERE phone = ?").get
 const validPhone = (s) => /^\+?\d{6,20}$/.test(String(s || ""));
 const validPassword = (s) => typeof s === "string" && s.length >= 6 && s.length <= 100;
 
+const nameOf = (u) => u.name || u.phone;
+function makeFriends(x, y) {
+	if (x === y) return;
+	const [a, b] = x < y ? [x, y] : [y, x];
+	db.prepare("INSERT OR IGNORE INTO friends (a, b, created_at) VALUES (?,?,?)").run(a, b, Date.now());
+}
+const areFriends = (x, y) => !!db.prepare("SELECT 1 FROM friends WHERE a = ? AND b = ?").get(Math.min(x, y), Math.max(x, y));
+/** 真实账号和总账号互为好友 */
+function linkRealWithAdmins() {
+	const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
+	for (const r of db.prepare("SELECT id FROM users WHERE role = 'real'").all()) for (const a of admins) makeFriends(r.id, a.id);
+}
+
 async function bootstrapAdmin() {
 	const has = db.prepare("SELECT 1 FROM users WHERE role = 'admin'").get();
-	if (has) return;
+	if (has) return linkRealWithAdmins();
 	if (!validPhone(ADMIN_PHONE) || !validPassword(ADMIN_PASSWORD)) {
 		console.error("还没有总账号：请设置环境变量 ADMIN_PHONE（手机号）和 ADMIN_PASSWORD（至少 6 位）后重启。");
 		process.exit(1);
 	}
 	db.prepare("INSERT INTO users (phone, name, role, pass_hash, perms, created_at) VALUES (?,?,?,?,?,?)").run(ADMIN_PHONE, "总账号", "admin", await hashPassword(ADMIN_PASSWORD), "{}", Date.now());
 	console.log(`已创建总账号 ${ADMIN_PHONE}`);
+	linkRealWithAdmins();
 }
 
 /* ───────── 登录限频 ───────── */
@@ -125,7 +168,7 @@ function cors(req, res) {
 		res.setHeader("Access-Control-Allow-Origin", origin);
 		res.setHeader("Vary", "Origin");
 		res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-		res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
+		res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
 	}
 }
 const send = (res, status, data) => {
@@ -194,6 +237,73 @@ async function api(req, res, path) {
 		return send(res, 200, { token: signToken(byId(me.id)) });
 	}
 
+	if (path.startsWith("/api/real/")) {
+		if (me.role === "story") return send(res, 403, { error: "这个账号没有真实聊天功能" });
+		const url = new URL(req.url || "/", "http://x");
+
+		if (path === "/api/real/friends" && method === "GET") {
+			const rows = db.prepare("SELECT CASE WHEN a = ? THEN b ELSE a END AS pid FROM friends WHERE a = ? OR b = ?").all(me.id, me.id, me.id);
+			const list = rows.map(({ pid }) => {
+				const u = byId(pid);
+				if (!u || u.disabled) return null;
+				const last = db.prepare("SELECT id, sender, text, ts FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id DESC LIMIT 1").get(me.id, pid, pid, me.id);
+				const rd = db.prepare("SELECT last_id FROM reads WHERE user_id = ? AND peer = ?").get(me.id, pid);
+				const unread = db.prepare("SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND receiver = ? AND id > ?").get(pid, me.id, rd?.last_id ?? 0).n;
+				return { id: pid, name: nameOf(u), phone: u.phone, role: u.role, last: last ? { id: last.id, from: last.sender, text: last.text, ts: last.ts } : null, unread };
+			});
+			return send(res, 200, { friends: list.filter(Boolean).sort((x, y) => (y.last?.ts ?? 0) - (x.last?.ts ?? 0)) });
+		}
+		if (path === "/api/real/messages" && method === "GET") {
+			const peer = Number(url.searchParams.get("peer"));
+			if (!areFriends(me.id, peer)) return send(res, 403, { error: "对方不是你的好友" });
+			const after = Number(url.searchParams.get("after") || 0);
+			const rows = db.prepare("SELECT id, sender, receiver, text, ts FROM messages WHERE id > ? AND ((sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?)) ORDER BY id LIMIT 500").all(after, me.id, peer, peer, me.id);
+			return send(res, 200, { messages: rows });
+		}
+		if (path === "/api/real/messages" && method === "POST") {
+			const { to, text } = await readBody(req);
+			const peer = Number(to);
+			const t = typeof text === "string" ? text.trim() : "";
+			if (!t || t.length > 2000) return send(res, 400, { error: "消息不能为空，最长 2000 字" });
+			const target = byId(peer);
+			if (!target || target.disabled || !areFriends(me.id, peer)) return send(res, 403, { error: "对方不是你的好友或已停用" });
+			const ts = Date.now();
+			const info = db.prepare("INSERT INTO messages (sender, receiver, text, ts) VALUES (?,?,?,?)").run(me.id, peer, t, ts);
+			const message = { id: Number(info.lastInsertRowid), sender: me.id, receiver: peer, text: t, ts };
+			push(peer, { type: "msg", message });
+			push(me.id, { type: "msg", message });
+			return send(res, 200, { message });
+		}
+		if (path === "/api/real/read" && method === "POST") {
+			const { peer, upTo } = await readBody(req);
+			db.prepare("INSERT INTO reads (user_id, peer, last_id) VALUES (?,?,?) ON CONFLICT(user_id, peer) DO UPDATE SET last_id = MAX(last_id, excluded.last_id)").run(me.id, Number(peer), Number(upTo) || 0);
+			return send(res, 200, { ok: true });
+		}
+		if (path === "/api/real/memos" && method === "GET") return send(res, 200, { memos: db.prepare("SELECT id, text, updated_at AS updatedAt FROM memos WHERE user_id = ? ORDER BY updated_at DESC").all(me.id) });
+		if (path === "/api/real/memos" && method === "POST") {
+			const { text } = await readBody(req);
+			if (typeof text !== "string" || text.length > 20000) return send(res, 400, { error: "备忘录太长" });
+			const info = db.prepare("INSERT INTO memos (user_id, text, updated_at) VALUES (?,?,?)").run(me.id, text, Date.now());
+			return send(res, 200, { id: Number(info.lastInsertRowid) });
+		}
+		const mm = path.match(/^\/api\/real\/memos\/(\d+)$/);
+		if (mm) {
+			const row = db.prepare("SELECT id FROM memos WHERE id = ? AND user_id = ?").get(Number(mm[1]), me.id);
+			if (!row) return send(res, 404, { error: "备忘录不存在" });
+			if (method === "PUT") {
+				const { text } = await readBody(req);
+				if (typeof text !== "string" || text.length > 20000) return send(res, 400, { error: "备忘录太长" });
+				db.prepare("UPDATE memos SET text = ?, updated_at = ? WHERE id = ?").run(text, Date.now(), row.id);
+				return send(res, 200, { ok: true });
+			}
+			if (method === "DELETE") {
+				db.prepare("DELETE FROM memos WHERE id = ?").run(row.id);
+				return send(res, 200, { ok: true });
+			}
+		}
+		return send(res, 404, { error: "没有这个接口" });
+	}
+
 	if (path.startsWith("/api/admin/")) {
 		if (me.role !== "admin") return send(res, 403, { error: "只有总账号可以操作" });
 
@@ -209,6 +319,7 @@ async function api(req, res, path) {
 			if (b.role !== "real" && b.role !== "story") return send(res, 400, { error: "账号类型只能是 real 或 story" });
 			if (byPhone(phone)) return send(res, 409, { error: "这个手机号已经开过账号了" });
 			const info = db.prepare("INSERT INTO users (phone, name, role, pass_hash, perms, created_at) VALUES (?,?,?,?,?,?)").run(phone, String(b.name || "").slice(0, 30), b.role, await hashPassword(b.password), JSON.stringify(b.role === "story" ? cleanPerms(b.perms) : {}), Date.now());
+			if (b.role === "real") linkRealWithAdmins();
 			return send(res, 200, { user: publicUser(byId(Number(info.lastInsertRowid))) });
 		}
 		const m = path.match(/^\/api\/admin\/users\/(\d+)(\/reset-password)?$/);
@@ -219,6 +330,7 @@ async function api(req, res, path) {
 				const { password } = await readBody(req);
 				if (!validPassword(password)) return send(res, 400, { error: "密码至少 6 位" });
 				db.prepare("UPDATE users SET pass_hash = ?, token_ver = token_ver + 1 WHERE id = ?").run(await hashPassword(password), u.id);
+				closeSockets(u.id);
 				return send(res, 200, { ok: true });
 			}
 			if (!m[2] && method === "PATCH") {
@@ -226,7 +338,10 @@ async function api(req, res, path) {
 				if (u.role === "admin" && (b.disabled !== undefined || b.perms !== undefined)) return send(res, 400, { error: "总账号不能被停用或改权限" });
 				if (b.name !== undefined) db.prepare("UPDATE users SET name = ? WHERE id = ?").run(String(b.name).slice(0, 30), u.id);
 				if (b.perms !== undefined && u.role === "story") db.prepare("UPDATE users SET perms = ? WHERE id = ?").run(JSON.stringify(cleanPerms(b.perms)), u.id);
-				if (b.disabled !== undefined) db.prepare("UPDATE users SET disabled = ?, token_ver = token_ver + 1 WHERE id = ?").run(b.disabled ? 1 : 0, u.id);
+				if (b.disabled !== undefined) {
+					db.prepare("UPDATE users SET disabled = ?, token_ver = token_ver + 1 WHERE id = ?").run(b.disabled ? 1 : 0, u.id);
+					closeSockets(u.id);
+				}
 				return send(res, 200, { user: publicUser(byId(u.id)) });
 			}
 		}
@@ -247,9 +362,81 @@ function serveStatic(req, res, urlPath) {
 	res.end(readFileSync(file));
 }
 
+/* ───────── WebSocket（手写，零依赖）：只用来把新消息实时推给在线的人 ───────── */
+const sockets = new Map(); // uid -> Set<socket>
+function frame(opcode, payload) {
+	const len = payload.length;
+	const head = len < 126 ? Buffer.from([0x80 | opcode, len]) : len < 65536 ? Buffer.from([0x80 | opcode, 126, len >> 8, len & 255]) : null;
+	if (!head) return null;
+	return Buffer.concat([head, payload]);
+}
+function push(uid, obj) {
+	const f = frame(0x1, Buffer.from(JSON.stringify(obj)));
+	if (!f) return;
+	for (const s of sockets.get(uid) ?? []) s.write(f);
+}
+function closeSockets(uid) {
+	for (const s of sockets.get(uid) ?? []) s.end(frame(0x8, Buffer.alloc(0)) ?? undefined);
+	sockets.delete(uid);
+}
+function onUpgrade(req, socket) {
+	const url = new URL(req.url || "/", "http://x");
+	const key = req.headers["sec-websocket-key"];
+	const p = url.pathname === "/ws" ? readToken(url.searchParams.get("token")) : null;
+	const u = p ? byId(p.uid) : null;
+	if (!key || !u || u.disabled || u.token_ver !== p.tv || u.role === "story") {
+		socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
+		return socket.destroy();
+	}
+	const accept = createHash("sha1").update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`).digest("base64");
+	socket.write(`HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`);
+	if (!sockets.has(u.id)) sockets.set(u.id, new Set());
+	sockets.get(u.id).add(socket);
+	let buf = Buffer.alloc(0);
+	const drop = () => {
+		sockets.get(u.id)?.delete(socket);
+		clearInterval(timer);
+	};
+	const timer = setInterval(() => {
+		const f = frame(0x9, Buffer.alloc(0));
+		if (f && !socket.destroyed) socket.write(f);
+	}, 30_000);
+	socket.on("data", (chunk) => {
+		buf = Buffer.concat([buf, chunk]);
+		while (buf.length >= 2) {
+			const op = buf[0] & 0x0f;
+			const masked = (buf[1] & 0x80) !== 0;
+			let len = buf[1] & 0x7f;
+			let off = 2;
+			if (len === 126) {
+				if (buf.length < 4) return;
+				len = buf.readUInt16BE(2);
+				off = 4;
+			} else if (len === 127) {
+				if (buf.length < 10) return;
+				len = Number(buf.readBigUInt64BE(2));
+				off = 10;
+			}
+			if (len > 100_000) return socket.destroy();
+			if (buf.length < off + (masked ? 4 : 0) + len) return;
+			const mask = masked ? buf.subarray(off, off + 4) : null;
+			const data = Buffer.from(buf.subarray(off + (masked ? 4 : 0), off + (masked ? 4 : 0) + len));
+			if (mask) for (let i = 0; i < data.length; i++) data[i] ^= mask[i % 4];
+			buf = buf.subarray(off + (masked ? 4 : 0) + len);
+			if (op === 0x8) {
+				socket.end(frame(0x8, Buffer.alloc(0)) ?? undefined);
+				return drop();
+			}
+			if (op === 0x9) socket.write(frame(0xa, data) ?? Buffer.alloc(0));
+		}
+	});
+	socket.on("close", drop);
+	socket.on("error", drop);
+}
+
 await bootstrapAdmin();
 
-createServer(async (req, res) => {
+const server = createServer(async (req, res) => {
 	cors(req, res);
 	if (req.method === "OPTIONS") {
 		res.writeHead(204);
@@ -263,4 +450,6 @@ createServer(async (req, res) => {
 	} catch (e) {
 		if (!res.headersSent) send(res, 400, { error: e instanceof Error && e.message === "bad json" ? "请求格式不对" : "请求失败" });
 	}
-}).listen(PORT, HOST, () => console.log(`账号服务已启动 http://${HOST}:${PORT}${STATIC_DIR ? `（托管 ${STATIC_DIR}）` : ""}`));
+});
+server.on("upgrade", onUpgrade);
+server.listen(PORT, HOST, () => console.log(`账号服务已启动 http://${HOST}:${PORT}${STATIC_DIR ? `（托管 ${STATIC_DIR}）` : ""}`));

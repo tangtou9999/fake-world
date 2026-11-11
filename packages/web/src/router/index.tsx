@@ -8,6 +8,7 @@ import NewFriends from "@/pages/wechat/addFriend/NewFriends";
 import ChatSearch from "@/pages/wechat/search";
 import AdminPage from "@/auth/AdminPage";
 import Need from "@/auth/Need";
+import RealApp from "@/auth/RealApp";
 import ChatAi from "@/pages/wechat/conversation/ChatAi";
 import GroupInfo from "@/pages/wechat/group/GroupInfo";
 import GroupList from "@/pages/wechat/group/GroupList";
@@ -56,6 +57,7 @@ export const routes: RouteObject[] = [
 				element: <Navigate replace to="/wechat" />,
 			},
 			{ path: "admin", element: <AdminPage /> },
+			{ path: "real", element: <RealApp /> },
 			{
 				path: "wechat",
 				handle: {
