@@ -18,5 +18,5 @@ export default Need;
 
 /** 把组件包一层权限：没权限就什么都不渲染 */
 export function withPerm<P extends object>(perm: PermKey, Comp: (props: P) => JSX.Element | null) {
-	return (props: P) => (can(perm) ? <Comp {...props} /> : null);
+	return (props: P): JSX.Element => (can(perm) ? <Comp {...props} /> : <></>);
 }
