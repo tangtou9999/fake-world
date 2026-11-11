@@ -10,7 +10,10 @@ const inputCls = "w-full rounded-[6px] bg-[#F5F5F5] px-3 py-[8px] text-[16px] ou
 const Avatar = ({ id }: { id?: number | null }) => {
 	const [src, setSrc] = useState("");
 	useEffect(() => {
-		if (!id) return setSrc("");
+		if (!id) {
+			setSrc("");
+			return;
+		}
 		let url = "";
 		fetch(`${API_BASE}/api/real/blob/${id}`, { headers: { Authorization: `Bearer ${readSession()?.token}` } })
 			.then((r) => (r.ok ? r.blob() : null))
@@ -21,7 +24,9 @@ const Avatar = ({ id }: { id?: number | null }) => {
 				}
 			})
 			.catch(() => {});
-		return () => url && URL.revokeObjectURL(url);
+		return () => {
+			if (url) URL.revokeObjectURL(url);
+		};
 	}, [id]);
 	return src ? <img src={src} alt="" className="mr-3 h-10 w-10 shrink-0 rounded-[6px] object-cover" /> : <div className="mr-3 h-10 w-10 shrink-0 rounded-[6px] bg-black/10" />;
 };

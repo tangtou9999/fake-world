@@ -145,7 +145,7 @@ export async function realVoiceUrl(blobId: string) {
 
 async function avatarForUpload(avatarInfo: string): Promise<string | null> {
 	let blob: Blob | null = null;
-	if (isMD5(avatarInfo)) blob = (await hashAssetsDB.images.get(avatarInfo))?.file ?? null;
+	if (isMD5(avatarInfo)) blob = (await hashAssetsDB.images.get({ id: avatarInfo }))?.file ?? null;
 	else if (avatarInfo.startsWith("data:") || avatarInfo.startsWith("blob:") || avatarInfo.startsWith("http") || avatarInfo.startsWith("/")) blob = await (await fetch(avatarInfo)).blob();
 	if (!blob) return null;
 	const bmp = await createImageBitmap(blob);
@@ -254,7 +254,16 @@ export function startRealSync() {
 			retry = 0;
 			soon();
 		};
-		ws.onmessage = soon;
+		wsRef = ws;
+		ws.onmessage = (ev) => {
+			try {
+				const m = JSON.parse(String(ev.data));
+				if (typeof m.type === "string" && m.type.startsWith("call-")) return signalHandler?.(m);
+			} catch {
+				// 忽略
+			}
+			soon();
+		};
 		ws.onclose = () => setTimeout(connect, Math.min(15000, 1000 * 2 ** retry++));
 	};
 	connect();
