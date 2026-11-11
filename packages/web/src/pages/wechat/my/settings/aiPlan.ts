@@ -1,3 +1,4 @@
+import { can } from "@/auth/session";
 import { addFriendByMe } from "@/stateV2/friendRequests";
 import { type IStateFeed, setFeedListValue } from "@/stateV2/moments";
 import { getProfileValueSnapshot, setProfileValue } from "@/stateV2/profile";
@@ -201,6 +202,8 @@ export const applyPlan = async (steps: PlanStep[], opts?: { enableReply?: boolea
 			const id = needId(step.target);
 			writeStandIn(id, step.on);
 			lines.push(`已${step.on ? "开启" : "关闭"}「${who(step.target)}」的 AI 代聊`);
+		} else if (step.do === "friend" && !can("addFriend")) {
+			lines.push(`没有添加「${step.nickname}」：管理员没有给你开通「添加好友」`);
 		} else if (step.do === "friend") {
 			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: /^(https?:|\.\/|\/|data:)/.test(step.avatar ?? "") ? (step.avatar as string) : pickFriendAvatar(`${step.avatar ?? ""} ${step.nickname} ${step.greeting ?? ""}`), greeting: step.greeting || "你好" });
 			if (step.items?.length) {

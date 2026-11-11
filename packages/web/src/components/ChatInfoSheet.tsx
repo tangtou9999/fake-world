@@ -1,3 +1,4 @@
+import { withPerm } from "@/auth/Need";
 import { h } from "@/components/HashAssets";
 import { hashAssetsDB } from "@/db";
 import { dialogueListAtom, setDialogueListValue } from "@/stateV2/dialogueList";
@@ -19,7 +20,7 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
 );
 
 /** 手机端「聊天信息」：好友昵称/备注/头像，首页这一行的预览文字、时间、未读、置顶、免打扰，顶部未读数字 */
-const ChatInfoSheet = ({ friendId, onClose }: { friendId: string; onClose: () => void }) => {
+const ChatInfoSheetInner = ({ friendId, onClose }: { friendId: string; onClose: () => void }) => {
 	const profile = useAtomValue(profileAtom(friendId));
 	const dialogues = useAtomValue(dialogueListAtom);
 	const unread = useAtomValue(unreadCountAtom);
@@ -140,4 +141,4 @@ const ChatInfoSheet = ({ friendId, onClose }: { friendId: string; onClose: () =>
 	);
 };
 
-export default ChatInfoSheet;
+export default withPerm("editChat", ChatInfoSheetInner);

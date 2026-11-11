@@ -1,3 +1,4 @@
+import { withPerm } from "@/auth/Need";
 import { h } from "@/components/HashAssets";
 import { Row, Sheet, inputCls, saveImage } from "@/components/SheetKit";
 import { dialogueListAtom } from "@/stateV2/dialogueList";
@@ -25,7 +26,7 @@ import { useRef, useState } from "react";
 const FMT = "YYYY-MM-DDTHH:mm:ss";
 
 /* ───────── 钱包 ───────── */
-export const WalletSheet = ({ onClose }: { onClose: () => void }) => {
+const WalletSheetInner = ({ onClose }: { onClose: () => void }) => {
 	const [d, setD] = useState<TStateWallet>(() => ({ ...mainStore.get(walletAtom) }));
 	const f = (k: keyof TStateWallet, label: string) => (
 		<Row label={label}>
@@ -51,7 +52,7 @@ export const WalletSheet = ({ onClose }: { onClose: () => void }) => {
 };
 
 /* ───────── 零钱明细 ───────── */
-export const RecordSheet = ({ id, onClose }: { id?: string; onClose: () => void }) => {
+const RecordSheetInner = ({ id, onClose }: { id?: string; onClose: () => void }) => {
 	const rec = id ? mainStore.get(balanceRecordsAtom).find((r) => r.id === id) : undefined;
 	const [d, setD] = useState(() => ({
 		kind: (rec?.kind ?? "transfer") as BalanceRecord["kind"],
@@ -154,7 +155,7 @@ const TX_FIELDS: Record<string, [string, string, "text" | "time"][]> = {
 	"credit-card-repayments": [["toCreditCardName", "信用卡", "text"], ["merchantCode", "商户单号", "text"]],
 	"pay-reward": [],
 };
-export const TxSheet = ({ type, onClose }: { type: TTransactionType; onClose: () => void }) => {
+const TxSheetInner = ({ type, onClose }: { type: TTransactionType; onClose: () => void }) => {
 	const atom = USED_ATOM_MAP[type] as never;
 	const [d, setD] = useState<Record<string, unknown>>(() => ({ ...(mainStore.get(atom) as Record<string, unknown>) }));
 	const set = (k: string, v: unknown) => setD((p) => ({ ...p, [k]: v }));
@@ -397,3 +398,7 @@ export const FriendSheet = ({ id, onClose, isMyself }: { id: string; onClose: ()
 		</Sheet>
 	);
 };
+
+export const WalletSheet = withPerm("editBalance", WalletSheetInner);
+export const RecordSheet = withPerm("editBalance", RecordSheetInner);
+export const TxSheet = withPerm("editBalance", TxSheetInner);

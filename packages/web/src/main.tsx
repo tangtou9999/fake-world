@@ -1,3 +1,4 @@
+import "./auth/namespace";
 import "./preflight.css";
 import "./index.css";
 import "animate.css";
@@ -7,6 +8,7 @@ import { Provider } from "jotai";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { RouterProvider, createHashRouter } from "react-router-dom";
+import AuthGate from "./auth/AuthGate.tsx";
 import { initDBImagesCacheStore } from "./db";
 import { routes } from "./router/index.tsx";
 import { ensureFileHelper } from "./stateV2/fileHelper.ts";
@@ -29,7 +31,9 @@ const router = createHashRouter(routes);
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<Provider store={mainStore}>
-			<RouterProvider router={router} />
+			<AuthGate>
+				<RouterProvider router={router} />
+			</AuthGate>
 		</Provider>
 	</React.StrictMode>,
 );

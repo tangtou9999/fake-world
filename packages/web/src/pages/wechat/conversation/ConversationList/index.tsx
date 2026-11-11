@@ -1,3 +1,4 @@
+import { can } from "@/auth/session";
 import IncomingCall from "./IncomingCall";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
 import { canBeDetected } from "@/components/NodeDetected";
@@ -137,7 +138,7 @@ const ConversationList = () => {
 		const now = Date.now();
 		const twice = editTapRef.current.id === item.id && now - editTapRef.current.t < 380;
 		editTapRef.current = { id: item.id, t: twice ? 0 : now };
-		if (twice) setSheetId(item.id);
+		if (twice && can("editChat")) setSheetId(item.id);
 	};
 	// 多选：长按菜单里点「多选」进入，勾选后批量删除 / 互换发送人 / 平移时间
 	const [selected, setSelected] = useState<Set<string> | null>(null);
@@ -503,7 +504,7 @@ const ConversationList = () => {
 						>
 							删除
 						</button>
-						{isEdit && <>
+						{isEdit && can("editChat") && <>
 						<button
 							type="button"
 							className="rounded-[6px] border border-black/20 px-3 py-[6px]"
@@ -571,7 +572,7 @@ const ConversationList = () => {
 								</button>
 							</>
 						)}
-						{isEdit && (
+						{isEdit && can("editChat") && (
 							<button type="button" disabled={busy} onClick={() => { setSheetId(menu.id); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
 								编辑
 							</button>

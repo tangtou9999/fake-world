@@ -1,3 +1,5 @@
+import { AUTH_ENABLED } from "@/auth/config";
+import { can, isAdmin, logout, readSession } from "@/auth/session";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
 import { mobilePanelAtom } from "@/components/MobilePanel/atom";
 import useMode from "@/components/useMode";
@@ -149,6 +151,19 @@ const Settings = () => {
 						}
 					}}
 				/>
+				{AUTH_ENABLED && (
+					<List className="mt-2">
+						{isAdmin() && (
+							<List.Item withJump onClick={() => navigate("/admin")}>
+								总后台（账号与权限）
+							</List.Item>
+						)}
+						<List.Item withJump onClick={() => window.confirm("确定退出登录？") && logout()}>
+							退出登录（{readSession()?.user.name || readSession()?.user.phone}）
+						</List.Item>
+					</List>
+				)}
+				{can("editMode") && (
 				<List className="mt-2">
 					<List.Item
 						withJump
@@ -162,6 +177,7 @@ const Settings = () => {
 						进入编辑模式
 					</List.Item>
 				</List>
+				)}
 			</div>
 		</div>
 	);

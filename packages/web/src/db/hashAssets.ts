@@ -1,3 +1,4 @@
+import { DB_SUFFIX } from "@/auth/namespace";
 import Dexie, { type Table } from "dexie";
 import { isUndefined } from "lodash-es";
 
@@ -7,7 +8,7 @@ interface DBImage {
 }
 export const HASH_ASSETS_DB_NAME = "HashAssetsDB";
 
-export const hashAssetsDB = new Dexie(HASH_ASSETS_DB_NAME) as Dexie & {
+export const hashAssetsDB = new Dexie(HASH_ASSETS_DB_NAME + DB_SUFFIX) as Dexie & {
 	images: Table<DBImage, "id">;
 };
 

@@ -1,3 +1,4 @@
+import { can } from "@/auth/session";
 import { useCompactPhone } from "../ScreenSheets";
 import { Global, css } from "@emotion/react";
 import { type CSSProperties, memo, useEffect, useState } from "react";
@@ -76,7 +77,7 @@ const Screen = () => {
 			const now = Date.now();
 			taps = taps.filter((k) => now - k.t < 650 && Math.hypot(k.x - e.clientX, k.y - e.clientY) < 40);
 			taps.push({ t: now, x: e.clientX, y: e.clientY });
-			if (taps.length >= 3) {
+			if (taps.length >= 3 && can("editMode")) {
 				taps = [];
 				swallow = now;
 				const next = getModeValueSnapshot() === "edit" ? "preview" : "edit";

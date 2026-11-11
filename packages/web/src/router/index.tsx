@@ -6,6 +6,8 @@ import AddFriend from "@/pages/wechat/addFriend/AddFriend";
 import RequestDetail from "@/pages/wechat/addFriend/RequestDetail";
 import NewFriends from "@/pages/wechat/addFriend/NewFriends";
 import ChatSearch from "@/pages/wechat/search";
+import AdminPage from "@/auth/AdminPage";
+import Need from "@/auth/Need";
 import ChatAi from "@/pages/wechat/conversation/ChatAi";
 import GroupInfo from "@/pages/wechat/group/GroupInfo";
 import GroupList from "@/pages/wechat/group/GroupList";
@@ -53,6 +55,7 @@ export const routes: RouteObject[] = [
 				index: true,
 				element: <Navigate replace to="/wechat" />,
 			},
+			{ path: "admin", element: <AdminPage /> },
 			{
 				path: "wechat",
 				handle: {
@@ -73,11 +76,11 @@ export const routes: RouteObject[] = [
 							label: "routerLabel.wechat.cHistory",
 						},
 					},
-					{ path: "conversation/:id/ai", element: <ChatAi /> },
+					{ path: "conversation/:id/ai", element: <Need perm="chatAi"><ChatAi /></Need> },
 					{ path: "conversation/:id/info", element: <GroupInfo /> },
 					{ path: "group/new", element: <NewGroup /> },
 					{ path: "search", element: <ChatSearch /> },
-					{ path: "add-friend", element: <AddFriend /> },
+					{ path: "add-friend", element: <Need perm="addFriend"><AddFriend /></Need> },
 					{ path: "new-friends", element: <NewFriends /> },
 					{ path: "new-friends/:id", element: <RequestDetail /> },
 					{ path: "scan-pay", element: <ScanPay /> },
@@ -124,14 +127,14 @@ export const routes: RouteObject[] = [
 							},
 							{
 								path: "settings/ai",
-								element: <AiIntro />,
+								element: <Need perm="chatAi"><AiIntro /></Need>,
 								handle: {
 									label: "routerLabel.wechat.settings",
 								},
 							},
 							{
 								path: "settings/ai/chat",
-								element: <AiChat />,
+								element: <Need perm="chatAi"><AiChat /></Need>,
 								handle: {
 									label: "routerLabel.wechat.settings",
 								},

@@ -1,3 +1,4 @@
+import { can } from "@/auth/session";
 import { CoverSheet, PhoneEditHit, useCompactPhone } from "@/components/ScreenSheets";
 import useMode from "@/components/useMode";
 import BackFilledSVG from "@/assets/back-filled.svg?react";
@@ -226,7 +227,7 @@ const MomentsLayout = () => {
 						<CameraFilledSVG fill="currentColor" className="h-5 w-5" />
 					)}
 				</div>
-				{posting && <MomentComposer onClose={() => setPosting(false)} />}
+				{posting && can("momentsAi") && <MomentComposer onClose={() => setPosting(false)} />}
 			</div>
 
 			<div
