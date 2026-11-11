@@ -42,7 +42,7 @@ const AdminPage = () => {
 	if (!isAdmin()) return <div className="p-8 text-center text-black/50">只有总账号可以进入后台</div>;
 
 	return (
-		<div className="min-h-screen bg-[#EDEDED] pb-10">
+		<div className="h-full overflow-y-auto overscroll-contain bg-[#EDEDED] pb-[calc(40px+env(safe-area-inset-bottom))]" style={{ WebkitOverflowScrolling: "touch" }}>
 			<div className="sticky top-0 z-10 flex h-[48px] items-center bg-[#EDEDED] px-4">
 				<button type="button" className="text-[16px]" onClick={() => window.history.back()}>
 					‹ 返回
@@ -94,7 +94,7 @@ const AdminPage = () => {
 									{u.phone} · {ROLE_LABEL[u.role]}
 								</div>
 							</div>
-							<span className="text-black/30">{open === u.id ? "⌃" : "⌄"}</span>
+							<span className="ml-2 shrink-0 rounded-full bg-[#07C160]/10 px-3 py-1 text-[13px] text-[#07C160]">{open === u.id ? "收起 ⌃" : "权限 ⌄"}</span>
 						</button>
 						{open === u.id && (
 							<div className="bg-[#FAFAFA] px-3 pb-3">
