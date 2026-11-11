@@ -125,6 +125,8 @@ const publicUser = (u) => ({
 	perms: u.role === "admin" ? cleanPerms(Object.fromEntries(PERM_KEYS.map((k) => [k, true]))) : cleanPerms(JSON.parse(u.perms || "{}")),
 	disabled: !!u.disabled,
 	createdAt: u.created_at,
+	nickname: u.nickname || "",
+	avatar: u.avatar || null,
 });
 const byId = (id) => db.prepare("SELECT * FROM users WHERE id = ?").get(id);
 const byPhone = (phone) => db.prepare("SELECT * FROM users WHERE phone = ?").get(phone);
@@ -255,7 +257,7 @@ async function api(req, res, path) {
 				const last = db.prepare("SELECT id, sender, text, ts FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id DESC LIMIT 1").get(me.id, pid, pid, me.id);
 				const rd = db.prepare("SELECT last_id FROM reads WHERE user_id = ? AND peer = ?").get(me.id, pid);
 				const unread = db.prepare("SELECT COUNT(*) AS n FROM messages WHERE sender = ? AND receiver = ? AND id > ?").get(pid, me.id, rd?.last_id ?? 0).n;
-				return { id: pid, name: nameOf(u), phone: u.phone, role: u.role, last: last ? { id: last.id, from: last.sender, text: last.text, ts: last.ts } : null, unread };
+				return { id: pid, name: u.nickname || nameOf(u), avatar: u.avatar || null, phone: u.phone, role: u.role, last: last ? { id: last.id, from: last.sender, text: last.text, ts: last.ts } : null, unread };
 			});
 			return send(res, 200, { friends: list.filter(Boolean).sort((x, y) => (y.last?.ts ?? 0) - (x.last?.ts ?? 0)) });
 		}
@@ -279,6 +281,35 @@ async function api(req, res, path) {
 			push(peer, { type: "msg", message });
 			push(me.id, { type: "msg", message });
 			return send(res, 200, { message });
+		}
+		if (path === "/api/real/turn" && method === "GET") {
+			const urls = (process.env.TURN_URLS || "").split(",").map((x) => x.trim()).filter(Boolean);
+			const secret = process.env.TURN_SECRET || "";
+			const iceServers = [{ urls: ["stun:stun.l.google.com:19302"] }];
+			if (secret && urls.length) {
+				const username = `${Math.floor(Date.now() / 1000) + 3600}:${me.id}`;
+				iceServers.push({ urls, username, credential: createHmac("sha1", secret).update(username).digest("base64") });
+			}
+			return send(res, 200, { iceServers, ttl: 3600 });
+		}
+		if (path === "/api/real/profile" && method === "PUT") {
+			const { nickname, avatar } = await readBody(req);
+			if (typeof nickname === "string") {
+				const n = nickname.trim().slice(0, 30);
+				db.prepare("UPDATE users SET nickname = ? WHERE id = ?").run(n, me.id);
+			}
+			if (typeof avatar === "string" && avatar) {
+				const m = avatar.match(/^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/);
+				if (!m) return send(res, 400, { error: "头像格式不对" });
+				const buf = Buffer.from(m[2], "base64");
+				if (buf.length > 80_000) return send(res, 413, { error: "头像太大" });
+				const bid = Number(db.prepare("INSERT INTO blobs (sender, receiver, mime, data) VALUES (?,0,?,?)").run(me.id, m[1], buf).lastInsertRowid);
+				db.prepare("UPDATE users SET avatar = ? WHERE id = ?").run(bid, me.id);
+			}
+			const fresh = byId(me.id);
+			for (const f of db.prepare("SELECT CASE WHEN a = ? THEN b ELSE a END AS pid FROM friends WHERE a = ? OR b = ?").all(me.id, me.id, me.id)) push(f.pid, { type: "profile", uid: me.id });
+			push(me.id, { type: "profile", uid: me.id });
+			return send(res, 200, { user: publicUser(fresh) });
 		}
 		if (path === "/api/real/voice" && method === "POST") {
 			const peer = Number(url.searchParams.get("to"));
@@ -308,7 +339,7 @@ async function api(req, res, path) {
 			const bm = path.match(/^\/api\/real\/blob\/(\d+)$/);
 			if (bm && method === "GET") {
 				const row = db.prepare("SELECT sender, receiver, mime, data FROM blobs WHERE id = ?").get(Number(bm[1]));
-				if (!row || (row.sender !== me.id && row.receiver !== me.id)) return send(res, 404, { error: "找不到" });
+				if (!row || (row.sender !== me.id && row.receiver !== me.id && !(row.receiver === 0 && areFriends(me.id, row.sender)))) return send(res, 404, { error: "找不到" });
 				res.writeHead(200, { "Content-Type": row.mime, "Content-Length": row.data.length, "Cache-Control": "private, max-age=31536000, immutable" });
 				return res.end(row.data);
 			}
@@ -418,6 +449,30 @@ function closeSockets(uid) {
 	for (const s of sockets.get(uid) ?? []) s.end(frame(0x8, Buffer.alloc(0)) ?? undefined);
 	sockets.delete(uid);
 }
+const CALL_KINDS = new Set(["call-invite", "call-accept", "call-reject", "call-hangup", "call-offer", "call-answer", "call-ice"]);
+const callRate = new Map();
+function relaySignal(u, data) {
+	let m;
+	try {
+		m = JSON.parse(data.toString("utf8"));
+	} catch {
+		return;
+	}
+	if (!m || !CALL_KINDS.has(m.type)) return;
+	const to = Number(m.to);
+	if (!Number.isInteger(to) || to === u.id || !areFriends(u.id, to)) return;
+	const target = byId(to);
+	if (!target || target.disabled) return;
+	const now = Date.now();
+	const r = callRate.get(u.id) ?? { t: now, n: 0 };
+	if (now - r.t > 10_000) {
+		r.t = now;
+		r.n = 0;
+	}
+	if (++r.n > 200) return;
+	callRate.set(u.id, r);
+	push(to, { type: m.type, from: u.id, callId: String(m.callId || "").slice(0, 40), data: m.data ?? null });
+}
 function onUpgrade(req, socket) {
 	const url = new URL(req.url || "/", "http://x");
 	const key = req.headers["sec-websocket-key"];
@@ -467,10 +522,19 @@ function onUpgrade(req, socket) {
 				return drop();
 			}
 			if (op === 0x9) socket.write(frame(0xa, data) ?? Buffer.alloc(0));
+			if (op === 0x1) relaySignal(u, data);
 		}
 	});
 	socket.on("close", drop);
 	socket.on("error", drop);
+}
+
+for (const col of ["avatar INTEGER", "nickname TEXT NOT NULL DEFAULT ''"]) {
+	try {
+		db.exec(`ALTER TABLE users ADD COLUMN ${col}`);
+	} catch {
+		// 已存在
+	}
 }
 
 await bootstrapAdmin();

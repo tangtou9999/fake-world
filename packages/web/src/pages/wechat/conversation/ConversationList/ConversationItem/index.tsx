@@ -75,6 +75,7 @@ const ConversationItem = ({ data }: Props) => {
 					senderId={senderId}
 					callStatus={data.callStatus}
 					seconds={data.seconds}
+					voice={data.callKind === "voice"}
 				/>
 			);
 		case EConversationType.redPacket:

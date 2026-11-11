@@ -11,6 +11,8 @@ import { nanoid } from "nanoid";
 import { type ChangeEvent, type ReactNode, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { startCall } from "@/auth/call";
+import { isRealConv } from "@/auth/realSync";
 import { useConversationAPI } from "../context";
 import VideoCall from "./VideoCall";
 import { addCallRecord } from "@/stateV2/videoCall";
@@ -269,11 +271,26 @@ const MorePanel = ({ onSent }: { onSent?: () => void }) => {
 						icon={<CameraIcon />}
 						onClick={() => cameraRef.current?.click()}
 					/>
-					<Action
-						label={t("wechatPage.chatPlus.videoCall")}
-						icon={<VideoCallIcon />}
-						onClick={() => setCalling(true)}
-					/>
+					{isRealConv(conversationId) ? (
+						<Action
+							label="语音通话"
+							icon={
+								<Icon>
+									<path d="M6.600 10.800a15.100 15.100 0 0 0 6.600 6.600l2.200-2.200a1 1 0 0 1 1-.25c1.100.37 2.300.57 3.600.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.500a1 1 0 0 1 1 1c0 1.250.2 2.450.57 3.600a1 1 0 0 1-.25 1Z" />
+								</Icon>
+							}
+							onClick={() => {
+								onSent?.();
+								void startCall(Number(conversationId.slice(5)));
+							}}
+						/>
+					) : (
+						<Action
+							label={t("wechatPage.chatPlus.videoCall")}
+							icon={<VideoCallIcon />}
+							onClick={() => setCalling(true)}
+						/>
+					)}
 					<Action
 						label={t("wechatPage.chatPlus.location")}
 						icon={<LocationIcon />}

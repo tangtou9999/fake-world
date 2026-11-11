@@ -4,6 +4,7 @@ import { mainStore } from "@/stateV2/store";
 import { ApiError, meApi } from "./api";
 import { AUTH_ENABLED } from "./config";
 import LoginPage from "./LoginPage";
+import CallLayer from "./CallLayer";
 import { startRealSync } from "./realSync";
 import { can, readSession, writeSession } from "./session";
 
@@ -44,8 +45,14 @@ const AuthGate = ({ children }: { children: ReactNode }) => {
 		if (AUTH_ENABLED && state === "ok") startRealSync();
 	}, [state]);
 
-	if (!AUTH_ENABLED || state === "ok") {
-		return <>{children}</>;
+	if (!AUTH_ENABLED) return <>{children}</>;
+	if (state === "ok") {
+		return (
+			<>
+				{children}
+				<CallLayer />
+			</>
+		);
 	}
 	if (state === "checking") return <div className="min-h-screen bg-white" />;
 	if (state === "offline")

@@ -4,14 +4,16 @@ import { reflow } from "@/pages/wechat/my/settings/chatOps";
 import { EConversationType, getConversationListValueSnapshot, setConversationListValue } from "@/stateV2/conversation";
 import { setDialogueListValue } from "@/stateV2/dialogueList";
 import { newProfile } from "@/stateV2/friendRequests";
+import { hashAssetsDB } from "@/db";
 import { getProfileValueSnapshot, setAllProfilesValue } from "@/stateV2/profile";
+import { isMD5 } from "@/utils";
 import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import dayjs from "dayjs";
 import { api } from "./api";
 import { API_BASE } from "./config";
 import { readSession } from "./session";
 
-type Friend = { id: number; name: string; phone: string; last: { id: number; from: number; text: string; ts: number } | null; unread: number };
+type Friend = { id: number; name: string; avatar: number | null; phone: string; last: { id: number; from: number; text: string; ts: number } | null; unread: number };
 type Msg = { id: number; sender: number; receiver: number; text: string; ts: number };
 
 export const realId = (uid: number) => `real-${uid}`;
@@ -30,12 +32,49 @@ const timeLabel = (ts: number) => {
 	return d.format("M/D");
 };
 
+const avatarSeen: Record<string, number> = (() => {
+	try {
+		return JSON.parse(localStorage.getItem("real-avatars") || "{}");
+	} catch {
+		return {};
+	}
+})();
+
+async function toDataUrl(blob: Blob) {
+	return await new Promise<string>((ok, no) => {
+		const r = new FileReader();
+		r.onload = () => ok(String(r.result));
+		r.onerror = () => no(new Error("read"));
+		r.readAsDataURL(blob);
+	});
+}
+
+async function loadAvatar(f: Friend) {
+	if (!f.avatar || avatarSeen[f.id] === f.avatar) return;
+	try {
+		const token = readSession()?.token;
+		const res = await fetch(`${API_BASE}/api/real/blob/${f.avatar}`, { headers: { Authorization: `Bearer ${token}` } });
+		if (!res.ok) return;
+		const url = await toDataUrl(await res.blob());
+		const id = realId(f.id);
+		setAllProfilesValue((prev) => prev.map((p) => (p.id === id ? { ...p, avatarInfo: url } : p)));
+		avatarSeen[f.id] = f.avatar;
+		localStorage.setItem("real-avatars", JSON.stringify(avatarSeen));
+	} catch {
+		// 下次再试
+	}
+}
+
 function ensureFriend(f: Friend) {
 	const id = realId(f.id);
-	if (!getProfileValueSnapshot(id)) {
+	const cur = getProfileValueSnapshot(id);
+	if (!cur) {
 		const p = newProfile({ nickname: f.name, wechat: f.phone, avatarInfo: "" });
 		setAllProfilesValue((prev) => [...prev, { ...p, id }]);
+	} else if (cur.nickname !== f.name) {
+		setAllProfilesValue((prev) => prev.map((p) => (p.id === id ? { ...p, nickname: f.name } : p)));
 	}
+	void loadAvatar(f);
 }
 
 function updateDialogue(f: Friend, viewing: boolean) {
@@ -59,11 +98,14 @@ function updateDialogue(f: Friend, viewing: boolean) {
 }
 
 const VOICE_RE = /^\[\[voice:(\d+):(\d+)\]\]$/;
-const preview = (t: string) => (VOICE_RE.test(t) ? "[语音]" : t);
+const CALL_RE = /^\[\[call:voice:(accepted|rejected|cancelled):(\d+)\]\]$/;
+const preview = (t: string) => (VOICE_RE.test(t) ? "[语音]" : CALL_RE.test(t) ? "[语音通话]" : t);
 
 const toItem = (m: Msg, me: number) => {
 	const v = m.text.match(VOICE_RE);
 	if (v) return { id: `r${m.id}`, type: EConversationType.voice, role: m.sender === me ? "mine" : "friend", duration: Number(v[2]), voiceBlob: v[1], isRead: true, sendTimestamp: m.ts };
+	const c = m.text.match(CALL_RE);
+	if (c) return { id: `r${m.id}`, type: EConversationType.call, role: m.sender === me ? "mine" : "friend", callStatus: c[1], seconds: Number(c[2]) || undefined, callKind: "voice", sendTimestamp: m.ts };
 	return toText(m, me);
 };
 const toText = (m: Msg, me: number) => ({
@@ -101,6 +143,45 @@ export async function realVoiceUrl(blobId: string) {
 	return u;
 }
 
+async function avatarForUpload(avatarInfo: string): Promise<string | null> {
+	let blob: Blob | null = null;
+	if (isMD5(avatarInfo)) blob = (await hashAssetsDB.images.get(avatarInfo))?.file ?? null;
+	else if (avatarInfo.startsWith("data:") || avatarInfo.startsWith("blob:") || avatarInfo.startsWith("http") || avatarInfo.startsWith("/")) blob = await (await fetch(avatarInfo)).blob();
+	if (!blob) return null;
+	const bmp = await createImageBitmap(blob);
+	const size = 256;
+	const c = document.createElement("canvas");
+	c.width = c.height = size;
+	const g = c.getContext("2d");
+	if (!g) return null;
+	const side = Math.min(bmp.width, bmp.height);
+	g.drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+	return c.toDataURL("image/jpeg", 0.82);
+}
+
+let profBusy = false;
+/** 本机「我」的头像/昵称有变化就传到服务器，好友那边实时更新 */
+export async function syncMyProfile() {
+	const me = getProfileValueSnapshot("0");
+	if (!me || profBusy) return;
+	const key = `${me.nickname}|${me.avatarInfo}`;
+	if (localStorage.getItem("real-prof-sent") === key) return;
+	profBusy = true;
+	try {
+		const body: { nickname: string; avatar?: string } = { nickname: me.nickname };
+		if (me.avatarInfo) {
+			const a = await avatarForUpload(me.avatarInfo).catch(() => null);
+			if (a) body.avatar = a;
+		}
+		await api("/api/real/profile", { method: "PUT", body });
+		localStorage.setItem("real-prof-sent", key);
+	} catch {
+		// 下次再试
+	} finally {
+		profBusy = false;
+	}
+}
+
 let syncing = false;
 let again = false;
 export async function syncAll() {
@@ -110,6 +191,7 @@ export async function syncAll() {
 	}
 	syncing = true;
 	try {
+		void syncMyProfile();
 		const { friends } = await api<{ friends: Friend[] }>("/api/real/friends");
 		const watching = viewingId();
 		for (const f of friends) {
@@ -138,6 +220,18 @@ export async function sendRealText(convId: string, text: string) {
 	await api("/api/real/messages", { body: { to: uidOf(convId), text: t } });
 	await syncMessages(uidOf(convId));
 	void syncAll();
+}
+
+type Signal = { type: string; from: number; callId: string; data: unknown };
+let signalHandler: ((m: Signal) => void) | null = null;
+export const setSignalHandler = (h: (m: Signal) => void) => {
+	signalHandler = h;
+};
+let wsRef: WebSocket | null = null;
+export function wsSend(obj: Record<string, unknown>) {
+	if (wsRef?.readyState !== WebSocket.OPEN) return false;
+	wsRef.send(JSON.stringify(obj));
+	return true;
 }
 
 let started = false;

@@ -97,6 +97,8 @@ export interface IConversationTypeCall extends IConversationItemBase {
 	callStatus: "rejected" | "cancelled" | "accepted";
 	/** 接通时的通话秒数 */
 	seconds?: number;
+	/** 真实语音通话记录 */
+	callKind?: "voice";
 }
 
 export interface IConversationTypeImage extends IConversationItemBase {

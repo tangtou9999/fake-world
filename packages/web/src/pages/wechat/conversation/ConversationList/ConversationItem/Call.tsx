@@ -14,6 +14,7 @@ type Props = {
 	senderId: IStateProfile["id"];
 	callStatus: IConversationTypeCall["callStatus"];
 	seconds?: number;
+	voice?: boolean;
 };
 
 const CallIcon = ({ mirror }: { mirror?: boolean }) => (
@@ -24,7 +25,13 @@ const CallIcon = ({ mirror }: { mirror?: boolean }) => (
 );
 
 /** 视频通话记录。旧的「📹 文字」气泡仍然由文字消息负责显示 */
-const CallRecord = ({ role, upperText, senderId, callStatus, seconds }: Props) => {
+const PhoneIcon = ({ mirror }: { mirror?: boolean }) => (
+	<svg width="18" height="18" viewBox="0 0 24 24" fill="#1A1A1A" aria-hidden="true" className="shrink-0" style={mirror ? { transform: "scaleX(-1)" } : undefined}>
+		<path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.250.2 2.450.57 3.600a1 1 0 0 1-.25 1Z" />
+	</svg>
+);
+
+const CallRecord = ({ role, upperText, senderId, callStatus, seconds, voice }: Props) => {
 	const mine = senderId === MYSELF_ID;
 	const label = callLabel(role, callStatus, seconds);
 	return (
@@ -34,9 +41,9 @@ const CallRecord = ({ role, upperText, senderId, callStatus, seconds }: Props) =
 			innerBlockClassName="group-[.friend]:bg-white group-[.mine]:bg-[#8CE97F] group-[.friend]:before:bg-white group-[.mine]:before:bg-[#8CE97F]"
 		>
 			<span className="flex items-center gap-3 whitespace-nowrap">
-				{!mine && <CallIcon />}
+				{!mine && (voice ? <PhoneIcon /> : <CallIcon />)}
 				<span>{label}</span>
-				{mine && <CallIcon mirror />}
+				{mine && (voice ? <PhoneIcon mirror /> : <CallIcon mirror />)}
 			</span>
 		</CommonBlock>
 	);
