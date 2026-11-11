@@ -25,7 +25,7 @@ export type PlanStep =
 	| { do: "profile"; target: string; remark?: string; nickname?: string; signature?: string; area?: string; description?: string }
 	| { do: "setPersona"; target: string; patch: PersonaPatch }
 	| { do: "setAutoReply"; target: string; on: boolean }
-	| { do: "friend"; nickname: string; avatar?: string; greeting?: string; items?: ParsedItem[]; moment?: string }
+	| { do: "friend"; nickname: string; wechat?: string; gender?: string; area?: string; signature?: string; remark?: string; description?: string; tags?: string[]; avatar?: string; greeting?: string; items?: ParsedItem[]; moment?: string }
 	| { do: "shot"; target: string; query?: string; from?: string; to?: string }
 	| { do: "timeline"; target: string; days?: number; hours?: number; minutes?: number; evening?: boolean }
 	| { do: "replay"; target: string; query?: string; from?: string; to?: string };
@@ -62,7 +62,7 @@ export const parsePlan = (raw: string): { text: string; plan?: { steps: PlanStep
 				const off = v === false || v === 0 || v === "0" || v === "false" || v === "off" || v === "关闭";
 				if (on || off) steps.push({ do: "setAutoReply", target, on });
 			} else if (s.do === "friend" && s.nickname) {
-				steps.push({ do: "friend", nickname: String(s.nickname), avatar: s.avatar ? String(s.avatar) : undefined, greeting: s.greeting ? String(s.greeting) : undefined, items: asItems(s.items), moment: s.moment ? String(s.moment) : undefined });
+				steps.push({ do: "friend", nickname: String(s.nickname), wechat: s.wechat ? String(s.wechat) : undefined, gender: s.gender ? String(s.gender) : undefined, area: s.area ? String(s.area) : undefined, signature: s.signature ? String(s.signature) : undefined, remark: s.remark ? String(s.remark) : undefined, description: s.description ? String(s.description) : undefined, tags: Array.isArray(s.tags) ? s.tags.map(String).filter(Boolean).slice(0, 5) : typeof s.tags === "string" ? s.tags.split(/[,，、\s]+/).filter(Boolean).slice(0, 5) : undefined, avatar: s.avatar ? String(s.avatar) : undefined, greeting: s.greeting ? String(s.greeting) : undefined, items: asItems(s.items), moment: s.moment ? String(s.moment) : undefined });
 			} else if (s.do === "shot" && target) {
 				steps.push({ do: "shot", target, query: s.query ? String(s.query) : undefined, from: s.from ? String(s.from) : undefined, to: s.to ? String(s.to) : undefined });
 			} else if (s.do === "timeline" && target && (s.evening === true || num(s.days) || num(s.hours) || num(s.minutes))) {
@@ -205,7 +205,7 @@ export const applyPlan = async (steps: PlanStep[], opts?: { enableReply?: boolea
 		} else if (step.do === "friend" && !can("addFriend")) {
 			lines.push(`没有添加「${step.nickname}」：管理员没有给你开通「添加好友」`);
 		} else if (step.do === "friend") {
-			const id = addFriendByMe({ nickname: step.nickname, wechat: step.nickname, avatarInfo: /^(https?:|\.\/|\/|data:)/.test(step.avatar ?? "") ? (step.avatar as string) : pickFriendAvatar(`${step.avatar ?? ""} ${step.nickname} ${step.greeting ?? ""}`), greeting: step.greeting || "你好" });
+			const id = addFriendByMe({ nickname: step.nickname, wechat: friendWechat(step.wechat), extra: friendExtra(step), avatarInfo: /^(https?:|\.\/|\/|data:)/.test(step.avatar ?? "") ? (step.avatar as string) : pickFriendAvatar(`${step.avatar ?? ""} ${step.nickname} ${step.greeting ?? ""}`), greeting: step.greeting || "你好" });
 			if (step.items?.length) {
 				// 开场白已经按「添加好友」写好。剧情按每条自己的日期插入，先清掉开场白，避免被挤到现在。
 				setConversationListValue(id, []);
@@ -241,3 +241,25 @@ export const applyPlan = async (steps: PlanStep[], opts?: { enableReply?: boolea
 	for (const id of enableIds) writeStandIn(id, true);
 	return { summary: lines.join("；"), shot, goto };
 };
+
+const AREAS = ["广东 深圳", "广东 广州", "上海 浦东新区", "北京 朝阳", "浙江 杭州", "江苏 南京", "四川 成都", "湖北 武汉", "重庆 渝中", "福建 厦门", "湖南 长沙", "山东 青岛", "陕西 西安", "天津 和平"];
+const rand = (n: number, chars: string) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+/** 微信号：6~20 位，字母开头，只含字母数字下划线减号。AI 没给或给得不合规时系统补一个 */
+function friendWechat(w?: string) {
+	const v = (w ?? "").trim();
+	if (/^[A-Za-z][A-Za-z0-9_-]{5,19}$/.test(v)) return v;
+	return `${rand(1, "abcdefghijklmnopqrstuvwxyz")}${rand(1, "abcdefghijklmnopqrstuvwxyz")}${rand(7, "0123456789")}${rand(1, "abcdefghijklmnopqrstuvwxyz")}`;
+}
+/** 好友资料：AI 给的优先，缺地区时系统补一个；性别只认 male/female/男/女 */
+function friendExtra(step: { gender?: string; area?: string; signature?: string; remark?: string; description?: string; tags?: string[] }) {
+	const g = (step.gender ?? "").toLowerCase();
+	const gender = g === "male" || g === "男" ? "male" : g === "female" || g === "女" ? "female" : undefined;
+	return {
+		...(gender ? { gender } : {}),
+		area: step.area?.trim() || AREAS[Math.floor(Math.random() * AREAS.length)],
+		...(step.signature?.trim() ? { signature: step.signature.trim() } : {}),
+		...(step.remark?.trim() ? { remark: step.remark.trim() } : {}),
+		...(step.description?.trim() ? { description: step.description.trim() } : {}),
+		...(step.tags?.length ? { tags: step.tags } : {}),
+	} as Partial<import("@/stateV2/profile/typing").IStateProfile>;
+}
