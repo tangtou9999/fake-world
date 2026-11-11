@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phone-form
+          ref: phone-auth1
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -22,7 +22,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -F @fake-world/web exec tsc --noEmit
       - run: pnpm -F @fake-world/web exec tsc --noEmit
-      - run: pnpm -F @fake-world/web exec vite build
+      - run: VITE_AUTH_ENABLED=1 pnpm -F @fake-world/web exec vite build
       - name: Publish dist to preview-build branch
         run: |
           cd packages/web/dist
@@ -46,3 +46,4 @@ jobs:
 # 1794340842
 # 1794342503
 # 1794342929
+# 1794360490
