@@ -112,6 +112,7 @@ const ConversationItem = ({ data }: Props) => {
 					senderId={senderId}
 					upperText={upperText}
 					duration={data.duration}
+					voiceBlob={data.voiceBlob}
 					isRead={data.isRead}
 					role={role}
 					showStt={data.showStt}

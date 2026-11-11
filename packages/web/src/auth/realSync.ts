@@ -46,7 +46,7 @@ function updateDialogue(f: Friend, viewing: boolean) {
 		const unread = viewing ? undefined : f.unread || undefined;
 		const next = {
 			...(existing ?? { id, friendId: id }),
-			lastMessage: f.last ? f.last.text : (existing?.lastMessage ?? ""),
+			lastMessage: f.last ? preview(f.last.text) : (existing?.lastMessage ?? ""),
 			lastMessageTime: f.last ? timeLabel(f.last.ts) : (existing?.lastMessageTime ?? ""),
 			unreadMarkNumber: unread,
 		};
@@ -58,7 +58,15 @@ function updateDialogue(f: Friend, viewing: boolean) {
 	});
 }
 
-const toItem = (m: Msg, me: number) => ({
+const VOICE_RE = /^\[\[voice:(\d+):(\d+)\]\]$/;
+const preview = (t: string) => (VOICE_RE.test(t) ? "[语音]" : t);
+
+const toItem = (m: Msg, me: number) => {
+	const v = m.text.match(VOICE_RE);
+	if (v) return { id: `r${m.id}`, type: EConversationType.voice, role: m.sender === me ? "mine" : "friend", duration: Number(v[2]), voiceBlob: v[1], isRead: true, sendTimestamp: m.ts };
+	return toText(m, me);
+};
+const toText = (m: Msg, me: number) => ({
 	id: `r${m.id}`,
 	type: EConversationType.text,
 	role: m.sender === me ? "mine" : "friend",
@@ -71,6 +79,26 @@ async function syncMessages(peerUid: number) {
 	const { messages } = await api<{ messages: Msg[] }>(`/api/real/messages?peer=${peerUid}`);
 	const items = reflow(messages.map((m) => toItem(m, me)) as Record<string, any>[], new Set());
 	setConversationListValue(realId(peerUid), items as never);
+}
+
+export async function sendRealVoice(convId: string, blob: Blob, seconds: number) {
+	const token = readSession()?.token;
+	const res = await fetch(`${API_BASE}/api/real/voice?to=${uidOf(convId)}&dur=${seconds}`, { method: "POST", headers: { "Content-Type": blob.type.split(";")[0], Authorization: `Bearer ${token}` }, body: blob });
+	if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "语音发送失败");
+	await syncMessages(uidOf(convId));
+	void syncAll();
+}
+
+const urlCache = new Map<string, string>();
+export async function realVoiceUrl(blobId: string) {
+	const hit = urlCache.get(blobId);
+	if (hit) return hit;
+	const token = readSession()?.token;
+	const res = await fetch(`${API_BASE}/api/real/blob/${blobId}`, { headers: { Authorization: `Bearer ${token}` } });
+	if (!res.ok) throw new Error("语音加载失败");
+	const u = URL.createObjectURL(await res.blob());
+	urlCache.set(blobId, u);
+	return u;
 }
 
 let syncing = false;

@@ -117,6 +117,8 @@ export interface ICoversationTypeVideo extends IConversationItemBase {
 export interface IConversationTypeVoice extends IConversationItemBase {
 	type: EConversationType.voice;
 	duration: number;
+	/** 真实聊天的语音：服务器上音频文件的 id */
+	voiceBlob?: string;
 	isRead?: boolean;
 	/** 是否显示语音转文字内容 */
 	showStt?: boolean;

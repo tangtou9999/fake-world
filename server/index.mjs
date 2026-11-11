@@ -55,6 +55,13 @@ CREATE TABLE IF NOT EXISTS messages (
   ts INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_msg_pair ON messages (sender, receiver, id);
+CREATE TABLE IF NOT EXISTS blobs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender INTEGER NOT NULL,
+  receiver INTEGER NOT NULL,
+  mime TEXT NOT NULL,
+  data BLOB NOT NULL
+);
 CREATE TABLE IF NOT EXISTS reads (
   user_id INTEGER NOT NULL,
   peer INTEGER NOT NULL,
@@ -272,6 +279,39 @@ async function api(req, res, path) {
 			push(peer, { type: "msg", message });
 			push(me.id, { type: "msg", message });
 			return send(res, 200, { message });
+		}
+		if (path === "/api/real/voice" && method === "POST") {
+			const peer = Number(url.searchParams.get("to"));
+			const dur = Math.max(1, Math.min(60, Math.round(Number(url.searchParams.get("dur")) || 1)));
+			const mime = String(req.headers["content-type"] || "").split(";")[0];
+			if (!/^audio\/(webm|mp4|ogg|mpeg|aac|x-m4a|wav)$/.test(mime)) return send(res, 400, { error: "不支持的音频格式" });
+			const target = byId(peer);
+			if (!target || target.disabled || !areFriends(me.id, peer)) return send(res, 403, { error: "对方不是你的好友或已停用" });
+			const chunks = [];
+			let size = 0;
+			for await (const c of req) {
+				size += c.length;
+				if (size > 1_500_000) return send(res, 413, { error: "语音太长" });
+				chunks.push(c);
+			}
+			if (!size) return send(res, 400, { error: "录音为空" });
+			const bid = Number(db.prepare("INSERT INTO blobs (sender, receiver, mime, data) VALUES (?,?,?,?)").run(me.id, peer, mime, Buffer.concat(chunks)).lastInsertRowid);
+			const t = `[[voice:${bid}:${dur}]]`;
+			const ts = Date.now();
+			const info = db.prepare("INSERT INTO messages (sender, receiver, text, ts) VALUES (?,?,?,?)").run(me.id, peer, t, ts);
+			const message = { id: Number(info.lastInsertRowid), sender: me.id, receiver: peer, text: t, ts };
+			push(peer, { type: "msg", message });
+			push(me.id, { type: "msg", message });
+			return send(res, 200, { message });
+		}
+		{
+			const bm = path.match(/^\/api\/real\/blob\/(\d+)$/);
+			if (bm && method === "GET") {
+				const row = db.prepare("SELECT sender, receiver, mime, data FROM blobs WHERE id = ?").get(Number(bm[1]));
+				if (!row || (row.sender !== me.id && row.receiver !== me.id)) return send(res, 404, { error: "找不到" });
+				res.writeHead(200, { "Content-Type": row.mime, "Content-Length": row.data.length, "Cache-Control": "private, max-age=31536000, immutable" });
+				return res.end(row.data);
+			}
 		}
 		if (path === "/api/real/read" && method === "POST") {
 			const { peer, upTo } = await readBody(req);

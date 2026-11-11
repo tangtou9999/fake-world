@@ -5,10 +5,12 @@ import VoiceSVG from "@/assets/voice-outlined.svg?react";
 import { useAtomValue } from "jotai";
 import { useEffect, useState } from "react";
 import { twJoin } from "tailwind-merge";
+import { isRealConv } from "@/auth/realSync";
 import { useConversationAPI } from "../context";
 import { replayAtom } from "../replay";
 import BottomPopup from "./BottomPopup";
 import EmojiPanel from "./EmojiPanel";
+import HoldToTalk from "./HoldToTalk";
 import Input from "./Input";
 import MorePanel from "./MorePanel";
 import RoleBar from "./RoleBar";
@@ -19,6 +21,8 @@ const ConversationFooter = () => {
 	const { conversationId } = useConversationAPI();
 	const replay = useAtomValue(replayAtom);
 	const [panel, setPanel] = useState<Panel>(null);
+	const [talk, setTalk] = useState(false);
+	const real = isRealConv(conversationId);
 	const [rendered, setRendered] = useState<Exclude<Panel, null>>("emoji");
 
 	useEffect(() => {
@@ -39,8 +43,20 @@ const ConversationFooter = () => {
 				)}
 			>
 				<div className="flex w-full items-end space-x-2">
-					<VoiceSVG fill="#000" className="mb-[3px] h-8 w-8" />
-					<Input dismissPanel={() => setPanel(null)} />
+					{real && talk ? (
+						<KeyboardOutlinedSVG fill="#000" className="mb-[3px] h-8 w-8 cursor-pointer" onClick={() => setTalk(false)} />
+					) : (
+						<VoiceSVG
+							fill="#000"
+							className="mb-[3px] h-8 w-8 cursor-pointer"
+							onClick={() => {
+								if (!real) return;
+								setPanel(null);
+								setTalk(true);
+							}}
+						/>
+					)}
+					{real && talk ? <HoldToTalk conversationId={conversationId} /> : <Input dismissPanel={() => setPanel(null)} />}
 					{panel === "emoji" ? (
 						<KeyboardOutlinedSVG
 							fill="#000"

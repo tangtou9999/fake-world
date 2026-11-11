@@ -2,7 +2,9 @@ import VoiceSVG from "@/assets/voice.svg?react";
 import type { IConversationTypeVoice } from "@/stateV2/conversation";
 import type { IStateProfile } from "@/stateV2/profile";
 import { playingVoiceAtom } from "@/stateV2/playingVoice";
-import { useAtomValue } from "jotai";
+import { realVoiceUrl } from "@/auth/realSync";
+import { showToast } from "@/wechatComponents/Toast";
+import { useAtom } from "jotai";
 import { memo } from "react";
 import { twJoin } from "tailwind-merge";
 import CommonBlock from "./CommonBlock";
@@ -10,6 +12,7 @@ import CommonBlock from "./CommonBlock";
 type Props = {
 	id?: string;
 	duration: IConversationTypeVoice["duration"];
+	voiceBlob?: string;
 	senderId: IStateProfile["id"];
 	upperText: IConversationTypeVoice["upperText"];
 	isRead: IConversationTypeVoice["isRead"];
@@ -18,8 +21,30 @@ type Props = {
 	stt: IConversationTypeVoice["stt"];
 };
 
-const Voice = ({ id, senderId, upperText, duration, role, isRead, showStt, stt }: Props) => {
-	const playing = useAtomValue(playingVoiceAtom) === id && !!id;
+let realAudio: HTMLAudioElement | null = null;
+
+const Voice = ({ id, voiceBlob, senderId, upperText, duration, role, isRead, showStt, stt }: Props) => {
+	const [playingId, setPlayingId] = useAtom(playingVoiceAtom);
+	const playing = playingId === id && !!id;
+	const play = async () => {
+		if (!voiceBlob || !id) return;
+		if (playing) {
+			realAudio?.pause();
+			setPlayingId(null);
+			return;
+		}
+		try {
+			realAudio?.pause();
+			const a = new Audio(await realVoiceUrl(voiceBlob));
+			realAudio = a;
+			a.onended = () => setPlayingId((c) => (c === id ? null : c));
+			setPlayingId(id);
+			await a.play();
+		} catch {
+			setPlayingId(null);
+			showToast({ content: "语音播放失败" });
+		}
+	};
 	return (
 		<>
 			<CommonBlock
@@ -39,7 +64,7 @@ const Voice = ({ id, senderId, upperText, duration, role, isRead, showStt, stt }
 					)
 				}
 			>
-				<div className={twJoin("flex h-6", role === "mine" ? "flex-row-reverse" : "flex-row")}>
+				<div onClick={voiceBlob ? () => void play() : undefined} className={twJoin("flex h-6", role === "mine" ? "flex-row-reverse" : "flex-row")}>
 					<VoiceSVG
 						width={31}
 						height={31}
