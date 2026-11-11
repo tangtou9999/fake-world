@@ -1,0 +1,28 @@
+name: Build auth bundle
+on:
+  workflow_dispatch:
+    inputs:
+      api_base:
+        description: "后端地址（前后端同域名就留空）"
+        required: false
+        default: ""
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -F @fake-world/web exec tsc --noEmit
+      - run: pnpm -F @fake-world/web exec vite build
+        env:
+          VITE_AUTH_ENABLED: "1"
+          VITE_API_BASE: ${{ inputs.api_base }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fake-world-dist
+          path: packages/web/dist
