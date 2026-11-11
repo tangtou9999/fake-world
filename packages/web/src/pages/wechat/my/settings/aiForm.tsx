@@ -19,7 +19,7 @@ export const parseForm = (raw: string): { text: string; form?: AiForm } => {
 			if (type === "choice" && !options?.length) continue;
 			fields.push({ key: String(f.key), label: String(f.label), type, options, multi: !!f.multi, default: f.default as never });
 		}
-		return fields.length ? { text, form: { title: String(j.title ?? "请补充资料"), fields: fields.slice(0, 8) } } : { text };
+		return fields.length ? { text, form: { title: String(j.title ?? "请补充资料"), fields: fields.slice(0, 14) } } : { text };
 	} catch {
 		return { text };
 	}

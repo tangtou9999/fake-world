@@ -265,7 +265,7 @@ export const TransferSend = () => {
 	const { isEdit } = useMode();
 	const [sender, setSender] = useState<Sender>("mine");
 	const [done, setDone] = useState(false);
-	const tooMuch = Number(amount) > 200;
+	const tooMuch = false; // 转账没有金额上限（只有红包限 200）
 	const ok = validAmount(amount) && !tooMuch;
 	const name = profile?.remark || profile?.nickname || "";
 	const mask = profile?.nickname ? `(*${profile.nickname.slice(-1)})` : "";
@@ -331,7 +331,6 @@ export const TransferSend = () => {
 					/>
 				</div>
 				<style>{"@keyframes tr-caret{0%,45%{opacity:1}55%,100%{opacity:0}}"}</style>
-				{tooMuch && <div className="mt-2 text-[13px] text-[#FA5151]">单笔转账金额不可超过 200 元</div>}
 				<div className="mt-[22px] text-[15px] text-[#576B95]">
 					{editNote ? (
 						<input

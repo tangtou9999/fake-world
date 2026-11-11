@@ -83,6 +83,7 @@ const Wallet = () => {
 					<List.CanBeDetectedItem
 												rightClassName={ROW}
 						icon={<DiamondIcon />}
+						onClick={() => navigate("/wechat/wallet/mini-fund")}
 						extra={<><span className={VALUE}>¥{miniFund}</span><Arrow /></>}
 						metaData={{
 							type: EMetaDataType.Wallet,

@@ -326,3 +326,11 @@ export function pickMomentImages(options?: {
 	for (const item of picked) sessionMoments.add(item.path);
 	return picked.map((item) => libraryPublicUrl(item.path));
 }
+
+export const AVATAR_CATEGORIES = [
+	{ key: "avatars/jingshenxiaomei", label: "精神小妹" },
+	{ key: "avatars/zhichang", label: "职场" },
+	{ key: "avatars/nvsheng_other", label: "其他" },
+];
+/** 素材库里某一类头像的图片地址，给「换头像」选择器用 */
+export const listAvatarUrls = (category: string) => items.filter((i) => i.category === category).map((i) => libraryPublicUrl(i.path));

@@ -68,8 +68,8 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 
 	const save = () => {
 		const amountChanged = String(d.amount) !== String(item.amount ?? "");
-		if ((type === "transfer" || type === "redPacket") && amountChanged && moneyOverLimit(d.amount)) {
-			window.alert("单条金额不能超过 200 元，这次没有保存。原来的金额还在。");
+		if (type === "redPacket" && amountChanged && moneyOverLimit(d.amount)) {
+			window.alert("红包金额不能超过 200 元，这次没有保存。原来的金额还在。");
 			return;
 		}
 		const ts = d.at ? dayjs(d.at).valueOf() : undefined;

@@ -38,7 +38,7 @@ export type AiChatMessage = {
 };
 
 export type AiChatSession = { id: string; no: number; /** 用户给窗口起的名字，没有就显示「N号AI」 */ name?: string; messages: AiChatMessage[]; /** 私人 AI 绑定的聊天（联系人 id），只用于让它读取，不会改动聊天 */ boundIds?: string[] };
-export type AiChatsState = { sessions: AiChatSession[]; activeId: string; counter: number; speak: boolean };
+export type AiChatsState = { sessions: AiChatSession[]; activeId: string; counter: number; speak?: boolean; speakV2?: boolean };
 
 const legacy = (() => {
 	try {
@@ -54,7 +54,7 @@ export const aiChatsAtom = atomWithStorage<AiChatsState>("ai-chats-v2", {
 	sessions: [{ id: "s1", no: 1, messages: legacy }],
 	activeId: "s1",
 	counter: 1,
-	speak: true,
+	speakV2: false,
 });
 
 /** 每个聊天窗口各有一个专属 AI，对话按联系人 id 保存在本机 */
@@ -90,17 +90,17 @@ export const AI_CHAT_SYSTEM = `你是用户的私人助手兼聊天剧本编剧�
 - 普通模式是真实聊天：点开待收款的转账可以「对方已领取」或「退回」。领取后这一条变成已被接收，对方那边会出现一条已收款；退回则两边都变成已退回。红包只有领取，没有退回。长按文字消息可翻译。
 - 钱包、零钱明细、经营账户余额、添加朋友（我加别人/别人加我）、微信支付服务号、扫码支付、朋友圈都可编辑。
 - AI 密钥在「我 → 设置 → AI 助手」填写，只保存在本机。
-【资料卡】用户让你批量生成东西（比如「帮我生成 10 个好友」）但没说清楚细节时，不要立刻生成，也不要用文字一个个盘问。先用一句话说明，然后在回复末尾附一个 wxform 代码块，系统会显示成可点选的资料卡，用户填完提交后会作为一条消息发回给你：
+【资料卡】用户说「帮我生成一批通讯录」「帮我生成好友」「生成 N 个好友/联系人」这类话，且没有把细节全部说清楚时，不要立刻生成，也不要用文字一个个盘问。先用一句话说明，然后在回复末尾附一个 wxform 代码块，系统会显示成可点选的资料卡，用户点选后提交，会作为一条消息发回给你。资料卡要尽量全，一次问完，下面是标准模板（人数等数字用用户说过的值当 default，没说就用示例值）：
 \`\`\`wxform
-{"title":"生成 10 个好友","fields":[{"key":"male","label":"男生人数","type":"number","default":5},{"key":"female","label":"女生人数","type":"number","default":5},{"key":"style","label":"网名风格","type":"choice","multi":true,"options":["文艺","可爱","搞怪","成熟稳重","职场","精神小妹","随机"]},{"key":"extra","label":"其他要求","type":"text"}]}
+{"title":"生成通讯录好友","fields":[{"key":"male","label":"男生人数","type":"number","default":5},{"key":"female","label":"女生人数","type":"number","default":5},{"key":"style","label":"网名风格","type":"choice","multi":true,"options":["文艺","可爱","搞怪","成熟稳重","职场","精神小妹","英文名","随机"]},{"key":"area","label":"所在地区","type":"choice","multi":true,"options":["广东","上海","北京","浙江","江苏","四川","湖南","随机"]},{"key":"age","label":"年龄段","type":"choice","options":["18-22","23-28","29-35","36-45","随机"]},{"key":"job","label":"身份/职业","type":"choice","multi":true,"options":["学生","白领","老师","医护","自由职业","老板","销售","随机"]},{"key":"avatar","label":"头像风格","type":"choice","options":["精神小妹","职场","风景/宠物","随机"]},{"key":"sign","label":"个性签名","type":"choice","options":["要","不要"],"default":"要"},{"key":"chat","label":"是否铺聊天记录","type":"choice","options":["不铺","简单几句","铺几天剧情"],"default":"简单几句"},{"key":"moment","label":"朋友圈","type":"choice","options":["不发","每人一条"],"default":"不发"},{"key":"tag","label":"标签/备注","type":"text"},{"key":"extra","label":"其他要求","type":"text"}]}
 \`\`\`
-字段 type 为 number / choice（要 options，multi 为 true 可多选）/ text，最多 8 项。用户提交（消息以「【资料卡」开头）后，就按他选的人数、性别、风格直接生成：每个人的网名要符合性别和风格、彼此不重复、像真实微信网名，通过 wxplan 的 friend 步骤添加（头像风格写进 avatar，如「职场」「精神小妹」「宠物」；素材库头像以女生风格为主，男生没有对应风格时不写 avatar）。用户已经把人数、性别、风格都说清楚了就直接生成，不用再发资料卡。
+字段 type 为 number / choice（要 options，multi 为 true 可多选）/ text，最多 14 项；可以按用户的话增删字段，但要保持全面。用户提交（消息以「【资料卡」开头）后，就按他选的内容直接生成：每个人的网名要符合性别和风格、彼此不重复、像真实微信网名，通过 wxplan 的 friend 步骤添加，资料填全（微信号、性别、地区、个性签名、备注/标签、描述），年龄和职业体现在签名、描述、聊天里；头像风格写进 avatar（如「职场」「精神小妹」「宠物」，素材库头像以女生风格为主，男生没有对应风格时不写 avatar）；「铺聊天记录」选不铺就不写 items，选简单几句就每人 2~4 句，选铺几天剧情就拉开到不同天；朋友圈选每人一条才写 moment。用户已经把人数、性别、风格等都说清楚了就直接生成，不用再发资料卡。
 【直接改数据】用户要你改聊天、朋友圈、钱包、好友资料、AI 代聊人设卡、开启或关闭 AI 代聊、新建好友并铺一段剧情、导出某段聊天长图、或平移时间线时：先用一两句话说明你打算做什么，然后在回复最末尾附一个 wxplan 代码块。系统会显示变更预览卡片，用户点「确认执行」后才写入。在他点之前，不要说已经改好了。
 \`\`\`wxplan
 {"steps":[{"do":"chat","target":"联系人","mode":"range","from":"YYYY-MM-DD HH:mm","to":"YYYY-MM-DD HH:mm","items":[{"kind":"text","who":"friend","text":"一句短话","at":"YYYY-MM-DD HH:mm"}]}]}
 \`\`\`
 steps 里可以有多步，do 只能是这些：
-- chat：改某个联系人的聊天。mode 为 append（按每条 at 插入）、replace（清空重写）、range（只替换 from 到 to）。items 每项 kind 为 text / voice / transfer / transferReceipt / redPacket / redPacketReceipt / system，who 为 me 或 friend，要有 at（YYYY-MM-DD HH:mm，不能晚于现在）。转账和红包的发起与收款必须是两条，用同一个 pair 连起来，单条金额不超过 200。
+- chat：改某个联系人的聊天。mode 为 append（按每条 at 插入）、replace（清空重写）、range（只替换 from 到 to）。items 每项 kind 为 text / voice / transfer / transferReceipt / redPacket / redPacketReceipt / system，who 为 me 或 friend，要有 at（YYYY-MM-DD HH:mm，不能晚于现在）。转账和红包的发起与收款必须是两条，用同一个 pair 连起来，红包单个不超过 200，转账没有上限。
 - wallet：{"do":"wallet","balance":"5000.00"} 改零钱余额，也可写 miniFund、business。
 - moment：{"do":"moment","target":"联系人","text":"朋友圈正文","at":"YYYY-MM-DD HH:mm"}。
 - profile：{"do":"profile","target":"联系人","remark":"","signature":"","nickname":"","area":"","description":""}，只写要改的字段。

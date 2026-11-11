@@ -46,7 +46,14 @@ const WalletSheetInner = ({ onClose }: { onClose: () => void }) => {
 			{f("balance", "零钱余额")}
 			{f("business", "经营账户")}
 			{f("miniFund", "零钱通余额")}
-			{f("miniFundYield", "零钱通收益率%")}
+			{f("miniFundYield", "零钱通7日年化%")}
+			{f("miniFundTotal", "零钱通累计收益")}
+			{f("miniFundYesterday", "零钱通昨日收益")}
+			<Row label="基金名称">
+				<input className={inputCls} value={d.miniFundName ?? ""} onChange={(e) => setD({ ...d, miniFundName: e.target.value })} />
+			</Row>
+			{f("finCurrent", "活期理财收益率%")}
+			{f("finFixed", "定期理财最高收益率%")}
 		</Sheet>
 	);
 };

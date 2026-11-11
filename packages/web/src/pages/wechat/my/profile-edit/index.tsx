@@ -5,10 +5,11 @@ import { canBeDetected } from "@/components/NodeDetected";
 import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { EMetaDataType } from "@/stateV2/detectedNode";
-import { myProfileAtom } from "@/stateV2/profile";
+import AvatarPicker from "@/components/AvatarPicker";
+import { myProfileAtom, setAllProfilesValue } from "@/stateV2/profile";
 import List from "@/wechatComponents/List";
 import { useAtomValue } from "jotai";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { genderLabel, maskPhone, useFillMeProfileDefaults } from "../profileText";
 
 const valueClass = "ml-4 max-w-[58%] truncate text-right text-[16px] text-black/40";
@@ -44,6 +45,7 @@ const ProfileEdit = () => {
 	useScreenTopBg("#EDEDED");
 	useFillMeProfileDefaults();
 	const phone = profile.phone?.[0];
+	const [pick, setPick] = useState(false);
 
 	const edit = (field: string) => () => navigate(`/wechat/my/settings/profile/${field}`);
 
@@ -68,6 +70,7 @@ const ProfileEdit = () => {
 					<Row
 						label="头像"
 						tall
+						onClick={() => setPick(true)}
 						extra={
 							<h.img src={profile.avatarInfo} className="h-10 w-10 rounded-[4px] object-cover" />
 						}
@@ -96,6 +99,16 @@ const ProfileEdit = () => {
 					<Row label="微信豆" value={profile.coin !== undefined ? String(profile.coin) : ""} />
 				</List>
 			</div>
+			{pick && (
+				<AvatarPicker
+					current={profile.avatarInfo}
+					onClose={() => setPick(false)}
+					onPick={(a) => {
+						setAllProfilesValue((prev) => prev.map((p) => (p.id === profile.id ? { ...p, avatarInfo: a } : p)));
+						setPick(false);
+					}}
+				/>
+			)}
 		</canBeDetected.div>
 	);
 };

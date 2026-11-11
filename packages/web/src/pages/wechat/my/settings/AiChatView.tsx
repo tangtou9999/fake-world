@@ -420,11 +420,11 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 				if (!halted) {
 					const done = new Set(batch.ids);
 					pendingIds.current[batch.sid] = (pendingIds.current[batch.sid] ?? []).filter((id) => !done.has(id));
-					if (state.speak) void doSpeak(shownText);
+					if (state.speakV2) void doSpeak(shownText);
 				}
 			} else {
 				updateMessages((m) => [...m, replyMsg]);
-				if (state.speak) void doSpeak(shownText);
+				if (state.speakV2) void doSpeak(shownText);
 			}
 		} catch (e) {
 			if (batch && (isAbortErr(e) || ctrl?.signal.aborted || batchStop.current.has(batch.sid))) return;
@@ -697,8 +697,8 @@ const AiChatView = ({ mode, conversationId }: Props) => {
 						🔊 停止
 					</button>
 				)}
-				<button type="button" className={speaking ? "" : "ml-auto"} onClick={() => setState((s) => ({ ...s, speak: !s.speak }))}>
-					朗读回复：{state.speak ? "开" : "关"}
+				<button type="button" className={speaking ? "" : "ml-auto"} onClick={() => setState((s) => ({ ...s, speakV2: !s.speakV2 }))}>
+					朗读回复：{state.speakV2 ? "开" : "关"}
 				</button>
 			</div>
 			{!isChat && (

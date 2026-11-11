@@ -36,11 +36,11 @@ const ConversationListMetaDataEditor = ({ index }: EditorProps<unknown, IStatePr
 
 	const onFinish = (values: TConversationItem) => {
 		if (
-			(values.type === EConversationType.transfer || values.type === EConversationType.redPacket) &&
+			values.type === EConversationType.redPacket &&
 			"amount" in values &&
 			Number(values.amount) > 200
 		) {
-			message.warning("单条金额不能超过 200，没有添加");
+			message.warning("红包金额不能超过 200，没有添加");
 			return;
 		}
 		const id = nanoid(8);

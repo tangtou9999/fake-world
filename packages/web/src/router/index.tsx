@@ -37,6 +37,7 @@ import Wallet from "@/pages/wechat/wallet";
 import Balance from "@/pages/wechat/wallet/Balance";
 import BalanceRecords from "@/pages/wechat/wallet/BalanceRecords";
 import { RedPacketSend, TransferSend } from "@/pages/wechat/conversation/MoneyPages";
+import MiniFund from "@/pages/wechat/wallet/MiniFund";
 import Withdraw from "@/pages/wechat/wallet/Withdraw";
 import WithdrawResult from "@/pages/wechat/wallet/WithdrawResult";
 import { BUILT_IN_TRANSACTION_TYPES_LABELS } from "@/stateV2/transaction";
@@ -186,6 +187,13 @@ export const routes: RouteObject[] = [
 								element: <Balance />,
 								handle: {
 									label: "routerLabel.wechat.balance",
+								},
+							},
+							{
+								path: "mini-fund",
+								element: <MiniFund />,
+								handle: {
+									label: "routerLabel.wechat.wallet",
 								},
 							},
 							{

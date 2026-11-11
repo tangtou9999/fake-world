@@ -213,7 +213,7 @@ export const applyOps = (conversationId: string, ops: ChatOp[]) => {
 				if (o.read !== undefined && it.type === EConversationType.voice) it.isRead = o.read;
 				if (o.amount && (it.type === EConversationType.redPacket || it.type === EConversationType.transfer)) {
 					const n = Number(o.amount);
-					if (moneyOverLimit(n)) warnings.push(`#${o.id} 金额 ¥${n} 超过 200，金额没改`);
+					if (it.type === EConversationType.redPacket && moneyOverLimit(n)) warnings.push(`#${o.id} 红包金额 ¥${n} 超过 200，金额没改`);
 					else if (Number.isFinite(n) && n > 0) it.amount = n.toFixed(2);
 				}
 				if (o.note !== undefined && (it.type === EConversationType.redPacket || it.type === EConversationType.transfer)) it.note = o.note || undefined;

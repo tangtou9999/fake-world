@@ -1,11 +1,11 @@
-import { fromLastGenerateUpperText, setConversationListValue, type TConversationItem, EConversationType } from "@/stateV2/conversation";
+import { fromLastGenerateUpperText, getConversationListValueSnapshot, setConversationListValue, type TConversationItem, EConversationType } from "@/stateV2/conversation";
 import { getDialogueListValueSnapshot, setDialogueListValue } from "@/stateV2/dialogueList";
 import { touchDialogue } from "@/stateV2/fileHelper";
 import { isGroupId } from "@/stateV2/group";
 import atomWithStorage from "@/stateV2/atomWithStorage";
 import { mainStore } from "@/stateV2/store";
 import { callGemini } from "@/utils/gemini";
-import { textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
+import { slateToPlain, textToSlateChildren } from "@/wechatComponents/SlateText/emojiNames";
 import { showToast } from "@/wechatComponents/Toast";
 import dayjs from "dayjs";
 import { atom } from "jotai";
@@ -43,6 +43,20 @@ const PACE = {
 	nameGapMin: 300,
 	nameGapMax: 800,
 } as const;
+
+/** 这次回几条：先按对方这句话的长短、是不是在提问来随机，模型遇到特殊情况可以自己多/少一条。 */
+const pickCount = (lastMine: string) => {
+	const n = charCount(lastMine);
+	const asks = (lastMine.match(/[?？]/g) ?? []).length;
+	const w = n <= 4 ? [0.72, 0.22, 0.06] : n > 40 || asks >= 2 ? [0.2, 0.45, 0.35] : [0.5, 0.35, 0.15];
+	const r = Math.random();
+	return r < w[0] ? 1 : r < w[0] + w[1] ? 2 : 3;
+};
+
+const plainText = (it: TConversationItem) => {
+	const c = (it as { textContent?: unknown[] }).textContent;
+	return it.type === EConversationType.text && Array.isArray(c) ? c.map((n) => slateToPlain(n as never)).join("") : "";
+};
 
 const chain = new Map<string, Promise<void>>();
 const controllers = new Map<string, AbortController>();
@@ -125,10 +139,22 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 		const readFor = span(PACE.readMin, PACE.readMax);
 		const started = Date.now();
 		const card = await readPersona(conversationId);
-		const log = chatLog(conversationId, name, 40);
+		const log = chatLog(conversationId, name, 60);
 		if (signal.aborted || typingOwner.get(conversationId) !== token) return;
-		const reply = await callGemini("我刚发来一条消息。请只用这个好友以往的语气回复，1 到 3 条，每条一行，不要解释，不要代码块。", {
-			system: `你在扮演微信好友「${name}」。下面是你们的聊天，最后几条是刚发生的。按这个人的口气回，短句，口语。\n${log.text}${personaSystemExtra(card)}`,
+		const list = getConversationListValueSnapshot(conversationId);
+		const mineTexts = list.filter((v) => v.role === "mine" && plainText(v)).map(plainText);
+		const lastMine = mineTexts.at(-1) ?? "";
+		const myRecent = mineTexts.slice(-3).join(" / ");
+		const said = list.filter((v) => v.role === "friend" && plainText(v)).slice(-10).map(plainText);
+		const want = pickCount(lastMine);
+		const reply = await callGemini(`对方（我）刚发来：${myRecent || lastMine}\n请像${name}本人那样回复。`, {
+			system: `你在扮演微信好友「${name}」，和对方真人聊天。下面是你们的聊天，最后几条是刚发生的。现在是 ${dayjs().format("HH:mm")}。
+要求：
+1. 像真人发微信：口语、短句、有情绪，可以有错别字感、省略号、语气词，不要客服腔，不要总结，不要解释。
+2. 这次默认回 ${want} 条，每条单独一行。只有情况明显需要时才多或少一条（比如对方很激动、连问几个问题、你有话要补充时多一条；对方只是"嗯""哦""好"时 1 条甚至很短的几个字就够），最多 3 条。大多数时候 1~2 条就好，不要每次都 3 条。
+3. 每条长短不一，不要整齐划一；不要每次都用同样的开头和句式。${said.length ? `\n4. 你最近说过这些，别重复它们的说法、口头禅和句式：\n${said.map((x) => `- ${x}`).join("\n")}` : ""}
+5. 只输出要发的内容，每条一行，不要编号，不要引号，不要代码块。
+${log.text}${personaSystemExtra(card)}`,
 			windowKey: `standin:${conversationId}`,
 			signal,
 		});

@@ -28,11 +28,11 @@ const ConversationItemMetaDataEditor = ({
 		const prevAmount = "amount" in data ? data.amount : undefined;
 		const nextAmount = "amount" in values ? values.amount : undefined;
 		if (
-			(values.type === EConversationType.transfer || values.type === EConversationType.redPacket) &&
+			values.type === EConversationType.redPacket &&
 			String(nextAmount ?? "") !== String(prevAmount ?? "") &&
 			Number(nextAmount) > 200
 		) {
-			message.warning("单条金额不能超过 200，这次没有保存");
+			message.warning("红包金额不能超过 200，这次没有保存");
 			return;
 		}
 		setConversationList((prev) => {
