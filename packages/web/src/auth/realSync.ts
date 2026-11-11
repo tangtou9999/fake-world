@@ -42,7 +42,7 @@ function updateDialogue(f: Friend, viewing: boolean) {
 	const id = realId(f.id);
 	setDialogueListValue((prev) => {
 		const existing = prev.find((v) => v.friendId === id);
-		if (!f.last && !existing) return prev;
+		// 真实好友一开通就出现在聊天列表里（即使还没聊过）
 		const unread = viewing ? undefined : f.unread || undefined;
 		const next = {
 			...(existing ?? { id, friendId: id }),
