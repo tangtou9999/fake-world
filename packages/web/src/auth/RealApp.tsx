@@ -259,7 +259,7 @@ const MeTab = ({ standalone }: { standalone: boolean }) => {
 /** 真实聊天：真实好友、实时文字聊天（记录存服务器、不可修改）、备忘录 */
 const RealApp = ({ standalone = false }: { standalone?: boolean }) => {
 	const me = readSession()?.user.id ?? 0;
-	const [tab, setTab] = useState<"chat" | "memo" | "me">("chat");
+	const [tab, setTab] = useState<"chat" | "memo" | "me">(standalone ? "chat" : "memo");
 	const [friends, setFriends] = useState<Friend[]>([]);
 	const [open, setOpen] = useState<Friend | null>(null);
 	const [incoming, setIncoming] = useState<Msg | null>(null);

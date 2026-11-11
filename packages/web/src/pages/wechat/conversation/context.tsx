@@ -1,3 +1,6 @@
+import { isRealConv, sendRealText } from "@/auth/realSync";
+import { slateToPlain } from "@/wechatComponents/SlateText/emojiNames";
+import { showToast } from "@/wechatComponents/Toast";
 import { MYSELF_ID } from "@/faker/wechat/user";
 import { FILE_HELPER_ID } from "@/faker/wechat/user/fileHelper";
 import { touchDialogue } from "@/stateV2/fileHelper";
@@ -92,9 +95,13 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 
 	const sendTextMessage = useCallback(() => {
 		const { sendRole: configuredRole } = getInputterConfigValueSnapshot();
-		const sendRole = conversationId === FILE_HELPER_ID ? "mine" : configuredRole;
+		const sendRole = conversationId === FILE_HELPER_ID || isRealConv(conversationId) ? "mine" : configuredRole;
 		const value = getInputterValueSnapshot();
 		if (isEqual(value, SLATE_INITIAL_VALUE)) return;
+		const real = isRealConv(conversationId);
+		if (real) {
+			void sendRealText(conversationId, value.map((n) => slateToPlain(n as never)).join("\n")).catch((e) => showToast({ content: e instanceof Error ? e.message : "发送失败" }));
+		} else {
 		touchDialogue(conversationId, value.map((node) => Node.string(node)).join(""));
 		setConversationListValue(conversationId, (prev) => {
 			return [
@@ -110,6 +117,7 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 				},
 			] as TConversationItem[];
 		});
+		}
 		const pickedEmoji: string[] = [];
 		for (const nodeEntry of Node.descendants(inputEditor)) {
 			const [node] = nodeEntry;
@@ -126,7 +134,7 @@ export const ConversationAPIProvider = ({ children }: PropsWithChildren) => {
 			},
 		});
 		scrollConversationListToBtm();
-		if (sendRole === "mine") replyAsFriend(conversationId);
+		if (sendRole === "mine" && !real) replyAsFriend(conversationId);
 	}, [conversationId]);
 
 	const sendTickleText = useCallback(

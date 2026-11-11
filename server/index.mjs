@@ -115,7 +115,7 @@ const publicUser = (u) => ({
 	phone: u.phone,
 	name: u.name,
 	role: u.role,
-	perms: u.role === "admin" ? cleanPerms(Object.fromEntries(PERM_KEYS.map((k) => [k, true]))) : u.role === "story" ? cleanPerms(JSON.parse(u.perms || "{}")) : cleanPerms({}),
+	perms: u.role === "admin" ? cleanPerms(Object.fromEntries(PERM_KEYS.map((k) => [k, true]))) : cleanPerms(JSON.parse(u.perms || "{}")),
 	disabled: !!u.disabled,
 	createdAt: u.created_at,
 });
@@ -131,10 +131,10 @@ function makeFriends(x, y) {
 	db.prepare("INSERT OR IGNORE INTO friends (a, b, created_at) VALUES (?,?,?)").run(a, b, Date.now());
 }
 const areFriends = (x, y) => !!db.prepare("SELECT 1 FROM friends WHERE a = ? AND b = ?").get(Math.min(x, y), Math.max(x, y));
-/** 真实账号和总账号互为好友 */
+/** 所有子账号和总账号互为好友 */
 function linkRealWithAdmins() {
 	const admins = db.prepare("SELECT id FROM users WHERE role = 'admin'").all();
-	for (const r of db.prepare("SELECT id FROM users WHERE role = 'real'").all()) for (const a of admins) makeFriends(r.id, a.id);
+	for (const r of db.prepare("SELECT id FROM users WHERE role != 'admin'").all()) for (const a of admins) makeFriends(r.id, a.id);
 }
 
 async function bootstrapAdmin() {
@@ -238,7 +238,6 @@ async function api(req, res, path) {
 	}
 
 	if (path.startsWith("/api/real/")) {
-		if (me.role === "story") return send(res, 403, { error: "这个账号没有真实聊天功能" });
 		const url = new URL(req.url || "/", "http://x");
 
 		if (path === "/api/real/friends" && method === "GET") {
@@ -318,8 +317,8 @@ async function api(req, res, path) {
 			if (!validPassword(b.password)) return send(res, 400, { error: "密码至少 6 位" });
 			if (b.role !== "real" && b.role !== "story") return send(res, 400, { error: "账号类型只能是 real 或 story" });
 			if (byPhone(phone)) return send(res, 409, { error: "这个手机号已经开过账号了" });
-			const info = db.prepare("INSERT INTO users (phone, name, role, pass_hash, perms, created_at) VALUES (?,?,?,?,?,?)").run(phone, String(b.name || "").slice(0, 30), b.role, await hashPassword(b.password), JSON.stringify(b.role === "story" ? cleanPerms(b.perms) : {}), Date.now());
-			if (b.role === "real") linkRealWithAdmins();
+			const info = db.prepare("INSERT INTO users (phone, name, role, pass_hash, perms, created_at) VALUES (?,?,?,?,?,?)").run(phone, String(b.name || "").slice(0, 30), b.role, await hashPassword(b.password), JSON.stringify(cleanPerms(b.perms)), Date.now());
+			linkRealWithAdmins();
 			return send(res, 200, { user: publicUser(byId(Number(info.lastInsertRowid))) });
 		}
 		const m = path.match(/^\/api\/admin\/users\/(\d+)(\/reset-password)?$/);
@@ -337,7 +336,7 @@ async function api(req, res, path) {
 				const b = await readBody(req);
 				if (u.role === "admin" && (b.disabled !== undefined || b.perms !== undefined)) return send(res, 400, { error: "总账号不能被停用或改权限" });
 				if (b.name !== undefined) db.prepare("UPDATE users SET name = ? WHERE id = ?").run(String(b.name).slice(0, 30), u.id);
-				if (b.perms !== undefined && u.role === "story") db.prepare("UPDATE users SET perms = ? WHERE id = ?").run(JSON.stringify(cleanPerms(b.perms)), u.id);
+				if (b.perms !== undefined && u.role !== "admin") db.prepare("UPDATE users SET perms = ? WHERE id = ?").run(JSON.stringify(cleanPerms(b.perms)), u.id);
 				if (b.disabled !== undefined) {
 					db.prepare("UPDATE users SET disabled = ?, token_ver = token_ver + 1 WHERE id = ?").run(b.disabled ? 1 : 0, u.id);
 					closeSockets(u.id);
@@ -384,7 +383,7 @@ function onUpgrade(req, socket) {
 	const key = req.headers["sec-websocket-key"];
 	const p = url.pathname === "/ws" ? readToken(url.searchParams.get("token")) : null;
 	const u = p ? byId(p.uid) : null;
-	if (!key || !u || u.disabled || u.token_ver !== p.tv || u.role === "story") {
+	if (!key || !u || u.disabled || u.token_ver !== p.tv) {
 		socket.write("HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n");
 		return socket.destroy();
 	}

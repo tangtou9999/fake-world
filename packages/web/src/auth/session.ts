@@ -49,7 +49,6 @@ export function can(perm: PermKey): boolean {
 	const s = readSession();
 	if (!s) return false;
 	if (s.user.role === "admin") return true;
-	if (s.user.role === "real") return false;
 	return !!s.user.perms?.[perm];
 }
 export const isAdmin = () => !AUTH_ENABLED || readSession()?.user.role === "admin";

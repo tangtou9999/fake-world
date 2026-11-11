@@ -67,7 +67,7 @@ const letterAvatar = (name: string) =>
 		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="#B9BEC6"/><text x="48" y="64" text-anchor="middle" font-size="46" fill="#fff" font-family="sans-serif">${(name.trim()[0] || "?").replace(/[<>&]/g, "")}</text></svg>`,
 	)}`;
 
-function newProfile(p: { nickname: string; wechat: string; avatarInfo: string; extra?: Partial<IStateProfile> }): IStateProfile {
+export function newProfile(p: { nickname: string; wechat: string; avatarInfo: string; extra?: Partial<IStateProfile> }): IStateProfile {
 	return {
 		...p.extra,
 		id: `friend-${nanoid(6)}`,

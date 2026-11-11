@@ -1,3 +1,4 @@
+import { isRealConv } from "@/auth/realSync";
 import { can } from "@/auth/session";
 import IncomingCall from "./IncomingCall";
 import { applyMoneyMove } from "@/stateV2/walletFlow";
@@ -134,7 +135,7 @@ const ConversationList = () => {
 	const [sheetId, setSheetId] = useState<string | null>(null);
 	const editTapRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
 	const onEditTap = (item: TConversationItem) => {
-		if (!isEdit) return;
+		if (!isEdit || isRealConv(conversationId)) return;
 		const now = Date.now();
 		const twice = editTapRef.current.id === item.id && now - editTapRef.current.t < 380;
 		editTapRef.current = { id: item.id, t: twice ? 0 : now };
@@ -572,26 +573,30 @@ const ConversationList = () => {
 								</button>
 							</>
 						)}
-						{isEdit && can("editChat") && (
+						{isEdit && can("editChat") && !isRealConv(conversationId) && (
 							<button type="button" disabled={busy} onClick={() => { setSheetId(menu.id); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
 								编辑
 							</button>
 						)}
-						<button type="button" disabled={busy} onClick={() => { setSelected(new Set([menu.id])); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
-							多选
-						</button>
-						<button
-							type="button"
-							disabled={busy}
-							onClick={() => {
-								const id = menu.id;
-								setMenu(null);
-								if (window.confirm("删除这条消息？")) setConversationList((prev) => prev.filter((v) => v.id !== id));
-							}}
-							className="h-[54px] w-full text-[17px] text-[#FA5151]"
-						>
-							删除
-						</button>
+						{!isRealConv(conversationId) && (
+							<>
+								<button type="button" disabled={busy} onClick={() => { setSelected(new Set([menu.id])); setMenu(null); }} className="h-[54px] w-full border-black/5 border-b text-[17px]">
+									多选
+								</button>
+								<button
+									type="button"
+									disabled={busy}
+									onClick={() => {
+										const id = menu.id;
+										setMenu(null);
+										if (window.confirm("删除这条消息？")) setConversationList((prev) => prev.filter((v) => v.id !== id));
+									}}
+									className="h-[54px] w-full text-[17px] text-[#FA5151]"
+								>
+									删除
+								</button>
+							</>
+						)}
 						<div className="h-2 bg-[#F7F7F7]" />
 						<button type="button" disabled={busy} onClick={() => setMenu(null)} className="h-[54px] w-full text-[17px]">取消</button>
 					</div>

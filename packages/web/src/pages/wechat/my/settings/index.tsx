@@ -155,7 +155,7 @@ const Settings = () => {
 					<List className="mt-2">
 						{isAdmin() && (
 							<List.Item withJump onClick={() => navigate("/real")}>
-								真实聊天
+								云端备忘录
 							</List.Item>
 						)}
 						{isAdmin() && (

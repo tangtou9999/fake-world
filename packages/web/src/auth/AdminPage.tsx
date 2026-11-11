@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import { type AuthUser, PERM_KEYS, PERM_LABELS, type PermKey, isAdmin } from "./session";
 
-const ROLE_LABEL = { admin: "总账号", real: "真实账号", story: "剧情账号" } as const;
+const ROLE_LABEL = { admin: "总账号", real: "子账号", story: "子账号" } as const;
 const inputCls = "w-full rounded-[6px] bg-[#F5F5F5] px-3 py-[8px] text-[16px] outline-none";
 
 const Switch = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) => (
@@ -58,12 +58,8 @@ const AdminPage = () => {
 					<input className={inputCls} placeholder="手机号" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/[^\d+]/g, "") })} />
 					<input className={inputCls} placeholder="初始密码（至少 6 位）" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
 					<input className={inputCls} placeholder="备注名（比如：安卓手机）" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-					<select className={inputCls} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as "story" | "real" })}>
-						<option value="story">剧情账号（现有这套界面）</option>
-						<option value="real">真实账号（只能真实聊天，自动和你互为好友）</option>
-					</select>
 				</div>
-				{form.role === "story" && (
+				{(
 					<div className="mt-2 border-black/5 border-t pt-1">
 						{PERM_KEYS.map((k) => (
 							<Switch key={k} label={PERM_LABELS[k]} on={!!form.perms[k]} onChange={(v) => setForm({ ...form, perms: { ...form.perms, [k]: v } })} />
@@ -102,7 +98,7 @@ const AdminPage = () => {
 						</button>
 						{open === u.id && (
 							<div className="bg-[#FAFAFA] px-3 pb-3">
-								{u.role === "story" &&
+								{u.role !== "admin" &&
 									PERM_KEYS.map((k) => (
 										<Switch key={k} label={PERM_LABELS[k]} on={u.perms[k]} onChange={(v) => run(() => api(`/api/admin/users/${u.id}`, { method: "PATCH", body: { perms: { ...u.perms, [k]: v } } }))} />
 									))}
