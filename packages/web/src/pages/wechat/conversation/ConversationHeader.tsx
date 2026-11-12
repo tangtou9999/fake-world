@@ -53,7 +53,7 @@ const ConversationHeader = () => {
 			</div>
 			<div className="flex min-w-0 flex-1 items-center justify-center font-medium text-[17px] text-black/90" onTouchStart={startPress} onTouchEnd={stopPress} onTouchMove={stopPress} onTouchCancel={stopPress}>
 				{typing ? (
-					<span className="truncate text-[#576B95]">对方正在输入…</span>
+					<span className="truncate">对方正在输入...</span>
 				) : group ? (
 					<>
 						<span data-replay-title className="truncate">{group.name}</span>

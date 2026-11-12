@@ -27,21 +27,21 @@ export const writeStandIn = (conversationId: string, on: boolean) => {
 /** 代聊等待时，标题栏复用「对方正在输入…」 */
 export const standInTypingAtom = atom<Record<string, boolean>>({});
 
-/** 代聊节奏（毫秒）。私人 AI 不走这里。 */
+/** 代聊节奏（毫秒）：模拟真人看消息、打字、停顿。私人 AI 不走这里。 */
 const PACE = {
-	readMin: 500,
-	readMax: 1500,
-	firstPerCharMin: 80,
-	firstPerCharMax: 120,
-	firstTypeMax: 3000,
-	laterPerCharMin: 180,
-	laterPerCharMax: 250,
-	laterMin: 1500,
-	laterMax: 7000,
-	/** 连发间隔在基准时间上再乘这一档 */
-	gapJitter: 0.3,
-	nameGapMin: 300,
-	nameGapMax: 800,
+	/** 看到消息到开始打字的反应时间 */
+	readMin: 1200,
+	readMax: 3200,
+	/** 每看一个字多花的时间（上限 2 秒） */
+	readPerChar: 35,
+	/** 打字：起手 + 每字耗时（拼音打字，比想象的慢） */
+	typeBase: 1100,
+	typePerCharMin: 230,
+	typePerCharMax: 380,
+	typeMax: 16000,
+	/** 连发第二、三条前的停顿 */
+	nextIdleMin: 500,
+	nextIdleMax: 1800,
 } as const;
 
 /** 这次回几条：先按对方这句话的长短、是不是在提问来随机，模型遇到特殊情况可以自己多/少一条。 */
@@ -67,23 +67,36 @@ const span = (min: number, max: number) => min + Math.random() * (max - min);
 
 const charCount = (text: string) => Array.from(text).length;
 
-/** 第一条：按字数，上限 3 秒，不加抖动。 */
-const firstTypeMs = (text: string) => {
+/** 一条消息要打多久：起手 + 每字 230~380ms，再 ±25%；很短的几个字 1~2 秒，最长 16 秒。 */
+const typeMs = (text: string, later = false) => {
 	const chars = Math.max(1, charCount(text));
-	return Math.min(PACE.firstTypeMax, Math.round(chars * span(PACE.firstPerCharMin, PACE.firstPerCharMax)));
+	const raw = chars <= 4 ? span(900, 2200) : PACE.typeBase + chars * span(PACE.typePerCharMin, PACE.typePerCharMax);
+	return Math.round(Math.min(PACE.typeMax, raw * span(0.75, 1.25) * (later ? 0.8 : 1)));
 };
 
-/** 第二条起：按字数，至少 1.5 秒，最多约 7 秒，再 ±30%。 */
-const laterGapMs = (text: string) => {
-	const chars = Math.max(1, charCount(text));
-	const raw = chars * span(PACE.laterPerCharMin, PACE.laterPerCharMax);
-	const base = Math.min(PACE.laterMax, Math.max(PACE.laterMin, raw));
-	const jittered = base * (1 + span(-PACE.gapJitter, PACE.gapJitter));
-	return Math.round(Math.min(PACE.laterMax, Math.max(PACE.laterMin, jittered)));
-};
+/** 很短的消息大约一半不显示「正在输入」；其余都显示。 */
+const wantsTyping = (text: string) => charCount(text) > 4 || Math.random() >= 0.5;
 
-/** 很短的消息大约一半不显示「正在输入」。 */
-const wantsTyping = (text: string) => charCount(text) > 6 || Math.random() >= 0.5;
+/** 打字这段时间里，「正在输入」不是一直亮着：打一阵、停一下（想想/删改）、再打。 */
+const typeFor = async (conversationId: string, total: number, show: boolean, signal: AbortSignal, alive: () => boolean) => {
+	if (!show || total < 4500) {
+		if (show) setTyping(conversationId, true);
+		await sleep(total, signal);
+		return;
+	}
+	let left = total;
+	while (left > 0) {
+		const on = Math.min(left, span(2200, 5500));
+		setTyping(conversationId, true);
+		await sleep(on, signal);
+		left -= on;
+		if (left <= 0 || !alive()) break;
+		const off = Math.min(left, span(500, 1700));
+		setTyping(conversationId, false);
+		await sleep(off, signal);
+		left -= off;
+	}
+};
 
 const viewingChat = (id: string) => {
 	const path = (window.location.hash.replace(/^#/, "") || window.location.pathname).split("?")[0].replace(/\/$/, "");
@@ -136,7 +149,6 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 		setTyping(conversationId, false);
 		const contact = listContacts().find((c) => c.id === conversationId);
 		const name = contact?.name ?? "对方";
-		const readFor = span(PACE.readMin, PACE.readMax);
 		const started = Date.now();
 		const card = await readPersona(conversationId);
 		const log = chatLog(conversationId, name, 60);
@@ -146,6 +158,7 @@ const run = async (conversationId: string, token: number, signal: AbortSignal) =
 		const lastMine = mineTexts.at(-1) ?? "";
 		const myRecent = mineTexts.slice(-3).join(" / ");
 		const said = list.filter((v) => v.role === "friend" && plainText(v)).slice(-10).map(plainText);
+		const readFor = span(PACE.readMin, PACE.readMax) + Math.min(2000, charCount(lastMine) * PACE.readPerChar);
 		const want = pickCount(lastMine);
 		const reply = await callGemini(`对方（我）刚发来：${myRecent || lastMine}\n请像${name}本人那样回复。`, {
 			system: `你在扮演微信好友「${name}」，和对方真人聊天。下面是你们的聊天，最后几条是刚发生的。现在是 ${dayjs().format("HH:mm")}。
@@ -166,21 +179,15 @@ ${log.text}${personaSystemExtra(card)}`,
 			.map((s) => s.replace(/^[\d.、\-\s]+/, "").trim())
 			.filter((s) => s && !s.startsWith("```"))
 			.slice(0, 3);
+		const alive = () => !signal.aborted && typingOwner.get(conversationId) === token && !!mainStore.get(standInAtom)[conversationId];
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-			if (i === 0) {
-				if (wantsTyping(line)) setTyping(conversationId, true);
-				await sleep(firstTypeMs(line), signal);
-			} else {
+			if (i > 0) {
 				setTyping(conversationId, false);
-				const gap = laterGapMs(line);
-				const pause = Math.min(gap, Math.round(span(PACE.nameGapMin, PACE.nameGapMax)));
-				await sleep(pause, signal);
-				if (signal.aborted || typingOwner.get(conversationId) !== token) return;
-				if (!mainStore.get(standInAtom)[conversationId]) return;
-				if (wantsTyping(line)) setTyping(conversationId, true);
-				await sleep(gap - pause, signal);
+				await sleep(span(PACE.nextIdleMin, PACE.nextIdleMax), signal);
+				if (!alive()) return;
 			}
+			await typeFor(conversationId, typeMs(line, i > 0), wantsTyping(line), signal, alive);
 			if (signal.aborted || typingOwner.get(conversationId) !== token) return;
 			if (!mainStore.get(standInAtom)[conversationId]) return;
 			setTyping(conversationId, false);
