@@ -32,12 +32,14 @@ const MiniFund = () => {
 	useScreenTopBg(GOLD);
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden" {...lp} style={{ background: "linear-gradient(170deg,#F4B800 0%,#F3AE00 45%,#F5A300 100%)" }}>
+		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden" {...lp} style={{ background: "linear-gradient(180deg,#F2B800 0%,#F2B300 22%,#F2AE00 55%,#F4AB00 100%)" }}>
 			{editing && <WalletSheet onClose={() => setEditing(false)} />}
 			<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 390 800" aria-hidden="true">
-				<path d="M0 120 L390 230 L390 330 L0 190Z" fill="#fff" opacity="0.05" />
-				<path d="M0 360 L260 520 L0 560Z" fill="#000" opacity="0.025" />
-				<path d="M200 800 L390 560 L390 800Z" fill="#fff" opacity="0.05" />
+				<path d="M0 150 L390 85 L390 200 L0 190Z" fill="#F2B800" opacity="0" />
+				<path d="M390 70 L390 330 L230 120Z" fill="#F2B200" opacity="0.55" />
+				<path d="M0 150 L120 190 L0 230Z" fill="#F2B000" opacity="0.5" />
+				<path d="M0 230 L260 215 L390 330 L390 800 L0 800Z" fill="#F4AB00" opacity="0.22" />
+				<path d="M60 640 L390 600 L390 800 L0 800Z" fill="#F7A900" opacity="0.3" />
 			</svg>
 			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-6 [&>*]:shrink-0">
 				<div className="flex h-11 shrink-0 items-center justify-between px-4">
@@ -54,10 +56,14 @@ const MiniFund = () => {
 				</div>
 
 				<div className="mt-[6px] flex flex-col items-center">
-					<div className="flex h-[39px] w-[39px] items-center justify-center rounded-full bg-[#FDFAF0]">
-						<svg width="22" height="19" viewBox="0 0 66 58" fill="none" stroke={GOLD} strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
-							<path d="M15.700 5H50.100L62.700 18.500L32.900 54L3.300 18.500Z" />
-							<path d="M3.300 18.500H62.700M25.600 5L19.600 18.500M40.200 5L46.200 18.500M19.600 18.500L32.900 54M46.200 18.500L32.900 54" />
+					<div className="flex h-[39px] w-[39px] items-center justify-center rounded-full bg-[#FEFBF2]">
+						<svg width="20" height="18" viewBox="0 0 240 217" fill="#FFBF00" aria-hidden="true">
+							<path d="M0 55 46 0H84L60 55Z" />
+							<path d="M78 0H158L164 55H76Z" />
+							<path d="M156 0H196L240 55H168Z" />
+							<path d="M0 70H78L98 195Z" />
+							<path d="M86 70H166L120 217Z" />
+							<path d="M174 70H240L146 195Z" />
 						</svg>
 					</div>
 					<div className="mt-[6px] font-medium text-[21px] text-white leading-[26px]">零钱通</div>
@@ -123,10 +129,12 @@ const MiniFund = () => {
 				<div className="mx-2 mt-[10px] overflow-hidden rounded-[14px] bg-white">
 					<div className="flex items-center justify-between px-[16px] py-[10px]">
 						<span className="flex items-center">
-							<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-								<circle cx="13" cy="13" r="12" fill="#1E88E5" />
-								<circle cx="13" cy="13" r="5.500" fill="#fff" />
-								<circle cx="13" cy="13" r="2.600" fill="#1E88E5" />
+							<svg width="27" height="27" viewBox="-6 -6 312 312" aria-hidden="true">
+								<path d="M20 32C60 40 90 30 100 2C104 40 90 70 60 90L20 90Z" fill="#2488D0" />
+								<path d="M150 8C250 -5 310 90 295 150C296 190 300 225 302 240C285 228 270 220 260 215L150 150Z" fill="#2488D0" />
+								<ellipse cx="152" cy="150" rx="148" ry="140" fill="#2488D0" />
+								<path d="M128 -8C122 50 38 90 36 152C36 215 90 258 140 258C190 258 236 230 256 196C264 180 262 164 254 146C248 108 190 70 148 -8Z" fill="#fff" />
+								<path d="M120 138L143 161L120 184L97 161Z" fill="#2488D0" />
 							</svg>
 							<span className="ml-[12px] font-medium text-[19px] text-black/90 leading-[24px]">理财通</span>
 						</span>
