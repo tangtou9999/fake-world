@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: phone-mf2
+          ref: phone-earn
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -60,3 +60,4 @@ jobs:
 # 1794441862
 # 1794443498
 # 1794443603
+# 1794443932
