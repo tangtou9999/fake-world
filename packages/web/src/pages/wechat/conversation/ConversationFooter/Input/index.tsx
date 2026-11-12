@@ -4,7 +4,7 @@ import { EMetaDataType } from "@/stateV2/detectedNode";
 import Element from "@/wechatComponents/SlateText/Element";
 import { SLATE_INITIAL_VALUE } from "@/wechatComponents/SlateText/utils";
 import { useSetAtom } from "jotai";
-import { memo, useEffect } from "react";
+import { memo, useEffect, useState } from "react";
 import { isMobileOnly } from "react-device-detect";
 import { Editable, ReactEditor, Slate } from "slate-react";
 import { useConversationAPI } from "../../context";
@@ -23,6 +23,8 @@ const Input = ({ dismissPanel }: Props) => {
 		previousMobileInputMode,
 	} = useConversationAPI();
 	const setInputValue = useSetAtom(inputterValueAtom);
+	// 和真微信一致：点进输入框的瞬间提示文字就消失，不用等打出第一个字
+	const [focused, setFocused] = useState(false);
 
 	useEffect(() => {
 		if (isMobileOnly && mobileInputMode === "text" && previousMobileInputMode === "none") {
@@ -48,7 +50,9 @@ const Input = ({ dismissPanel }: Props) => {
 			>
 				<Editable
 					id="conversation-input"
+					onBlur={() => setFocused(false)}
 					onFocus={() => {
+						setFocused(true);
 						dismissPanel?.();
 						if (isMobileOnly) {
 							scrollConversationListToBtm();
@@ -66,7 +70,7 @@ const Input = ({ dismissPanel }: Props) => {
 								width: "100%",
 								textAlign: "center",
 								color: "rgba(0,0,0,0.3)",
-								opacity: 1,
+								opacity: focused ? 0 : 1,
 							}}
 						>
 							{children}
