@@ -1,7 +1,10 @@
 import useModeNavigate from "@/components/useModeNavigate";
 import useScreenTopBg from "@/components/useScreenTopBg";
 import { miniFundEarnings, walletAtom } from "@/stateV2/wallet";
+import { WalletSheet } from "@/components/PhoneSheets";
+import { useLongPress } from "@/components/SheetKit";
 import { useAtomValue } from "jotai";
+import { useState } from "react";
 import type { ReactNode } from "react";
 
 const GOLD = "#F3B500";
@@ -23,11 +26,14 @@ const fix = (v: string | undefined, n: number) => {
 const MiniFund = () => {
 	const w = useAtomValue(walletAtom);
 	const earn = miniFundEarnings(w);
+	const [editing, setEditing] = useState(false);
+	const lp = useLongPress(() => setEditing(true));
 	const navigate = useModeNavigate();
 	useScreenTopBg(GOLD);
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden" style={{ background: "linear-gradient(170deg,#F4B800 0%,#F3AE00 45%,#F5A300 100%)" }}>
+		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden" {...lp} style={{ background: "linear-gradient(170deg,#F4B800 0%,#F3AE00 45%,#F5A300 100%)" }}>
+			{editing && <WalletSheet onClose={() => setEditing(false)} />}
 			<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 390 800" aria-hidden="true">
 				<path d="M0 120 L390 230 L390 330 L0 190Z" fill="#fff" opacity="0.05" />
 				<path d="M0 360 L260 520 L0 560Z" fill="#000" opacity="0.025" />
@@ -85,7 +91,7 @@ const MiniFund = () => {
 							<Pill>{w.miniFundName || "南方现金通货币E"}</Pill>
 						</div>
 						<i className="mt-[2px] h-[70px] w-px bg-black/10" />
-						<div className="flex flex-1 flex-col items-center">
+						<div className="flex flex-1 cursor-pointer flex-col items-center" onClick={() => navigate("/wechat/wallet/mini-fund/earnings")}>
 							<div className="flex items-center gap-[6px] text-[#8A8A8A] text-[15px] leading-[22px]">
 								累计收益
 								<Chevron h={11} />
