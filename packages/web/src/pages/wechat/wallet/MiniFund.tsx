@@ -32,14 +32,19 @@ const MiniFund = () => {
 	useScreenTopBg(GOLD);
 
 	return (
-		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden" {...lp} style={{ background: "linear-gradient(170deg,#F4B800 0%,#F3AE00 45%,#F5A300 100%)" }}>
+		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F2B800]" {...lp}>
 			{editing && <WalletSheet onClose={() => setEditing(false)} />}
-			<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 390 800" aria-hidden="true">
-				<path d="M0 120 L390 230 L390 330 L0 190Z" fill="#fff" opacity="0.05" />
-				<path d="M0 360 L260 520 L0 560Z" fill="#000" opacity="0.025" />
-				<path d="M200 800 L390 560 L390 800Z" fill="#fff" opacity="0.05" />
-			</svg>
 			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-6 [&>*]:shrink-0">
+				<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 1206 2622" aria-hidden="true">
+					<rect width="1206" height="2622" fill="#F2B800" />
+					<polygon points="1206,230 1050,300 870,360 690,420 600,470 560,540 1206,712" fill="#F2B200" />
+					<polygon points="0,410 480,545 0,708" fill="#F2B000" />
+					<polygon points="0,708 420,540 600,540 1206,712 1206,1000 0,1400" fill="#F2AB00" />
+					<polygon points="0,1400 1206,1000 1206,1470 0,1470" fill="#F2B200" />
+					<rect y="1470" width="1206" height="1100" fill="#F2B000" />
+					<polygon points="700,1470 1206,1470 1206,2560 550,2560 560,1930" fill="#F7A900" />
+					<polygon points="550,2560 1206,2560 1206,2622 550,2622" fill="#F7AD00" />
+				</svg>
 				<div className="flex h-11 shrink-0 items-center justify-between px-4">
 					<button type="button" className="-ml-1 flex h-8 w-8 items-center bg-transparent p-0" onClick={() => navigate("/wechat/wallet")} aria-label="返回">
 						<svg width="12" height="21" viewBox="0 0 12 21" fill="none" aria-hidden="true">
@@ -55,9 +60,13 @@ const MiniFund = () => {
 
 				<div className="mt-[6px] flex flex-col items-center">
 					<div className="flex h-[39px] w-[39px] items-center justify-center rounded-full bg-[#FDFAF0]">
-						<svg width="22" height="19" viewBox="0 0 66 58" fill="none" stroke={GOLD} strokeWidth="5.5" strokeLinejoin="round" strokeLinecap="round" aria-hidden="true">
-							<path d="M15.700 5H50.100L62.700 18.500L32.900 54L3.300 18.500Z" />
-							<path d="M3.300 18.500H62.700M25.600 5L19.600 18.500M40.200 5L46.200 18.500M19.600 18.500L32.900 54M46.200 18.500L32.900 54" />
+						<svg width="23" height="21" viewBox="0 0 60 54" aria-hidden="true">
+							<polygon points="14,3 46,3 58,18 30,52 2,18" fill="#FFC300" />
+							<g stroke="#FDFAF0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none">
+								<path d="M3 18H57" />
+								<path d="M22 3 17 18 30 50" />
+								<path d="M38 3 43 18 30 50" />
+							</g>
 						</svg>
 					</div>
 					<div className="mt-[6px] font-medium text-[21px] text-white leading-[26px]">零钱通</div>
@@ -123,10 +132,10 @@ const MiniFund = () => {
 				<div className="mx-2 mt-[10px] overflow-hidden rounded-[14px] bg-white">
 					<div className="flex items-center justify-between px-[16px] py-[10px]">
 						<span className="flex items-center">
-							<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-								<circle cx="13" cy="13" r="12" fill="#1E88E5" />
-								<circle cx="13" cy="13" r="5.500" fill="#fff" />
-								<circle cx="13" cy="13" r="2.600" fill="#1E88E5" />
+							<svg width="26" height="29" viewBox="0 0 40 44" aria-hidden="true">
+								<path d="M21 4C32 1 39 13 36 25 34 35 28 41 20 42 26 37 26 31 22 27 18 21 18 11 21 4Z" fill="#2F86CF" />
+								<path d="M17 5 16 13C11 17 11 25 15 29 18 33 20 37 20 42 11 42 5 34 7 23 8 15 12 10 17 5Z" fill="#2093D8" />
+								<path d="M17 31 20 34 17 37 14 34Z" fill="#fff" />
 							</svg>
 							<span className="ml-[12px] font-medium text-[19px] text-black/90 leading-[24px]">理财通</span>
 						</span>

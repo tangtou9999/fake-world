@@ -94,7 +94,7 @@ const Wallet = () => {
 							{t("wechatPage.wallet.mf")}
 							<span className={TAG}>
 								{t("wechatPage.wallet.yield")}
-								{miniFundYield}%
+								{(Number.parseFloat(miniFundYield) || 0).toFixed(2)}%
 							</span>
 						</span>
 					</List.CanBeDetectedItem>
