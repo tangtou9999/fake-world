@@ -33,7 +33,7 @@ const MiniFund = () => {
 				<path d="M0 360 L260 520 L0 560Z" fill="#000" opacity="0.025" />
 				<path d="M200 800 L390 560 L390 800Z" fill="#fff" opacity="0.05" />
 			</svg>
-			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-6">
+			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-6 [&>*]:shrink-0">
 				<div className="flex h-11 shrink-0 items-center justify-between px-4">
 					<button type="button" className="-ml-1 flex h-8 w-8 items-center bg-transparent p-0" onClick={() => navigate("/wechat/wallet")} aria-label="返回">
 						<svg width="12" height="21" viewBox="0 0 12 21" fill="none" aria-hidden="true">
