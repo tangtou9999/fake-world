@@ -47,8 +47,11 @@ const WalletSheetInner = ({ onClose }: { onClose: () => void }) => {
 			{f("business", "经营账户")}
 			{f("miniFund", "零钱通余额")}
 			{f("miniFundYield", "零钱通7日年化%")}
-			{f("miniFundTotal", "零钱通累计收益")}
-			{f("miniFundYesterday", "零钱通昨日收益")}
+			<Row label="零钱通开通日期（算累计收益用）">
+				<input type="date" className={inputCls} value={d.miniFundSince ?? ""} onChange={(e) => setD({ ...d, miniFundSince: e.target.value })} />
+			</Row>
+			{f("miniFundTotal", "累计收益（留空=自动按余额×收益率算）")}
+			{f("miniFundYesterday", "昨日收益（留空=自动）")}
 			<Row label="基金名称">
 				<input className={inputCls} value={d.miniFundName ?? ""} onChange={(e) => setD({ ...d, miniFundName: e.target.value })} />
 			</Row>
