@@ -34,17 +34,17 @@ const MiniFund = () => {
 	return (
 		<div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F2B800]" {...lp}>
 			{editing && <WalletSheet onClose={() => setEditing(false)} />}
+			<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 1206 2622" aria-hidden="true">
+				<rect width="1206" height="2622" fill="#F2B800" />
+				<polygon points="1206,230 1050,300 870,360 690,420 600,470 560,540 1206,712" fill="#F2B200" />
+				<polygon points="0,410 480,545 0,708" fill="#F2B000" />
+				<polygon points="0,708 420,540 600,540 1206,712 1206,1000 0,1400" fill="#F2AB00" />
+				<polygon points="0,1400 1206,1000 1206,1470 0,1470" fill="#F2B200" />
+				<rect y="1470" width="1206" height="1100" fill="#F2B000" />
+				<polygon points="700,1470 1206,1470 1206,2560 550,2560 560,1930" fill="#F7A900" />
+				<polygon points="550,2560 1206,2560 1206,2622 550,2622" fill="#F7AD00" />
+			</svg>
 			<div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-6 [&>*]:shrink-0">
-				<svg className="pointer-events-none absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 1206 2622" aria-hidden="true">
-					<rect width="1206" height="2622" fill="#F2B800" />
-					<polygon points="1206,230 1050,300 870,360 690,420 600,470 560,540 1206,712" fill="#F2B200" />
-					<polygon points="0,410 480,545 0,708" fill="#F2B000" />
-					<polygon points="0,708 420,540 600,540 1206,712 1206,1000 0,1400" fill="#F2AB00" />
-					<polygon points="0,1400 1206,1000 1206,1470 0,1470" fill="#F2B200" />
-					<rect y="1470" width="1206" height="1100" fill="#F2B000" />
-					<polygon points="700,1470 1206,1470 1206,2560 550,2560 560,1930" fill="#F7A900" />
-					<polygon points="550,2560 1206,2560 1206,2622 550,2622" fill="#F7AD00" />
-				</svg>
 				<div className="flex h-11 shrink-0 items-center justify-between px-4">
 					<button type="button" className="-ml-1 flex h-8 w-8 items-center bg-transparent p-0" onClick={() => navigate("/wechat/wallet")} aria-label="返回">
 						<svg width="12" height="21" viewBox="0 0 12 21" fill="none" aria-hidden="true">
