@@ -4,10 +4,19 @@ import { CodeInspectorPlugin } from "code-inspector-plugin";
 import { defineConfig } from "vite";
 import svgr from "vite-plugin-svgr";
 
+const BUILD_ID = String(Date.now());
+
 // https://vitejs.dev/config/
 export default defineConfig({
 	base: "./",
+	define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
 	plugins: [
+		{
+			name: "emit-version",
+			generateBundle() {
+				this.emitFile({ type: "asset", fileName: "version.json", source: JSON.stringify({ id: BUILD_ID }) });
+			},
+		},
 		react({
 			jsxImportSource: "@emotion/react",
 			plugins: [["@swc/plugin-emotion", {}]],

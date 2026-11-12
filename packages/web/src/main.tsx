@@ -15,6 +15,7 @@ import { ensureFileHelper } from "./stateV2/fileHelper.ts";
 import { mainStore } from "./stateV2/store.ts";
 import { initDayjs } from "./time.ts";
 import { backendHealthCheck } from "./utils.ts";
+import { startVersionCheck } from "./versionCheck.ts";
 
 // 禁止 iOS 双指缩放 / 双击缩放，像原生 App 一样
 for (const evt of ["gesturestart", "gesturechange", "gestureend"]) {
@@ -25,6 +26,7 @@ initDayjs();
 ensureFileHelper();
 initDBImagesCacheStore();
 backendHealthCheck();
+startVersionCheck();
 
 const router = createHashRouter(routes);
 

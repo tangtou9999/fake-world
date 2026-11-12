@@ -74,6 +74,16 @@ const Screen = () => {
 		let taps: { t: number; x: number; y: number }[] = [];
 		let swallow = 0;
 		const onUp = (e: PointerEvent) => {
+			// 输入框、数字键盘（支付密码、金额）、弹窗里的快速连点是正常操作，不触发编辑模式
+			const target = e.target as HTMLElement | null;
+			const btn = target?.closest("button");
+			if (
+				target?.closest("input,textarea,[contenteditable=true],.ant-drawer,[role=dialog]") ||
+				(btn && (/^[0-9.]$/.test((btn.textContent ?? "").trim()) || ["删除", "关闭密码"].includes(btn.getAttribute("aria-label") ?? "")))
+			) {
+				taps = [];
+				return;
+			}
 			const now = Date.now();
 			taps = taps.filter((k) => now - k.t < 650 && Math.hypot(k.x - e.clientX, k.y - e.clientY) < 40);
 			taps.push({ t: now, x: e.clientX, y: e.clientY });
