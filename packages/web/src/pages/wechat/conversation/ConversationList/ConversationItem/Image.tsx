@@ -20,23 +20,19 @@ type Props = {
 	duration?: ICoversationTypeVideo["duration"];
 };
 
-const MAX_EDGE = 168;
-const MIN_EDGE = 72;
+/** 图片和视频用同一套尺寸规则：长边占聊天宽度的 56%，短边不小于 20%，太细长的居中裁切 */
+const MAX_RATIO = 0.56;
+const MIN_RATIO = 0.2;
 
 function fitEdge(width: number, height: number) {
-	if (!width || !height) return { width: 120, height: 160 };
-	const scale = MAX_EDGE / Math.max(width, height);
-	let nextW = Math.round(width * scale);
-	let nextH = Math.round(height * scale);
-	const longEdge = Math.max(nextW, nextH);
-	if (longEdge < MIN_EDGE) {
-		const bump = MIN_EDGE / longEdge;
-		nextW = Math.round(nextW * bump);
-		nextH = Math.round(nextH * bump);
-	}
+	const screenW = document.getElementById("screen")?.clientWidth || Math.min(window.innerWidth, 430);
+	const maxEdge = Math.round(screenW * MAX_RATIO);
+	const minEdge = Math.round(screenW * MIN_RATIO);
+	if (!width || !height) return { width: Math.round(maxEdge * 0.75), height: maxEdge };
+	const scale = maxEdge / Math.max(width, height);
 	return {
-		width: Math.min(MAX_EDGE, Math.max(48, nextW)),
-		height: Math.min(MAX_EDGE, Math.max(48, nextH)),
+		width: Math.min(maxEdge, Math.max(minEdge, Math.round(width * scale))),
+		height: Math.min(maxEdge, Math.max(minEdge, Math.round(height * scale))),
 	};
 }
 
@@ -47,7 +43,7 @@ function resolveAsset(value?: string) {
 }
 
 const Image = ({ imageInfo, upperText, senderId, isVideo, videoFile, duration }: Props) => {
-	const [box, setBox] = useState({ width: 120, height: 160 });
+	const [box, setBox] = useState(() => fitEdge(0, 0));
 	const [posterSrc, setPosterSrc] = useState("");
 	const [videoSrc, setVideoSrc] = useState("");
 	const [open, setOpen] = useState(false);
