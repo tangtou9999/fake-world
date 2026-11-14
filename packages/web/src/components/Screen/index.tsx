@@ -14,6 +14,7 @@ import { getModeValueSnapshot, modeAtom } from "@/stateV2/mode";
 import { mainStore } from "@/stateV2/store";
 import { showToast } from "@/wechatComponents/Toast";
 import StatusBar from "../StatusBar";
+import WatermarkLayer from "../Watermark/Layer";
 import useDeviceConfig from "../useDeviceConfig";
 
 const isChatPath = (path: string) => /^\/wechat\/conversation\/[^/]+$/.test(path);
@@ -148,6 +149,7 @@ const Screen = () => {
         `}
 			/>
 			<DetectedOverall />
+			<WatermarkLayer />
 			{(isDesktop || (compact && mode === "edit")) && <StatusBar />}
 			<ErrorBoundary FallbackComponent={Fallback}>
 				<Outlet />
