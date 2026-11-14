@@ -35,7 +35,7 @@ const WatermarkSettings = () => {
 					options={[
 						{ label: "实心", value: "solid" },
 						{ label: "空心", value: "hollow" },
-						{ label: "描边填充", value: "both" },
+						{ label: "两者", value: "both" },
 					]}
 					onChange={(v) => set({ style: v as Watermark["style"] })}
 				/>
