@@ -359,11 +359,12 @@ function computeStamps(
 	const last = opt.last ?? (replace ? 0 : (getConversationListValueSnapshot(conversationId).at(-1)?.sendTimestamp ?? 0));
 	const top = Math.min(now, opt.cap ? opt.cap - 1000 : now);
 	const out: number[] = [];
-	let prev = opt.fromZero ? 0 : last || now - list.length * 60_000;
+	// 起点为 0：第一条没有已有消息可接，就用剧本里写的时间（比如「昨天」），不能被硬推到「现在」
+	let prev = opt.fromZero ? 0 : last;
 	list.forEach((it) => {
 		const parsed = parseAt(it.at);
-		let t = parsed ?? prev + 30_000;
-		if (t < prev + 1000) t = prev + 1000;
+		let t = parsed ?? (prev ? prev + 30_000 : now - list.length * 60_000);
+		if (prev && t < prev + 1000) t = prev + 1000;
 		out.push(t);
 		prev = t;
 	});

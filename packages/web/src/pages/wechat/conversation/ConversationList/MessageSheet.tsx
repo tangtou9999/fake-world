@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import { useAtomValue } from "jotai";
 import { nanoid } from "nanoid";
 import { useState } from "react";
+import { prepareImageAsset, prepareVideoAsset } from "@/utils/media";
 
 type R = Record<string, any>;
 const FMT = "YYYY-MM-DDTHH:mm";
@@ -59,6 +60,8 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 			receiver: r.receiver ?? "",
 		};
 	});
+	const [mediaRole, setMediaRole] = useState<"mine" | "friend">((item?.role as "mine" | "friend") ?? "mine");
+	const [mediaBusy, setMediaBusy] = useState("");
 	if (!item) return null;
 	const set = (patch: R) => setD((v) => ({ ...v, ...patch }));
 	const type = item.type as string;
@@ -179,6 +182,31 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 			return list;
 		});
 		onSwitch(newId);
+	};
+
+	/** 在这条的上方 / 下方直接插入图片或视频，不用再从底部发送后一路往上拖 */
+	const insertMedia = async (where: "above" | "below", kind: "image" | "video", file?: File | null) => {
+		if (!file) return;
+		setMediaBusy(kind === "image" ? "正在处理图片…" : "正在读取视频并生成封面…");
+		try {
+			const asset = kind === "image" ? await prepareImageAsset(file) : await prepareVideoAsset(file);
+			const newId = nanoid(8);
+			mutate((list) => {
+				const i = list.findIndex((v) => v.id === id);
+				if (i < 0) return list;
+				const cur = list[i].sendTimestamp ?? Date.now();
+				const nb = where === "above" ? list[i - 1] : list[i + 1];
+				const nbTs = nb?.sendTimestamp;
+				const ts = where === "above" ? (nbTs ? Math.round((nbTs + cur) / 2) : cur - 60_000) : nbTs ? Math.round((nbTs + cur) / 2) : Math.min(cur + 60_000, Date.now());
+				const fresh: R = { id: newId, type: kind === "image" ? EConversationType.image : EConversationType.video, role: mediaRole, sendTimestamp: ts, ...asset };
+				if (isGroup && mediaRole === "friend" && list[i].senderId) fresh.senderId = list[i].senderId;
+				list.splice(where === "above" ? i : i + 1, 0, fresh);
+				return list;
+			});
+			setMediaBusy(`已在这条${where === "above" ? "上方" : "下方"}插入${kind === "image" ? "图片" : "视频"}`);
+		} catch (e) {
+			setMediaBusy(e instanceof Error ? e.message : "插入失败");
+		}
 	};
 
 	const options = getConversationListValueSnapshot(conversationId)
@@ -337,10 +365,31 @@ const MessageSheet = ({ id, conversationId, onClose, onSwitch }: { id: string; c
 							<div className="mt-1 text-[12px] text-black/40">这是收款记录，删掉它不会影响发起那条。</div>
 						</Row>
 					)}
-					{(type === "image" || type === "video" || type === "personalCard") && <div className="py-3 text-[13px] text-black/40">图片、视频本身不能在这里替换，要换请删除后从「+」重新发送。</div>}
+					{(type === "image" || type === "video" || type === "personalCard") && <div className="py-3 text-[13px] text-black/40">图片、视频本身不能在这里替换，要换请删除后，用下面的「插入图片/视频」重新放。</div>}
 					<div className="flex flex-wrap gap-2 pt-3">
 						<button type="button" className="rounded-[6px] border border-black/15 px-3 py-2 text-[14px]" onClick={() => insert("above")}>在上方插入一条</button>
 						<button type="button" className="rounded-[6px] border border-black/15 px-3 py-2 text-[14px]" onClick={() => insert("below")}>在下方插入一条</button>
+					</div>
+					<div className="mt-3 rounded-[8px] bg-[#F7F7F7] p-3">
+						<div className="mb-2 text-[14px] text-black/60">在这条的上方 / 下方直接插入图片或视频</div>
+						<div className="mb-2 flex gap-2">
+							{(["mine", "friend"] as const).map((r) => (
+								<button key={r} type="button" onClick={() => setMediaRole(r)} className={`rounded-full px-4 py-[5px] text-[14px] ${mediaRole === r ? "bg-[#07C160] text-white" : "bg-white"}`}>{r === "mine" ? "我发的" : "对方发的"}</button>
+							))}
+						</div>
+						<div className="flex flex-wrap gap-2">
+							{(["above", "below"] as const).flatMap((w) =>
+								(["image", "video"] as const).map((k) => (
+									<label key={`${w}${k}`} className="rounded-[6px] border border-black/15 bg-white px-3 py-2 text-[14px]">
+										{w === "above" ? "上方" : "下方"}插入{k === "image" ? "图片" : "视频"}
+										<input type="file" accept={k === "image" ? "image/*" : "video/*"} className="hidden" onChange={(e) => { const f = e.target.files?.item(0); e.target.value = ""; void insertMedia(w, k, f); }} />
+									</label>
+								)),
+							)}
+						</div>
+						{mediaBusy && <div className="mt-2 text-[12px] text-black/50">{mediaBusy}</div>}
+					</div>
+					<div className="flex flex-wrap gap-2 pt-3">
 						{type === "text" && <button type="button" className="rounded-[6px] border border-black/15 px-3 py-2 text-[14px]" onClick={recall}>撤回</button>}
 						<button type="button" className="rounded-[6px] border border-[#FA5151] px-3 py-2 text-[14px] text-[#FA5151]" onClick={remove}>删除</button>
 					</div>

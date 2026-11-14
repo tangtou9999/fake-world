@@ -20,7 +20,7 @@ const ChatRecordsEditor = () => {
 			<p className="mb-2 text-gray-500 text-xs">
 				选择联系人后新增文字、图片或视频，并用「我自己 /
 				朋友」决定显示在哪一侧。图片和视频从本机选择，写入 IndexedDB（图片不超过 20MB，视频不超过
-				50MB）。对话里的「+」只负责以「我」发送相册内容。
+				300MB）。对话里的「+」只负责以「我」发送相册内容。
 			</p>
 			<Select
 				className="mb-3 w-full"
