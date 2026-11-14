@@ -45,7 +45,7 @@ const LocalVideoUpload = ({ value, onChange }: Props) => {
 			<input type="file" accept="video/*" disabled={busy} onChange={handleChange} />
 			<div className="text-gray-500 text-xs">
 				从本机选择视频。文件和封面写入 IndexedDB，单条不超过
-				50MB。发送方在上方「消息由谁发送」里选择。
+				300MB。发送方在上方「消息由谁发送」里选择。
 			</div>
 			{busy && <div className="text-xs">正在读取视频并生成封面…</div>}
 			{error && <div className="text-red-500 text-xs">{error}</div>}
