@@ -1,13 +1,15 @@
 import { activatedNodeAtom } from "@/stateV2/detectedNode";
 import { getModeValueSnapshot } from "@/stateV2/mode";
 import { App as AntdApp, Button, Drawer, Tabs } from "antd";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { memo, useEffect, useState } from "react";
 import { isMobileOnly } from "react-device-detect";
 import CommonBlock from "../LeftPanel/CommonBlock";
 import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
 import useMode from "../useMode";
+import { can } from "@/auth/session";
+import { watermarkOpenAtom } from "@/stateV2/watermark";
 import ChatRecordsEditor from "./ChatRecordsEditor";
 import { phoneSheetActive } from "@/pages/wechat/my/settings/screenOps";
 import { mobilePanelAtom } from "./atom";
@@ -30,6 +32,7 @@ const MobilePanel = () => {
 	const [activatedNode, setActivatedNode] = useAtom(activatedNodeAtom);
 	const { isEdit, setMode } = useMode();
 	const open = panel !== null;
+	const setWmOpen = useSetAtom(watermarkOpenAtom);
 
 	// 手机上任意页面快速连点三下，进入当前页面的编辑模式
 	const { message } = AntdApp.useApp();
@@ -112,6 +115,11 @@ const MobilePanel = () => {
 					>
 						完成
 					</button>
+					{can("watermark") && (
+						<button type="button" onClick={() => setWmOpen(true)} className={`${floatingBtn} bg-white text-black/80`}>
+							水印
+						</button>
+					)}
 				</div>
 			)}
 			<Drawer

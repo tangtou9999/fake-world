@@ -1,3 +1,4 @@
+import { atom } from "jotai";
 import atomWithStorage from "./atomWithStorage";
 
 export type Watermark = {
@@ -15,6 +16,8 @@ export type Watermark = {
 	bold: boolean;
 	stagger: boolean;
 	scope: "chat" | "all";
+	/** top：盖在聊天内容上面（截图最稳）；under：垫在气泡/红包下面（气泡不透明） */
+	layer: "top" | "under";
 	/** 文字后面自动加上账号后四位，万一截图流出去能查是谁 */
 	trace: boolean;
 };
@@ -32,8 +35,11 @@ export const WM_DEFAULT: Watermark = {
 	bold: false,
 	stagger: true,
 	scope: "chat",
+	layer: "under",
 	trace: false,
 };
+
+export const watermarkOpenAtom = atom(false);
 
 export const watermarkAtom = atomWithStorage<Partial<Watermark>>("watermark", {});
 

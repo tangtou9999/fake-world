@@ -33,7 +33,9 @@ export const buildSvg = (w: Watermark, label: string) => {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block"><defs><pattern id="wmp" width="${W}" height="${ph}" patternUnits="userSpaceOnUse" patternTransform="rotate(${w.angle})">${tile}</pattern></defs><rect width="100%" height="100%" fill="url(#wmp)"/></svg>`;
 };
 
-const LAYER_STYLE = "position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:2147483000;overflow:hidden;display:block;visibility:visible;opacity:1;";
+const STYLE_ID = "wm-style";
+const UNDER_CSS = "#screen .flex-col-reverse.overflow-auto{background:transparent !important}";
+const layerStyle = (under: boolean) => `position:absolute;left:0;top:0;right:0;bottom:0;pointer-events:none;user-select:none;-webkit-user-select:none;z-index:${under ? -1 : 2147483000};overflow:hidden;display:block;visibility:visible;opacity:1;`;
 
 /** 水印盖在整个手机屏幕上（所以截图、导出的图里都会有），被删掉或改样式会自动恢复 */
 const WatermarkLayer = () => {
@@ -49,11 +51,15 @@ const WatermarkLayer = () => {
 	useEffect(() => {
 		const host = document.getElementById("screen");
 		if (!host) return;
-		const remove = () => document.getElementById(LAYER_ID)?.remove();
+		const remove = () => {
+			document.getElementById(LAYER_ID)?.remove();
+			document.getElementById(STYLE_ID)?.remove();
+		};
 		if (!show) {
 			remove();
 			return;
 		}
+		const under = w.layer === "under";
 		const html = buildSvg(w, label);
 		let snap = "";
 		const mount = () => {
@@ -62,9 +68,20 @@ const WatermarkLayer = () => {
 				el?.remove();
 				el = document.createElement("div");
 				el.id = LAYER_ID;
-				host.appendChild(el);
+				host.insertBefore(el, host.firstChild);
 			}
-			if (el.getAttribute("style") !== LAYER_STYLE) el.setAttribute("style", LAYER_STYLE);
+			const st = layerStyle(under);
+			if (el.getAttribute("style") !== st) el.setAttribute("style", st);
+			let css = document.getElementById(STYLE_ID);
+			if (under) {
+				if (!css || css.textContent !== UNDER_CSS) {
+					css?.remove();
+					css = document.createElement("style");
+					css.id = STYLE_ID;
+					css.textContent = UNDER_CSS;
+					host.appendChild(css);
+				}
+			} else css?.remove();
 			if (snap === "" || el.innerHTML !== snap) {
 				el.innerHTML = html;
 				snap = el.innerHTML;

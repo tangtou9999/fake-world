@@ -87,6 +87,18 @@ const WatermarkSettings = () => {
 					onChange={(v) => set({ scope: v as Watermark["scope"] })}
 				/>
 			</Row>
+			<Row label="层级">
+				<Segmented
+					block
+					value={w.layer}
+					options={[
+						{ label: "垫在聊天下面", value: "under" },
+						{ label: "盖在聊天上面", value: "top" },
+					]}
+					onChange={(v) => set({ layer: v as Watermark["layer"] })}
+				/>
+			</Row>
+			<div className="-mt-1 mb-1 text-[11px] text-black/40">垫在下面：文字、气泡、红包、转账都不会被水印穿透（只在聊天页生效）；盖在上面：整屏都有，截图最稳。</div>
 			<Row label="追踪">
 				<div className="flex items-center gap-2">
 					<Switch checked={w.trace} onChange={(trace) => set({ trace })} />

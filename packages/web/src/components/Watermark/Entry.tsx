@@ -1,25 +1,17 @@
 import { can } from "@/auth/session";
+import { watermarkOpenAtom } from "@/stateV2/watermark";
 import { Drawer } from "antd";
-import { useState } from "react";
+import { useAtom } from "jotai";
 import WatermarkSettings from "./Settings";
 
-/** 桌面左上角的小入口：有「水印设置」权限的账号才看得到 */
+/** 水印设置面板。入口是编辑模式顶部浮条里的「水印」按钮（三连击后出现） */
 const WatermarkEntry = () => {
-	const [open, setOpen] = useState(false);
+	const [open, setOpen] = useAtom(watermarkOpenAtom);
 	if (!can("watermark")) return null;
 	return (
-		<>
-			<button
-				type="button"
-				onClick={() => setOpen(true)}
-				className="fixed top-0 left-0 z-[2147483200] rounded-br-md bg-black/45 px-[6px] py-[1px] text-[11px] text-white"
-			>
-				水印
-			</button>
-			<Drawer title="水印设置" placement="left" width="min(380px, 100vw)" open={open} onClose={() => setOpen(false)} mask={false}>
-				<WatermarkSettings />
-			</Drawer>
-		</>
+		<Drawer title="水印设置" placement="left" width="min(380px, 100vw)" open={open} onClose={() => setOpen(false)} mask={false}>
+			<WatermarkSettings />
+		</Drawer>
 	);
 };
 
