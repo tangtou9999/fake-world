@@ -1,5 +1,5 @@
-import { readSession } from "@/auth/session";
-import { type Watermark, watermarkAtom, withDefaults } from "@/stateV2/watermark";
+import { can, readSession } from "@/auth/session";
+import { type Watermark, WM_DEFAULT, watermarkAtom, withDefaults } from "@/stateV2/watermark";
 import { useAtomValue } from "jotai";
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
@@ -39,7 +39,8 @@ const LAYER_STYLE = "position:absolute;left:0;top:0;right:0;bottom:0;pointer-eve
 const WatermarkLayer = () => {
 	const stored = useAtomValue(watermarkAtom);
 	const { pathname } = useLocation();
-	const w = withDefaults(stored);
+	// 没有「水印设置」权限的账号：强制带默认水印，改不了、关不掉
+	const w = can("watermark") ? withDefaults(stored) : WM_DEFAULT;
 	const show = w.on && (w.scope === "all" || isChatPath(pathname));
 	const tail = w.trace ? (readSession()?.user.phone.slice(-4) ?? "") : "";
 	const label = `${w.text}${tail ? ` ${tail}` : ""}`.trim() || " ";

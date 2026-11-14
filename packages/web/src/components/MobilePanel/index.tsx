@@ -9,7 +9,6 @@ import MainMenu from "../LeftPanel/MainMenu";
 import MetaDataEditor from "../MetaDataEditor";
 import useMode from "../useMode";
 import ChatRecordsEditor from "./ChatRecordsEditor";
-import WatermarkSettings from "../Watermark/Settings";
 import { phoneSheetActive } from "@/pages/wechat/my/settings/screenOps";
 import { mobilePanelAtom } from "./atom";
 
@@ -155,7 +154,6 @@ const MobilePanel = () => {
 								label: "工具",
 								children: (
 									<>
-										<WatermarkSettings />
 										<ChatRecordsEditor />
 										<CommonBlock />
 										<MainMenu />

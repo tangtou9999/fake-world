@@ -1,6 +1,6 @@
 import { AUTH_ENABLED } from "./config";
 
-export type PermKey = "editMode" | "editBalance" | "editChat" | "chatAi" | "momentsAi" | "addFriend";
+export type PermKey = "editMode" | "editBalance" | "editChat" | "chatAi" | "momentsAi" | "addFriend" | "watermark";
 export const PERM_LABELS: Record<PermKey, string> = {
 	editMode: "编辑模式",
 	editBalance: "修改余额/账单",
@@ -8,6 +8,7 @@ export const PERM_LABELS: Record<PermKey, string> = {
 	chatAi: "聊天 AI / 私人 AI",
 	momentsAi: "朋友圈 AI",
 	addFriend: "添加好友",
+	watermark: "水印设置（不开则强制带默认水印）",
 };
 export const PERM_KEYS = Object.keys(PERM_LABELS) as PermKey[];
 

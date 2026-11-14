@@ -1,7 +1,6 @@
-import { type Watermark, WM_DEFAULT, hashPin, isUnlocked, setUnlocked, watermarkAtom, withDefaults } from "@/stateV2/watermark";
+import { type Watermark, watermarkAtom, withDefaults } from "@/stateV2/watermark";
 import { App as AntdApp, Button, Input, Segmented, Slider, Switch } from "antd";
 import { useAtom } from "jotai";
-import { useState } from "react";
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
 	<div className="flex items-center justify-between gap-3 py-[7px]">
@@ -12,38 +11,12 @@ const Row = ({ label, children }: { label: string; children: React.ReactNode }) 
 
 const SWATCH = ["#8A8A8A", "#000000", "#FFFFFF", "#E8523F", "#07C160", "#1677FF", "#F5A623", "#9B59B6"];
 
-/** 编辑模式 → 工具 → 水印 */
+/** 桌面左上角「水印」入口里的设置面板 */
 const WatermarkSettings = () => {
 	const { message } = AntdApp.useApp();
 	const [stored, setStored] = useAtom(watermarkAtom);
 	const w = withDefaults(stored);
-	const [open, setOpen] = useState(isUnlocked() || !w.lock);
-	const [pin, setPin] = useState("");
-	const [newPin, setNewPin] = useState("");
 	const set = (p: Partial<Watermark>) => setStored((s) => ({ ...s, ...p }));
-
-	const unlock = async () => {
-		if ((await hashPin(pin)) === w.lock) {
-			setUnlocked(true);
-			setOpen(true);
-			setPin("");
-		} else message.error("口令不对");
-	};
-
-	if (!open && w.lock) {
-		return (
-			<div className="mb-4 rounded-lg bg-[#F7F7F7] p-3">
-				<div className="mb-2 font-medium text-[15px]">水印（已锁定）</div>
-				<div className="mb-2 text-[12px] text-black/50">输入口令后才能修改水印。</div>
-				<div className="flex gap-2">
-					<Input.Password value={pin} onChange={(e) => setPin(e.target.value)} onPressEnter={() => void unlock()} placeholder="口令" />
-					<Button type="primary" onClick={() => void unlock()}>
-						解锁
-					</Button>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="mb-4 rounded-lg bg-[#F7F7F7] p-3">
@@ -121,39 +94,15 @@ const WatermarkSettings = () => {
 				</div>
 			</Row>
 			<div className="mt-2 border-black/10 border-t pt-2">
-				<div className="mb-1 text-[13px] text-black/60">口令锁（防止别人关掉水印）</div>
-				<div className="flex gap-2">
-					<Input.Password value={newPin} onChange={(e) => setNewPin(e.target.value)} placeholder="设置新口令（至少 4 位）" />
-					<Button
-						onClick={async () => {
-							if (newPin.length < 4) return message.error("口令至少 4 位");
-							set({ lock: await hashPin(newPin) });
-							setNewPin("");
-							message.success("口令已更新");
-						}}
-					>
-						设置
-					</Button>
-				</div>
-				<div className="mt-2 flex gap-2">
-					<Button
-						onClick={() => {
-							setUnlocked(false);
-							setOpen(false);
-						}}
-					>
-						立即锁定
-					</Button>
-					<Button
-						danger
-						onClick={() => {
-							setStored((s) => ({ ...WM_DEFAULT, lock: s.lock ?? WM_DEFAULT.lock }));
-							message.success("已恢复默认水印");
-						}}
-					>
-						恢复默认
-					</Button>
-				</div>
+				<Button
+					danger
+					onClick={() => {
+						setStored({});
+						message.success("已恢复默认水印");
+					}}
+				>
+					恢复默认
+				</Button>
 			</div>
 		</div>
 	);

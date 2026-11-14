@@ -7,6 +7,7 @@ import RightPanel from "./components/RightPanel";
 import Screen from "./components/Screen";
 import TopPopover from "./components/TopPopover";
 import Tour from "./components/Tour";
+import WatermarkEntry from "./components/Watermark/Entry";
 import { ANTD_LANG_MAP } from "./i18n";
 
 const App = () => {
@@ -34,6 +35,9 @@ const App = () => {
 				{!inShareMode && <RightPanel />}
 			</div>
 			<Tour />
+			<AntdApp>
+				<WatermarkEntry />
+			</AntdApp>
 			<AntdApp>
 				<MobilePanel />
 			</AntdApp>
